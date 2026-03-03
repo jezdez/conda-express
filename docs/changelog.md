@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.3
+
+### Changes
+
+- Consolidated release, PyPI, and crates.io publishing into a single
+  workflow triggered on tag push
+- Fixed GitHub Release asset upload (immutable releases compatibility)
+- Fixed manylinux compliance for Linux PyPI wheels
+- Fixed Windows checksum generation (`sha256sum` instead of `shasum`)
+
 ## 0.1.2
 
 First published release.
