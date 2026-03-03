@@ -119,7 +119,7 @@ One binary, one command. No Python, no installer, no shell modifications require
 
 ::::::
 
-::::::{grid} 1 1 3 3
+::::::{grid} 1 1 2 4
 :gutter: 3
 
 :::{grid-item-card} Quick start
@@ -143,6 +143,13 @@ Customize packages, channels, and exclusions.
 All commands and options.
 :::
 
+:::{grid-item-card} Installer reference
+:link: reference/installer
+:link-type: doc
+
+How the install scripts work.
+:::
+
 ::::::
 
 ```{toctree}
@@ -152,6 +159,7 @@ quickstart
 features
 configuration
 reference/cli
+reference/installer
 design
 changelog
 ```
