@@ -477,6 +477,6 @@ Conda also already has a pip-specific entry point at `conda.cli.main_pip:main`.
 ### Not yet on PyPI (plugin ecosystem)
 
 - **conda-spawn**: conda-forge only, but pure Python -- easy to publish
-- **conda-pypi**: conda-forge only, depends on `conda-index`. Provides `conda pypi install`, `conda pypi convert`, editable/VCS package support, PEP-668 `EXTERNALLY-MANAGED` marker integration
+- **conda-pypi**: conda-forge only, depends on `conda-index`. Provides `conda pypi install`, `conda pypi convert`, experimental wheel channels in repodata ([draft CEP](https://github.com/conda/ceps/pull/145)), editable/VCS package support, PEP-668 `EXTERNALLY-MANAGED` marker integration
 - **conda-rattler-solver**: Not on PyPI yet, but pure Python + py-rattler (which IS on PyPI)
 - **conda-self**: conda-forge only, essentially pure Python
