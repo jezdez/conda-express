@@ -37,6 +37,19 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 
 ## Installation
 
+### Installer script (recommended)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```
+
+This detects your platform, downloads the right binary, verifies the checksum, updates your shell profile, and runs `cx bootstrap`. Customize with environment variables:
+
+- `CX_INSTALL_DIR` — where to place the binary (default: `~/.local/bin`)
+- `CX_VERSION` — specific version to install (default: `latest`)
+- `CX_NO_PATH_UPDATE` — set to skip shell profile modification
+- `CX_NO_BOOTSTRAP` — set to skip running `cx bootstrap`
+
 ### From GitHub Releases
 
 Download the binary for your platform from the
@@ -50,15 +63,7 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
 
-Each file has a matching `.sha256` checksum. Download the file, make it
-executable, and place it on your `PATH`:
-
-```bash
-# Example for macOS Apple Silicon:
-curl -fsSL https://github.com/jezdez/conda-express/releases/latest/download/cx-aarch64-apple-darwin -o cx
-chmod +x cx
-sudo mv cx /usr/local/bin/
-```
+Each file has a matching `.sha256` checksum.
 
 ### From PyPI
 

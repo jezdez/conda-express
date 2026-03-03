@@ -4,6 +4,39 @@
 
 ::::{tab-set}
 
+:::{tab-item} Installer (recommended)
+The installer downloads the right binary for your platform, verifies its
+checksum, updates your shell profile, and runs `cx bootstrap` — all in one step:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```
+
+or with `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```
+
+:::{admonition} Installer options
+:class: dropdown
+
+| Variable | Default | Description |
+|---|---|---|
+| `CX_INSTALL_DIR` | `~/.local/bin` | Where to place the `cx` binary |
+| `CX_VERSION` | `latest` | Version to install (without `v` prefix) |
+| `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile modification |
+| `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip running `cx bootstrap` |
+
+Example:
+
+```bash
+CX_VERSION=0.1.3 CX_INSTALL_DIR=/opt/bin curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```
+:::
+
+:::
+
 :::{tab-item} GitHub Releases
 Download the binary for your platform from the
 [latest release](https://github.com/jezdez/conda-express/releases/latest):
@@ -18,13 +51,11 @@ Download the binary for your platform from the
 
 Each file has a matching `.sha256` checksum.
 
-**Linux / macOS one-liner** (replace `TARGET` with your platform):
+After downloading, make it executable and move it to your `PATH`:
 
 ```bash
-TARGET=aarch64-apple-darwin  # adjust for your platform
-curl -fsSL "https://github.com/jezdez/conda-express/releases/latest/download/cx-${TARGET}" -o cx
-chmod +x cx
-sudo mv cx /usr/local/bin/
+chmod +x cx-*
+sudo mv cx-* /usr/local/bin/cx
 ```
 :::
 
@@ -55,7 +86,8 @@ pixi run build
 
 ## Bootstrap
 
-Run `cx bootstrap` to install conda into `~/.cx`:
+If you used the installer script, bootstrap has already been run for you.
+Otherwise, run it manually:
 
 ```bash
 cx bootstrap
