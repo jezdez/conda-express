@@ -25,9 +25,9 @@ classifiers = [
 readme = "README.md"
 
 [project.urls]
-Repository = "https://github.com/conda-incubator/conda-express"
-Documentation = "https://github.com/conda-incubator/conda-express"
-Issues = "https://github.com/conda-incubator/conda-express/issues"
+Repository = "https://github.com/jezdez/conda-express"
+Documentation = "https://github.com/jezdez/conda-express"
+Issues = "https://github.com/jezdez/conda-express/issues"
 
 [tool.maturin]
 bindings = "bin"

@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 project = html_title = "conda-express"
-copyright = "2025, conda community"
+copyright = "2025-2026, conda community"
 author = "conda community"
 
 extensions = [
@@ -30,7 +30,7 @@ html_theme_options = {
     "icon_links": [
         {
             "name": "GitHub",
-            "url": "https://github.com/conda-incubator/conda-express",
+            "url": "https://github.com/jezdez/conda-express",
             "icon": "fa-brands fa-square-github",
             "type": "fontawesome",
         },
@@ -44,7 +44,7 @@ html_theme_options = {
 }
 
 html_context = {
-    "github_user": "conda-incubator",
+    "github_user": "jezdez",
     "github_repo": "conda-express",
     "github_version": "main",
     "doc_path": "docs",
@@ -53,6 +53,6 @@ html_context = {
 html_static_path = ["_static"]
 html_css_files = ["css/custom.css"]
 
-html_baseurl = "https://conda-incubator.github.io/conda-express/"
+html_baseurl = "https://jezdez.github.io/conda-express/"
 
 exclude_patterns = ["_build"]

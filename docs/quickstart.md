@@ -6,7 +6,7 @@
 
 :::{tab-item} GitHub Releases
 Download the binary for your platform from the
-[latest release](https://github.com/conda-incubator/conda-express/releases/latest),
+[latest release](https://github.com/jezdez/conda-express/releases/latest),
 then place it somewhere on your `PATH`.
 :::
 
@@ -26,7 +26,7 @@ cargo install conda-express
 [pixi](https://pixi.sh) manages the Rust toolchain from conda-forge:
 
 ```bash
-git clone https://github.com/conda-incubator/conda-express.git
+git clone https://github.com/jezdez/conda-express.git
 cd conda-express
 pixi run build
 # Binary is at target/release/cx

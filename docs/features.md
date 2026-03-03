@@ -101,7 +101,7 @@ cx builds and tests on 5 platforms via GitHub Actions:
 |---|---|
 | linux-x64 | `ubuntu-latest` |
 | linux-aarch64 | `ubuntu-24.04-arm` |
-| macos-x64 | `macos-13` |
+| macos-x64 | `macos-15-large` |
 | macos-arm64 | `macos-latest` |
 | windows-x64 | `windows-latest` |
 

@@ -40,7 +40,7 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 ### From GitHub Releases
 
 Download the binary for your platform from the
-[latest release](https://github.com/conda-incubator/conda-express/releases/latest),
+[latest release](https://github.com/jezdez/conda-express/releases/latest),
 then place it somewhere on your `PATH`.
 
 ### From PyPI
@@ -66,7 +66,7 @@ Requires [pixi](https://pixi.sh) (recommended) or [Rust](https://rustup.rs/) (ed
 [pixi](https://pixi.sh) manages the Rust toolchain from conda-forge for reproducible builds:
 
 ```bash
-git clone https://github.com/conda-incubator/conda-express.git
+git clone https://github.com/jezdez/conda-express.git
 cd conda-express
 
 pixi run build          # cargo build --release
@@ -77,7 +77,7 @@ pixi run lint           # fmt-check + clippy
 ### With system Rust
 
 ```bash
-git clone https://github.com/conda-incubator/conda-express.git
+git clone https://github.com/jezdez/conda-express.git
 cd conda-express
 
 # Build (first build solves packages at compile time — needs network)

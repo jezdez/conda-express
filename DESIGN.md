@@ -4,7 +4,7 @@
 
 conda-express (cx) is a lightweight, single-binary bootstrapper for conda, written in Rust using the [rattler](https://github.com/conda/rattler) crate ecosystem. It replaces the miniconda/constructor install pattern with a ~10 MB static binary that can install a fully functional conda environment in seconds.
 
-Inspired by UV's single-binary distribution model, cx aims to be the fastest way to get a working conda installation.
+Inspired by uv's single-binary distribution model, cx aims to be the fastest way to get a working conda installation.
 
 ## Current status
 
@@ -113,6 +113,9 @@ conda-express/
   pixi.toml             Dev environment + [tool.cx] package config + docs deps
   pixi.lock             Locked dev dependencies
   build.rs              Compile-time solver and lockfile generator
+  cx.lock               Cached rattler-lock v6 lockfile (checked in)
+  cx.lock.hash          Config hash for cx.lock cache invalidation
+  CHANGELOG.md          Release changelog
   LICENSE               BSD 3-Clause
   README.md             User-facing documentation
   DESIGN.md             This file
@@ -136,15 +139,14 @@ conda-express/
     features.md         Feature descriptions
     configuration.md    Build-time and runtime config reference
     design.md           Includes DESIGN.md via MyST include
-    changelog.md        Release notes
+    changelog.md        Symlink to ../CHANGELOG.md
     reference/
       cli.md            CLI reference
   .github/
     workflows/
       ci.yml            CI: build, test, lint on all platforms (canary artifacts)
-      release.yml       Release: build + upload binaries to GitHub Releases
-      publish-pypi.yml  Publish platform wheels to PyPI (trusted publishing)
-      publish-crates.yml Publish crate to crates.io (trusted publishing)
+      release.yml       Build binaries + wheels, publish to GitHub Releases, PyPI, and crates.io
+      docs.yml          Build and deploy Sphinx docs to GitHub Pages
 ```
 
 ## Development environment
@@ -247,9 +249,8 @@ cx is published to PyPI as platform wheels via [maturin](https://github.com/PyO3
 All workflows use `pixi` for toolchain management:
 
 - **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately.
-- **`release.yml`** — triggers on GitHub Release publication. Builds release binaries, computes SHA-256 checksums, and uploads both to the release.
-- **`publish-pypi.yml`** — triggers on GitHub Release publication. Builds platform wheels via maturin-action, then publishes to PyPI using trusted publishing (OIDC, no API tokens).
-- **`publish-crates.yml`** — triggers on GitHub Release publication. Publishes the crate to crates.io using trusted publishing via `rust-lang/crates-io-auth-action`.
+- **`release.yml`** — triggers on tag push (`v*`). Orchestrates the full release pipeline: builds native binaries, builds maturin platform wheels and sdist, creates a GitHub Release with binary assets, publishes wheels to PyPI via trusted publishing (OIDC), and publishes the crate to crates.io via trusted publishing (`rust-lang/crates-io-auth-action`). All steps run as separate jobs with dependency ordering.
+- **`docs.yml`** — triggers on push to `main` (docs paths), PRs, and manual dispatch. Builds Sphinx documentation and deploys to GitHub Pages.
 
 ## Future work
 

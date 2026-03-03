@@ -347,7 +347,7 @@ A GitHub Action that lets anyone build their own "cx-type" binary with a custom 
 # .github/workflows/build.yml
 jobs:
   build:
-    uses: conda-incubator/conda-express/.github/workflows/build.yml@main
+    uses: jezdez/conda-express/.github/workflows/build.yml@main
     with:
       name: cx
       packages: >
@@ -364,7 +364,7 @@ jobs:
         macos-arm64
         windows-x64
       entry-point: conda
-      self-update-repo: conda-incubator/conda-express
+      self-update-repo: jezdez/conda-express
 ```
 
 ### How it works
@@ -410,7 +410,7 @@ jobs:
 ### Phase 1: conda-self plugin, PyPI publishing, and GitHub Action
 
 1. **conda-self pluggable updater backend** -- propose hook design to conda-self maintainers, implement hook spec and default conda backend in conda-self, implement cx backend (shells out to `cx _internal-update` for rattler-based solve+install with exclusions). This makes `conda self update` the canonical update command for all conda users.
-2. ~~**Publish cx to PyPI via maturin**~~ -- **Done.** `pyproject.toml` with `bindings = "bin"`, Python wrapper in `python/conda_express/`, `publish-pypi.yml` workflow using trusted publishing. Also added `publish-crates.yml` for crates.io via `rust-lang/crates-io-auth-action`.
+2. ~~**Publish cx to PyPI via maturin**~~ -- **Done.** `pyproject.toml` with `bindings = "bin"`, Python wrapper in `python/conda_express/`. PyPI and crates.io publishing are consolidated into the unified `release.yml` workflow using trusted publishing (OIDC) for both.
 3. Build the reusable GitHub Action for compiling custom bootstrapper binaries from a package list
 
 ### Phase 2: Production

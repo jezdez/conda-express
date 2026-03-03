@@ -10,7 +10,7 @@ cx replaces the miniconda/constructor installation pattern with a ~10 MB static 
 
 :::{tab-item} GitHub Releases
 Download the binary for your platform from the
-[latest release](https://github.com/conda-incubator/conda-express/releases/latest).
+[latest release](https://github.com/jezdez/conda-express/releases/latest).
 :::
 
 :::{tab-item} PyPI
