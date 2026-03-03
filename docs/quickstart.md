@@ -59,7 +59,6 @@ Download the binary for your platform from the
 | macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` |
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
-| Windows ARM64 | `cx-aarch64-pc-windows-msvc.exe` |
 
 Each file has a matching `.sha256` checksum.
 

@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.4
+## 0.1.5
 
 ### Features
 
@@ -10,7 +10,6 @@
 - Replace misleading `conda activate` hints after `cx create` / `cx env create`
   with `cx shell` guidance via output filtering
 - Rename `cx info` to `cx status` so `cx info` passes through to `conda info`
-- Add native Windows ARM64 (`aarch64-pc-windows-msvc`) builds
 - Add `get-cx.sh` (macOS/Linux) and `get-cx.ps1` (Windows) installer scripts
   served from GitHub Pages
 

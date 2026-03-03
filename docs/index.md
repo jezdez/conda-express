@@ -36,7 +36,6 @@ Download the binary for your platform from the
 | macOS Intel | `cx-x86_64-apple-darwin` |
 | macOS Apple Silicon | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
-| Windows ARM64 | `cx-aarch64-pc-windows-msvc.exe` |
 :::
 
 :::{tab-item} PyPI

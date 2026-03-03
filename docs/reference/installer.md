@@ -94,7 +94,6 @@ The PowerShell script uses .NET's `RuntimeInformation.OSArchitecture`.
 | macOS x86_64 | `x86_64-apple-darwin` | `cx-x86_64-apple-darwin` |
 | macOS ARM64 | `aarch64-apple-darwin` | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `x86_64-pc-windows-msvc` | `cx-x86_64-pc-windows-msvc.exe` |
-| Windows ARM64 | `aarch64-pc-windows-msvc` | `cx-aarch64-pc-windows-msvc.exe` |
 
 ## Shell profile updates
 
