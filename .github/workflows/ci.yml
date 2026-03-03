@@ -38,6 +38,10 @@ jobs:
         with:
           cache: true
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
       - name: Build
         run: pixi run build
 
@@ -72,5 +76,6 @@ jobs:
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
           cache: true
+      - uses: Swatinem/rust-cache@v2
       - name: Lint
         run: pixi run lint
