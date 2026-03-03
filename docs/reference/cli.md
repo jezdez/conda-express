@@ -52,12 +52,13 @@ cx bootstrap --prefix /opt/conda
 
 ---
 
-## `cx info`
+## `cx status`
 
-Print information about the current installation.
+Print cx installation status (prefix, channels, packages, excludes).
+For conda's own info, use `cx info` which passes through to `conda info`.
 
 ```
-cx info [OPTIONS]
+cx status [OPTIONS]
 ```
 
 ### Options

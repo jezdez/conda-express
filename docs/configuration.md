@@ -62,7 +62,7 @@ cx writes metadata about the installation into `.cx.json` at the prefix root:
 }
 ```
 
-This is used by `cx info` and will be used by the future conda-self update
+This is used by `cx status` and will be used by the future conda-self update
 backend to detect cx-managed prefixes.
 
 ### `conda-meta/frozen`
@@ -95,5 +95,5 @@ The default installation prefix is `~/.cx`. Override it per-command with the
 
 ```bash
 cx bootstrap --prefix /opt/cx
-cx info --prefix /opt/cx
+cx status --prefix /opt/cx
 ```

@@ -179,7 +179,7 @@ pixi.toml              [tool.cx]: packages, channels, excludes
        |                       or live solve (fallback)
        |                       write CEP 22 frozen marker
        |
-       +---> info -------------> show prefix metadata
+       +---> status -----------> show cx prefix metadata
        |
        +---> activate/deactivate/init --> disabled (guides to conda-spawn)
        |

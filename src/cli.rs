@@ -55,8 +55,8 @@ pub enum Command {
         lockfile: Option<PathBuf>,
     },
 
-    /// Print info about the current installation
-    Info {
+    /// Print cx status (prefix, channels, packages, excludes)
+    Status {
         /// Target prefix directory (default: ~/.cx)
         #[clap(long)]
         prefix: Option<PathBuf>,

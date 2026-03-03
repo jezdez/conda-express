@@ -153,7 +153,7 @@ cx bootstrap [OPTIONS]           Bootstrap a fresh conda installation
   --no-lock                      Ignore embedded lockfile, do a live solve
   --lockfile PATH                Use an external lockfile instead
 
-cx info [--prefix DIR]           Show installation info
+cx status [--prefix DIR]         Show cx installation status
 cx shell [ENV]                   Alias for conda spawn (activate via subshell)
 cx <conda-args>                  Passed through to conda
 ```

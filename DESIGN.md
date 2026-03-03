@@ -59,7 +59,7 @@ pixi.toml              [tool.cx]: packages, channels, excludes
        |                       or live solve (fallback)
        |                       write CEP 22 frozen marker
        |
-       +---> info -------------> show prefix metadata
+       +---> status -----------> show cx prefix metadata
        |
        +---> shell -----------> alias for `conda spawn` (activate via subshell)
        |
@@ -190,7 +190,7 @@ Both `build.rs` (compile-time) and the runtime binary read from `pixi.toml`. Cha
 ```
 cx bootstrap [--force] [--prefix DIR] [--channel CH] [--package PKG]
              [--exclude PKG] [--no-exclude] [--no-lock] [--lockfile PATH]
-cx info [--prefix DIR]
+cx status [--prefix DIR]
 cx shell [ENV]           # alias for conda spawn (activate via subshell)
 cx <any-conda-command>   # transparently delegates to conda
 ```

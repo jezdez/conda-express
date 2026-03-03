@@ -66,7 +66,7 @@ async fn async_main() -> miette::Result<()> {
             conda_args.extend(raw_args[2..].iter().map(|s| s.as_str()));
             return exec::replace_process_with_conda(&prefix, &conda_args);
         }
-        Some("bootstrap") | Some("info") | Some("--help") | Some("-h") | Some("--version")
+        Some("bootstrap") | Some("status") | Some("--help") | Some("-h") | Some("--version")
         | Some("-V") | None => {
             let cli = Cli::parse();
             match cli.command {
@@ -96,9 +96,9 @@ async fn async_main() -> miette::Result<()> {
                     return cmd_bootstrap(&prefix, force, channel, package, &excludes, lock_source)
                         .await;
                 }
-                Some(Command::Info { prefix }) => {
+                Some(Command::Status { prefix }) => {
                     let prefix = prefix.map(Ok).unwrap_or_else(default_prefix)?;
-                    return cmd_info(&prefix);
+                    return cmd_status(&prefix);
                 }
                 None => {
                     let prefix = default_prefix()?;
@@ -247,13 +247,13 @@ async fn cmd_bootstrap(
         console::style("✔").green().bold()
     );
     eprintln!("   Prefix: {}", prefix.display());
-    eprintln!("   Run `cx info` for details.");
+    eprintln!("   Run `cx status` for details.");
     eprintln!("   Use `cx <conda-args>` to run conda commands.");
 
     Ok(())
 }
 
-fn cmd_info(prefix: &Path) -> miette::Result<()> {
+fn cmd_status(prefix: &Path) -> miette::Result<()> {
     if !is_bootstrapped(prefix) {
         eprintln!("No conda installation found at {}", prefix.display());
         return Ok(());
