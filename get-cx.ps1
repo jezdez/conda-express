@@ -52,7 +52,7 @@ function Get-TargetTriple {
         $p = $t.GetProperty("OSArchitecture")
         switch ($p.GetValue($null).ToString()) {
             "X64"   { return "x86_64-pc-windows-msvc" }
-            "Arm64" { return "x86_64-pc-windows-msvc" }  # emulation
+            "Arm64" { return "aarch64-pc-windows-msvc" }
         }
     } catch {
         Write-Verbose "Falling back to Is64BitOperatingSystem"

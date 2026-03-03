@@ -95,7 +95,7 @@ cx bootstrap --no-lock
 
 ## Multi-platform support
 
-cx builds and tests on 5 platforms via GitHub Actions:
+cx builds and tests on 6 platforms via GitHub Actions:
 
 | Platform | Runner |
 |---|---|
@@ -104,6 +104,7 @@ cx builds and tests on 5 platforms via GitHub Actions:
 | macos-x64 | `macos-15-large` |
 | macos-arm64 | `macos-latest` |
 | windows-x64 | `windows-latest` |
+| windows-arm64 | `windows-11-arm` |
 
 ## PyPI and crates.io distribution
 

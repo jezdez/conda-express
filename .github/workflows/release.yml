@@ -26,6 +26,8 @@ jobs:
             os: macos-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+          - target: aarch64-pc-windows-msvc
+            os: windows-11-arm
     env:
       TARGET: ${{ matrix.target }}
 
@@ -88,6 +90,8 @@ jobs:
             os: macos-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+          - target: aarch64-pc-windows-msvc
+            os: windows-11-arm
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
