@@ -40,8 +40,25 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 ### From GitHub Releases
 
 Download the binary for your platform from the
-[latest release](https://github.com/jezdez/conda-express/releases/latest),
-then place it somewhere on your `PATH`.
+[latest release](https://github.com/jezdez/conda-express/releases/latest):
+
+| Platform | File |
+|---|---|
+| Linux x86_64 | `cx-x86_64-unknown-linux-gnu` |
+| Linux ARM64 | `cx-aarch64-unknown-linux-gnu` |
+| macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` |
+| macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
+| Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
+
+Each file has a matching `.sha256` checksum. Download the file, make it
+executable, and place it on your `PATH`:
+
+```bash
+# Example for macOS Apple Silicon:
+curl -fsSL https://github.com/jezdez/conda-express/releases/latest/download/cx-aarch64-apple-darwin -o cx
+chmod +x cx
+sudo mv cx /usr/local/bin/
+```
 
 ### From PyPI
 
