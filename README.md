@@ -42,13 +42,13 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
 ```
 
 The installer detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx bootstrap`. Customize with environment variables:

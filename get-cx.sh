@@ -2,8 +2,8 @@
 # Installer script for cx (conda-express)
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
-#   wget -qO- https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+#   curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
+#   wget -qO- https://jezdez.github.io/conda-express/get-cx.sh | sh
 #
 # Options (via environment variables):
 #   CX_INSTALL_DIR       — where to place the binary (default: ~/.local/bin)

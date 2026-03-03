@@ -51,6 +51,7 @@ html_context = {
 }
 
 html_static_path = ["_static"]
+html_extra_path = ["../get-cx.sh", "../get-cx.ps1"]
 html_css_files = ["css/custom.css"]
 
 html_baseurl = "https://jezdez.github.io/conda-express/"

@@ -12,13 +12,13 @@ in one step.
 **macOS / Linux:**
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 ```
 
 **Windows (PowerShell):**
 
 ```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex"
+powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
 ```
 
 :::{admonition} Installer options
@@ -36,13 +36,13 @@ All options work as environment variables on both platforms:
 Unix example:
 
 ```bash
-CX_VERSION=0.1.3 curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+CX_VERSION=0.1.3 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 ```
 
 PowerShell example:
 
 ```powershell
-$Env:CX_VERSION = "0.1.3"; irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex
+$Env:CX_VERSION = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 ```
 :::
 

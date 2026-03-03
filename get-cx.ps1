@@ -17,9 +17,9 @@
     If specified, skip running "cx bootstrap" after installation.
     Can also be set via the CX_NO_BOOTSTRAP environment variable.
 .EXAMPLE
-    irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex
+    irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 .EXAMPLE
-    & { $Version = "0.1.3"; irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex }
+    & { $Version = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex }
 .LINK
     https://github.com/jezdez/conda-express
 #>
