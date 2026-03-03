@@ -155,6 +155,7 @@ cx bootstrap [OPTIONS]           Bootstrap a fresh conda installation
 
 cx status [--prefix DIR]         Show cx installation status
 cx shell [ENV]                   Alias for conda spawn (activate via subshell)
+cx help                          Getting-started guide
 cx <conda-args>                  Passed through to conda
 ```
 

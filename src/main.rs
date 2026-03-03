@@ -44,6 +44,9 @@ async fn async_main() -> miette::Result<()> {
         Some("init") => {
             print_disabled_init();
         }
+        Some("help") => {
+            print_help();
+        }
         Some("shell") => {
             let prefix = default_prefix()?;
             if !is_bootstrapped(&prefix) {
@@ -324,6 +327,80 @@ fn print_disabled_init() {
     eprintln!();
     eprintln!("  Learn more: https://github.com/conda-incubator/conda-spawn");
     std::process::exit(1);
+}
+
+// ─── Help ─────────────────────────────────────────────────────────────────────
+
+fn print_help() {
+    let g = console::style;
+    eprintln!(
+        "{} {} — lightweight single-binary conda bootstrapper",
+        g("cx").bold().cyan(),
+        env!("CARGO_PKG_VERSION"),
+    );
+    eprintln!();
+    eprintln!("{}", g("Getting started:").bold().underlined());
+    eprintln!();
+    eprintln!(
+        "  {}    Install conda into ~/.cx",
+        g("cx bootstrap").green()
+    );
+    eprintln!(
+        "  {}  Re-install from scratch",
+        g("cx bootstrap --force").green()
+    );
+    eprintln!();
+    eprintln!("{}", g("Working with environments:").bold().underlined());
+    eprintln!();
+    eprintln!(
+        "  {}  Create an environment",
+        g("cx create -n myenv python=3.12 numpy").green()
+    );
+    eprintln!(
+        "  {}              Activate (spawns a subshell)",
+        g("cx shell myenv").green()
+    );
+    eprintln!(
+        "  {}                        Leave the environment",
+        g("exit").green()
+    );
+    eprintln!();
+    eprintln!("{}", g("cx commands:").bold().underlined());
+    eprintln!();
+    eprintln!(
+        "  {}          Install conda into ~/.cx",
+        g("bootstrap").cyan()
+    );
+    eprintln!(
+        "  {}             Show cx prefix metadata",
+        g("status").cyan()
+    );
+    eprintln!(
+        "  {}              Activate via subshell (conda spawn)",
+        g("shell").cyan()
+    );
+    eprintln!("  {}               This help message", g("help").cyan());
+    eprintln!();
+    eprintln!(
+        "{}",
+        g("All other commands pass through to conda:")
+            .bold()
+            .underlined()
+    );
+    eprintln!();
+    eprintln!(
+        "  {}",
+        g("cx install, cx remove, cx list, cx env, cx info, cx config, ...").dim()
+    );
+    eprintln!();
+    eprintln!(
+        "  Docs: {}",
+        g("https://jezdez.github.io/conda-express/").underlined()
+    );
+    eprintln!(
+        "  Repo: {}",
+        g("https://github.com/jezdez/conda-express").underlined()
+    );
 }
 
 // ─── Tracing ─────────────────────────────────────────────────────────────────

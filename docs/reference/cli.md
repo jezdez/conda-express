@@ -145,6 +145,17 @@ Prints a message explaining that shell profile modifications are unnecessary:
 
 ---
 
+## `cx help`
+
+Show a getting-started guide with cx-specific commands, common workflows,
+and links to documentation.
+
+```
+cx help
+```
+
+---
+
 ## Pass-through commands
 
 Any command not listed above is passed through to the installed `conda` binary.
