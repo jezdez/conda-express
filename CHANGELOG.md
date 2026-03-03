@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.1.6
+
+### Fixes
+
+- Fix PyPI wheel versioning — use dynamic version from `Cargo.toml` instead
+  of a hardcoded version in `pyproject.toml`
+- Remove Windows ARM64 (`aarch64-pc-windows-msvc`) target (conda not available
+  on conda-forge for win-arm64)
+
 ## 0.1.5
 
 ### Features
