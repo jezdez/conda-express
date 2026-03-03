@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.7
+
+### Internal
+
+- Fix release workflow to fall back to `gh release upload` when release
+  already exists
+
 ## 0.1.6
 
 ### Fixes
