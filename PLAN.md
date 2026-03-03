@@ -54,7 +54,7 @@ python/conda_express/
 | Dimension | cx on PyPI (maturin wheel) | conda on PyPI (Python wheel) |
 |---|---|---|
 | Upstream changes needed | None | pycosat optional, menuinst optional, classic solver extraction, plugin publishing |
-| What ships | Single Rust binary (~10 MB wheel) | conda + all deps as Python wheels |
+| What ships | Single Rust binary (~17 MB wheel) | conda + all deps as Python wheels |
 | Solver | rattler (compiled in) + conda-rattler-solver (installed from conda-forge) | conda-rattler-solver (from PyPI, needs py-rattler) |
 | conda-forge packages | Full access (bootstraps a real conda env) | Limited to what's on PyPI |
 | Install experience | `pip install conda-express && cx bootstrap` | `pip install conda` |
@@ -106,10 +106,10 @@ Not required for cx, but valuable for conda's long-term health.
 
 ### Current implementation (Phase 0 -- complete)
 
-cx is a working Rust binary (~10 MB release) that bootstraps conda from conda-forge. Published as `conda-express` on crates.io, binary name `cx`.
+cx is a working Rust binary (~17 MB release) that bootstraps conda from conda-forge. Published as `conda-express` on crates.io, binary name `cx`.
 
 ```
-cx (Rust binary, ~10 MB release)
+cx (Rust binary, ~17 MB release)
 
 First run (cx bootstrap):
   -> parse embedded rattler-lock v6 lockfile (compiled in by build.rs)
@@ -155,7 +155,7 @@ Disabled commands (cx activate/deactivate/init):
 
 | Metric | Value |
 |---|---|
-| Release binary size | ~10 MB |
+| Release binary size | ~17 MB |
 | Installed packages (base) | 86 |
 | Excluded packages (libmamba tree) | 27 |
 | Bootstrap time (embedded lockfile) | ~3–5 s |
@@ -173,7 +173,7 @@ pixi.toml              [tool.cx]: packages, channels, excludes
     cx.lock            rattler-lock v6 (embedded via include_str!)
        |
        v
-      cx               Single binary (~10 MB release)
+      cx               Single binary (~17 MB release)
        |
        +---> bootstrap -----> install from lockfile (fast path)
        |                       or live solve (fallback)
@@ -383,7 +383,7 @@ jobs:
 - ~~**Rust development**: ~500-1000 lines of custom Rust for the bootstrapper.~~ **Done**: ~1200 lines across 5 modules + build.rs.
 - **conda-self hook design**: Needs buy-in from conda-self maintainers. The hook API design should be discussed as a proposal before implementation.
 - ~~**Cross-compilation**: Building Rust binaries for 5 platforms.~~ **Solved**: Native compilation on each platform using GitHub ARM runners + pixi for toolchain management.
-- **PyPI wheel size**: cx platform wheels will be ~10 MB each (comparable to uv's ~20 MB). PyPI has a default upload limit of 100 MB per file, so this is well within bounds.
+- **PyPI wheel size**: cx platform wheels are ~17 MB each (comparable to uv's ~20 MB). PyPI has a default upload limit of 100 MB per file, so this is well within bounds.
 - **maturin + pixi interaction**: The build currently uses pixi for the Rust toolchain. maturin wheel builds may need to happen outside pixi, or pixi can invoke maturin. Needs testing.
 
 ### Deprioritized risks (upstream conda, not blocking cx)

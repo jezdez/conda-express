@@ -2,7 +2,7 @@
 
 ## Single-binary bootstrapper
 
-cx is a single ~10 MB static binary written in Rust. It requires no Python,
+cx is a single ~17 MB static binary written in Rust. It requires no Python,
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
 

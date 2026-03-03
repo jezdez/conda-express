@@ -2,7 +2,7 @@
 
 ## What is conda-express?
 
-conda-express (cx) is a lightweight, single-binary bootstrapper for conda, written in Rust using the [rattler](https://github.com/conda/rattler) crate ecosystem. It replaces the miniconda/constructor install pattern with a ~10 MB static binary that can install a fully functional conda environment in seconds.
+conda-express (cx) is a lightweight, single-binary bootstrapper for conda, written in Rust using the [rattler](https://github.com/conda/rattler) crate ecosystem. It replaces the miniconda/constructor install pattern with a ~17 MB static binary that can install a fully functional conda environment in seconds.
 
 Inspired by uv's single-binary distribution model, cx aims to be the fastest way to get a working conda installation.
 
@@ -34,7 +34,7 @@ Inspired by uv's single-binary distribution model, cx aims to be the fastest way
 
 | Metric | Value |
 |---|---|
-| Release binary size | ~10 MB |
+| Release binary size | ~17 MB |
 | Installed packages (base) | 86 |
 | Excluded packages (libmamba tree) | 27 |
 | Bootstrap time (embedded lockfile) | ~3–5 s |
@@ -53,7 +53,7 @@ pixi.toml              [tool.cx]: packages, channels, excludes
     cx.lock            rattler-lock v6 (embedded via include_str!)
        |
        v
-      cx               Single binary (~10 MB release)
+      cx               Single binary (~17 MB release)
        |
        +---> bootstrap -----> install from lockfile (fast path)
        |                       or live solve (fallback)
