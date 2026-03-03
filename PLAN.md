@@ -436,6 +436,7 @@ These improve conda's ecosystem health but are **not required** for cx:
 3. Publish conda-classic-solver to defaults and conda-forge (unblocks solver extraction)
 4. Publish conda-rattler-solver, conda-spawn, conda-self, conda-pypi to PyPI
 5. Publish conda itself to PyPI (reclaim the yanked `conda` package name)
+6. **Publish conda-spawn to Anaconda defaults** -- conda-spawn is the only cx package not yet on defaults. All others (python, conda, conda-rattler-solver, conda-pypi, conda-self) are already available. Publishing conda-spawn to defaults would unblock a defaults-only cx configuration (no conda-forge dependency).
 
 ---
 
