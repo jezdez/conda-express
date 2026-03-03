@@ -2,9 +2,9 @@
 
 ## Installation
 
-::::{tab-set}
+:::::{tab-set}
 
-:::{tab-item} Installer (recommended)
+::::{tab-item} Installer (recommended)
 The installer downloads the right binary for your platform, verifies its
 checksum, updates your shell profile / PATH, and runs `cx bootstrap` — all
 in one step.
@@ -46,9 +46,9 @@ $Env:CX_VERSION = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1
 ```
 :::
 
-:::
+::::
 
-:::{tab-item} GitHub Releases
+::::{tab-item} GitHub Releases
 Download the binary for your platform from the
 [latest release](https://github.com/jezdez/conda-express/releases/latest):
 
@@ -69,21 +69,21 @@ After downloading, make it executable and move it to your `PATH`:
 chmod +x cx-*
 sudo mv cx-* /usr/local/bin/cx
 ```
-:::
+::::
 
-:::{tab-item} PyPI
+::::{tab-item} PyPI
 ```bash
 pip install conda-express
 ```
-:::
+::::
 
-:::{tab-item} crates.io
+::::{tab-item} crates.io
 ```bash
 cargo install conda-express
 ```
-:::
+::::
 
-:::{tab-item} Build from source
+::::{tab-item} Build from source
 [pixi](https://pixi.sh) manages the Rust toolchain from conda-forge:
 
 ```bash
@@ -92,9 +92,9 @@ cd conda-express
 pixi run build
 # Binary is at target/release/cx
 ```
-:::
-
 ::::
+
+:::::
 
 ## Bootstrap
 
