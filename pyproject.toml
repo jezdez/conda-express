@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "conda-express"
-version = "0.1.0"
+version = "0.1.1"
 description = "A lightweight, single-binary conda bootstrapper — powered by rattler"
 license = { text = "BSD-3-Clause" }
 requires-python = ">=3.8"
