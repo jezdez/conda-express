@@ -27,6 +27,9 @@ Inspired by uv's single-binary distribution model, cx aims to be the fastest way
 | Multi-platform CI (via pixi) | Done |
 | Release binary builds | Done |
 | CEP 22 frozen base prefix | Done |
+| `cx help` (clap auto-generated) | Done |
+| Output filtering (create/env create) | Done |
+| Installer scripts (get-cx.sh, get-cx.ps1) | Done |
 | Self-update (via conda-self plugin) | Not started |
 | Reusable GitHub Action | Not started |
 
@@ -63,6 +66,8 @@ pixi.toml              [tool.cx]: packages, channels, excludes
        |
        +---> shell -----------> alias for `conda spawn` (activate via subshell)
        |
+       +---> help -----------> clap auto-generated help with quick start
+       |
        +---> activate/deactivate/init --> disabled (guides to conda-spawn)
        |
        +---> <any conda arg> --> hand off to installed conda binary
@@ -98,7 +103,7 @@ These commands exit with a non-zero status to prevent scripts from silently succ
 
 ### Process hand-off
 
-When cx receives a command it doesn't own (anything other than `bootstrap`, `info`, or a disabled command), it replaces its own process with the installed `conda` binary using the Unix execvp syscall. This means conda's full feature set is available transparently — cx is invisible after bootstrap.
+When cx receives a command it doesn't own (anything other than `bootstrap`, `status`, `shell`, `help`, or a disabled command), it replaces its own process with the installed `conda` binary using the Unix execvp syscall. For `create` and `env create`, cx runs conda as a subprocess to filter misleading `conda activate` hints from the output, replacing them with `cx shell` guidance. This means conda's full feature set is available transparently — cx is invisible after bootstrap.
 
 ### Frozen base prefix (CEP 22)
 
@@ -132,6 +137,9 @@ conda-express/
       __main__.py       python -m conda_express -> exec cx
       _find_cx.py       Locate cx binary in sysconfig paths
       py.typed          PEP 561 type marker
+  scripts/
+    get-cx.sh           Installer script for macOS/Linux
+    get-cx.ps1          Installer script for Windows (PowerShell)
   docs/
     conf.py             Sphinx config (conda-sphinx-theme, MyST)
     index.md            Homepage with install tabs, grid cards
@@ -142,6 +150,7 @@ conda-express/
     changelog.md        Symlink to ../CHANGELOG.md
     reference/
       cli.md            CLI reference
+      installer.md      Installer script reference
   .github/
     workflows/
       ci.yml            CI: build, test, lint on all platforms (canary artifacts)

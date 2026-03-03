@@ -147,6 +147,9 @@ Disabled commands (cx activate/deactivate/init):
 | Multi-platform CI via pixi | Done |
 | Release binary builds via GitHub Actions | Done |
 | CEP 22 frozen base prefix | Done |
+| `cx help` (clap auto-generated) | Done |
+| Output filtering (create/env create) | Done |
+| Installer scripts (get-cx.sh, get-cx.ps1) | Done |
 | Self-update (via conda-self plugin) | Not started |
 | PyPI distribution (maturin platform wheels) | Done |
 | Reusable GitHub Action | Not started |
@@ -181,7 +184,12 @@ pixi.toml              [tool.cx]: packages, channels, excludes
        |
        +---> status -----------> show cx prefix metadata
        |
+       +---> help ------------> clap auto-generated help with quick start
+       |
        +---> activate/deactivate/init --> disabled (guides to conda-spawn)
+       |
+       +---> create / env create --> subprocess with output filtering
+       |                             (replaces conda activate hints with cx shell)
        |
        +---> <any conda arg> --> hand off to installed conda binary
        |                         (includes `conda self update` via conda-self)
@@ -197,7 +205,7 @@ pixi run test          # cargo test
 pixi run lint          # fmt-check + clippy
 ```
 
-CI workflows use `prefix-dev/setup-pixi` to replicate the same environment on all platforms (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64).
+CI workflows use `prefix-dev/setup-pixi` to replicate the same environment on all 5 platforms (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Windows ARM64 is not yet supported because conda is not available on conda-forge for `win-arm64`.
 
 ### Compile-time lockfile
 
@@ -415,8 +423,9 @@ jobs:
 
 ### Phase 2: Production
 
-1. ~~Documentation and migration guide from miniconda/miniforge~~ **Done.** Sphinx docs using `conda-sphinx-theme` with MyST Markdown, following the `conda-workspaces`/`conda-tasks` pattern. Pages: quickstart, features, configuration, CLI reference, design, changelog. Build via `pixi run -e docs docs`.
-2. Explore crate name transfer for `cx` on crates.io (currently published as `conda-express`)
+1. ~~Documentation and migration guide from miniconda/miniforge~~ **Done.** Sphinx docs using `conda-sphinx-theme` with MyST Markdown, following the `conda-workspaces`/`conda-tasks` pattern. Pages: quickstart, features, configuration, CLI reference, installer reference, design, changelog. Build via `pixi run -e docs docs`. Deployed to GitHub Pages via `docs.yml`.
+2. ~~Installer scripts~~ **Done.** `scripts/get-cx.sh` (macOS/Linux) and `scripts/get-cx.ps1` (Windows PowerShell) with platform detection, checksum verification, PATH setup, and optional auto-bootstrap. Served from GitHub Pages at clean URLs.
+3. Explore crate name transfer for `cx` on crates.io (currently published as `conda-express`)
 
 ### Upstream work (nice to have -- independent of cx)
 
