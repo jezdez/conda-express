@@ -1,0 +1,42 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "conda-express"
+version = "0.1.0"
+description = "A lightweight, single-binary conda bootstrapper — powered by rattler"
+license = { text = "BSD-3-Clause" }
+requires-python = ">=3.8"
+authors = [{ name = "conda community" }]
+keywords = ["conda", "bootstrapper", "rattler", "package-manager"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Rust",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: System :: Software Distribution",
+]
+readme = "README.md"
+
+[project.urls]
+Repository = "https://github.com/conda-incubator/conda-express"
+Documentation = "https://github.com/conda-incubator/conda-express"
+Issues = "https://github.com/conda-incubator/conda-express/issues"
+
+[tool.maturin]
+bindings = "bin"
+manifest-path = "Cargo.toml"
+module-name = "conda_express"
+python-source = "python"
+strip = true
+locked = true
+include = [
+    { path = "LICENSE", format = "sdist" },
+    { path = "pixi.toml", format = "sdist" },
+]
