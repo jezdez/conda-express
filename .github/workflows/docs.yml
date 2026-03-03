@@ -8,14 +8,14 @@ on:
       - ".github/workflows/docs.yml"
       - "docs/**"
       - "DESIGN.md"
-      - "install/**"
+      - "scripts/**"
       - "pixi.toml"
   pull_request:
     paths:
       - ".github/workflows/docs.yml"
       - "docs/**"
       - "DESIGN.md"
-      - "install/**"
+      - "scripts/**"
   workflow_dispatch:
 
 concurrency:
