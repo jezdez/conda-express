@@ -49,8 +49,11 @@ fn main() {
     let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
 
     let config_path = manifest_dir.join("pixi.toml");
+    let checked_in_lock = manifest_dir.join("cx.lock");
     let lock_path = out_dir.join("cx.lock");
     let hash_path = out_dir.join("cx.lock.hash");
+
+    println!("cargo:rerun-if-changed=cx.lock");
 
     let config_contents = std::fs::read_to_string(&config_path).expect("failed to read pixi.toml");
     let config: PixiToml = toml::from_str(&config_contents).expect("failed to parse pixi.toml");
@@ -61,6 +64,22 @@ fn main() {
         format!("{:x}", hasher.finalize())
     };
 
+    // Fast path: use a checked-in cx.lock from the repo root if it exists
+    // and the config hash matches. This avoids the network solve entirely.
+    if checked_in_lock.exists() {
+        let checked_in_hash_path = manifest_dir.join("cx.lock.hash");
+        if checked_in_hash_path.exists() {
+            let stored_hash = std::fs::read_to_string(&checked_in_hash_path).unwrap_or_default();
+            if stored_hash.trim() == input_hash {
+                eprintln!("cx: using checked-in cx.lock, skipping solve");
+                std::fs::copy(&checked_in_lock, &lock_path).expect("failed to copy cx.lock");
+                std::fs::write(&hash_path, &input_hash).expect("failed to write hash");
+                return;
+            }
+        }
+    }
+
+    // Second fast path: OUT_DIR cached lockfile from a previous build
     if lock_path.exists() && hash_path.exists() {
         let stored_hash = std::fs::read_to_string(&hash_path).unwrap_or_default();
         if stored_hash.trim() == input_hash {
@@ -82,7 +101,13 @@ fn main() {
 
     std::fs::write(&lock_path, &lock_content).expect("failed to write cx.lock");
     std::fs::write(&hash_path, &input_hash).expect("failed to write hash file");
-    eprintln!("cx: lockfile written to {}", lock_path.display());
+
+    // Also write to the repo root so the lockfile can be checked in
+    let repo_lock = manifest_dir.join("cx.lock");
+    let repo_hash = manifest_dir.join("cx.lock.hash");
+    std::fs::write(&repo_lock, &lock_content).expect("failed to write repo cx.lock");
+    std::fs::write(&repo_hash, &input_hash).expect("failed to write repo hash");
+    eprintln!("cx: lockfile written to {} and {}", lock_path.display(), repo_lock.display());
 }
 
 /// Fetch repodata, solve, filter exclusions, and produce a lockfile string.
