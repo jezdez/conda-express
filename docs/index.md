@@ -9,18 +9,20 @@ cx replaces the miniconda/constructor installation pattern with a ~10 MB static 
 ::::{tab-set}
 
 :::{tab-item} Installer (recommended)
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
 ```
 
-or with `wget`:
+**Windows (PowerShell):**
 
-```bash
-wget -qO- https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex"
 ```
 
-This detects your platform, downloads the binary, verifies the checksum,
-updates your shell profile, and runs `cx bootstrap`.
+The installer detects your platform, downloads the binary, verifies the
+checksum, updates your shell profile / PATH, and runs `cx bootstrap`.
 :::
 
 :::{tab-item} GitHub Releases

@@ -39,15 +39,23 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 
 ### Installer script (recommended)
 
+**macOS / Linux:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
 ```
 
-This detects your platform, downloads the right binary, verifies the checksum, updates your shell profile, and runs `cx bootstrap`. Customize with environment variables:
+**Windows (PowerShell):**
 
-- `CX_INSTALL_DIR` — where to place the binary (default: `~/.local/bin`)
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex"
+```
+
+The installer detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx bootstrap`. Customize with environment variables:
+
+- `CX_INSTALL_DIR` — where to place the binary (default: `~/.local/bin` or `%USERPROFILE%\.local\bin`)
 - `CX_VERSION` — specific version to install (default: `latest`)
-- `CX_NO_PATH_UPDATE` — set to skip shell profile modification
+- `CX_NO_PATH_UPDATE` — set to skip shell profile / PATH modification
 - `CX_NO_BOOTSTRAP` — set to skip running `cx bootstrap`
 
 ### From GitHub Releases

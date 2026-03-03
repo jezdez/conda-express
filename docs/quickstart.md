@@ -6,32 +6,43 @@
 
 :::{tab-item} Installer (recommended)
 The installer downloads the right binary for your platform, verifies its
-checksum, updates your shell profile, and runs `cx bootstrap` — all in one step:
+checksum, updates your shell profile / PATH, and runs `cx bootstrap` — all
+in one step.
+
+**macOS / Linux:**
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
 ```
 
-or with `wget`:
+**Windows (PowerShell):**
 
-```bash
-wget -qO- https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```powershell
+powershell -ExecutionPolicy ByPass -c "irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex"
 ```
 
 :::{admonition} Installer options
 :class: dropdown
 
+All options work as environment variables on both platforms:
+
 | Variable | Default | Description |
 |---|---|---|
-| `CX_INSTALL_DIR` | `~/.local/bin` | Where to place the `cx` binary |
+| `CX_INSTALL_DIR` | `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) | Where to place the `cx` binary |
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix) |
-| `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile modification |
+| `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip running `cx bootstrap` |
 
-Example:
+Unix example:
 
 ```bash
-CX_VERSION=0.1.3 CX_INSTALL_DIR=/opt/bin curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+CX_VERSION=0.1.3 curl -fsSL https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.sh | sh
+```
+
+PowerShell example:
+
+```powershell
+$Env:CX_VERSION = "0.1.3"; irm https://raw.githubusercontent.com/jezdez/conda-express/main/get-cx.ps1 | iex
 ```
 :::
 
