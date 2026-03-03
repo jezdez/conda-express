@@ -6,7 +6,7 @@ import sys
 sys.path.insert(0, os.path.abspath(".."))
 
 project = html_title = "conda-express"
-copyright = "2025-2026, conda community"
+copyright = "2026, conda community"
 author = "conda community"
 
 extensions = [
