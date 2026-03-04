@@ -37,7 +37,18 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 
 ## Installation
 
-### Installer script (recommended)
+### Homebrew (recommended)
+
+The easiest way to install on macOS and Linux:
+
+```bash
+brew tap jezdez/conda-express https://github.com/jezdez/conda-express
+brew install jezdez/conda-express/cx
+```
+
+Update later with `brew upgrade cx`.
+
+### Shell script
 
 **macOS / Linux:**
 
@@ -51,7 +62,7 @@ curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
 ```
 
-The installer detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx bootstrap`. Customize with environment variables:
+The script detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx bootstrap`. Customize with environment variables:
 
 - `CX_INSTALL_DIR` — where to place the binary (default: `~/.local/bin` or `%USERPROFILE%\.local\bin`)
 - `CX_VERSION` — specific version to install (default: `latest`)

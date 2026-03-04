@@ -15,6 +15,13 @@
 - Support build-time environment variable overrides (`CX_PACKAGES`,
   `CX_CHANNELS`, `CX_EXCLUDE`) in `build.rs` for custom builds without
   editing `pixi.toml`.
+- Add Homebrew formula (`Formula/cx.rb`) as a same-repo tap. Install with
+  `brew tap jezdez/conda-express https://github.com/jezdez/conda-express`
+  followed by `brew install jezdez/conda-express/cx`.
+- Homebrew is now the recommended installation method for macOS and Linux;
+  shell scripts are repositioned as an alternative for CI and Windows.
+- Release workflow automatically updates the Homebrew formula with new
+  version and checksums on each tag push.
 
 ## 0.1.7
 

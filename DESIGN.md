@@ -33,6 +33,7 @@ Inspired by uv's single-binary distribution model, cx aims to be the fastest way
 | `cx uninstall` (anti-bootstrap) | Done |
 | Reusable GitHub Action / composite action | Done |
 | Build-time env var overrides (`CX_PACKAGES`, etc.) | Done |
+| Homebrew formula (same-repo tap) | Done |
 | Self-update (via conda-self plugin) | Not started |
 
 ### Numbers (macOS ARM64, debug/release)
@@ -122,6 +123,7 @@ conda-express/
   pyproject.toml        maturin config for PyPI wheel builds
   pixi.toml             Dev environment + [tool.cx] package config + docs deps
   action.yml            Composite GitHub Action for building custom cx binaries
+  Formula/cx.rb         Homebrew formula (same-repo tap)
   pixi.lock             Locked dev dependencies
   build.rs              Compile-time solver and lockfile generator
   cx.lock               Cached rattler-lock v6 lockfile (checked in)
@@ -289,4 +291,6 @@ The repo root contains a composite GitHub Action that lets other repos build cus
 ## Future work
 
 - **conda-self updater plugin**: Pluggable backend for conda-self so `conda self update` can delegate to cx/rattler for cx-managed prefixes (handles post-solve exclusion of libmamba). This is the canonical update path — cx intentionally does not implement its own update command.
+- **homebrew-core**: Submit the formula to homebrew-core once cx has enough adoption, enabling `brew install cx` without a tap.
+- **conda-forge package**: Publish cx as a conda-forge feedstock for users who already have a conda installation and want cx as an additional tool.
 - **Upstream conda-forge**: Make `conda-libmamba-solver` an optional dependency of conda on conda-forge, eliminating the need for post-solve exclusion entirely.

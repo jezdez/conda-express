@@ -8,7 +8,16 @@ cx replaces the miniconda/constructor installation pattern with a ~17 MB static 
 
 ::::{tab-set}
 
-:::{tab-item} Installer (recommended)
+:::{tab-item} Homebrew (recommended)
+```bash
+brew tap jezdez/conda-express https://github.com/jezdez/conda-express
+brew install jezdez/conda-express/cx
+```
+
+Works on macOS and Linux. Upgrades via `brew upgrade cx`.
+:::
+
+:::{tab-item} Shell script
 **macOS / Linux:**
 
 ```bash
@@ -21,7 +30,7 @@ curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
 ```
 
-The installer detects your platform, downloads the binary, verifies the
+The script detects your platform, downloads the binary, verifies the
 checksum, updates your shell profile / PATH, and runs `cx bootstrap`.
 :::
 

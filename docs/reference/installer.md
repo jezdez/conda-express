@@ -1,5 +1,11 @@
 # Installer reference
 
+:::{tip}
+On macOS and Linux, [Homebrew](../quickstart.md) is the recommended
+installation method. The shell scripts below are an alternative for
+environments without Homebrew (CI, containers, Windows).
+:::
+
 cx provides standalone installer scripts for macOS, Linux, and Windows. These
 scripts automate downloading the correct binary, verifying its checksum,
 setting up your PATH, and optionally running `cx bootstrap`.
