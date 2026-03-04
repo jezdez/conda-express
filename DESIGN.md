@@ -1,4 +1,4 @@
-# conda-express (cx) design document
+# Design
 
 ## What is conda-express?
 
