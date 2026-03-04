@@ -248,6 +248,13 @@ Default prefix: `~/.cx`
 | conda-pypi | PyPI interoperability (install, solve, convert) |
 | conda-self | Base environment self-management |
 
+### Planned additions
+
+| Plugin | Purpose | Blocker |
+|---|---|---|
+| [conda-tasks](https://github.com/conda-incubator/conda-tasks) | pixi-inspired task runner (`conda task`, `ct`) | Needs conda-forge feedstock |
+| [conda-workspaces](https://github.com/conda-incubator/conda-workspaces) | Multi-environment workspace management (`conda workspace`, `cw`) | Needs conda-forge feedstock (dep: conda-lockfiles is already on conda-forge) |
+
 ## Lockfile compatibility
 
 The embedded `cx.lock` is a standard rattler-lock v6 file, compatible with:

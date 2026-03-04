@@ -203,8 +203,10 @@ All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for th
 | `cx uninstall` subcommand | Done |
 | Homebrew formula (same-repo tap) | Done |
 | Installer scripts (get-cx.sh, get-cx.ps1) | Done |
+| Include conda-tasks in default package set | Blocked (needs conda-forge feedstock) |
+| Include conda-workspaces in default package set | Blocked (needs conda-forge feedstock for conda-workspaces; conda-lockfiles already on conda-forge) |
 | Homebrew-core submission | Not started (needs adoption first) |
-| conda-forge feedstock | Not started |
+| conda-forge feedstock for cx | Not started |
 | conda-self pluggable updater backend | Not started |
 
 ### Phase 2: Production polish
