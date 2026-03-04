@@ -106,6 +106,62 @@ exit    # or Ctrl+D
 
 ---
 
+## `cx uninstall`
+
+Completely remove cx: the conda prefix (including all named environments),
+the cx binary itself, and PATH entries from shell profiles.
+
+```
+cx uninstall [OPTIONS]
+```
+
+### Options
+
+`--prefix DIR`
+: Target prefix directory. Default: `~/.cx`
+
+`-y, --yes`
+: Skip the interactive confirmation prompt.
+
+### What gets removed
+
+1. The conda prefix directory (e.g. `~/.cx`) including all named environments
+2. The `cx` binary (detected via the running executable path)
+3. PATH entries added by the installer from `~/.bashrc`, `~/.zshrc`, and
+   `~/.config/fish/config.fish`
+
+### Examples
+
+```bash
+# Interactive uninstall (shows what will be removed, asks for confirmation)
+cx uninstall
+
+# Non-interactive uninstall
+cx uninstall --yes
+
+# Uninstall a non-default prefix
+cx uninstall --prefix /opt/conda
+```
+
+### Output
+
+```
+! This will permanently remove:
+   Conda prefix: /home/user/.cx
+   Named environments (2): myenv, data-science
+   cx binary: /home/user/.local/bin/cx
+
+   Continue? [y/N] y
+
+>> Removing conda prefix at /home/user/.cx
+>> Removing cx binary at /home/user/.local/bin/cx
+>> Cleaned PATH entry from /home/user/.zshrc
+
+✔ cx has been uninstalled.
+```
+
+---
+
 ## Disabled commands
 
 The following conda commands are intentionally disabled in cx because they

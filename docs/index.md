@@ -118,7 +118,7 @@ One binary, one command. No Python, no installer, no shell modifications require
 
 ::::::
 
-::::::{grid} 1 1 2 4
+::::::{grid} 1 1 2 3
 :gutter: 3
 
 :::{grid-item-card} Quick start
@@ -147,6 +147,13 @@ All commands and options.
 :link-type: doc
 
 How the install scripts work.
+:::
+
+:::{grid-item-card} GitHub Action
+:link: features
+:link-type: doc
+
+Build custom cx binaries with your own packages.
 :::
 
 ::::::

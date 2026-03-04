@@ -114,7 +114,21 @@ PATH manually.
 
 ## Uninstalling
 
-To remove cx:
+The easiest way to uninstall is the built-in command:
+
+```bash
+cx uninstall
+```
+
+This removes the conda prefix (including all named environments), the cx
+binary, and any PATH entries added by the installer. It will show what will
+be removed and ask for confirmation (use `--yes` to skip).
+
+See [cx uninstall](cli.md#cx-uninstall) for full details.
+
+### Manual uninstall
+
+If the `cx` command is unavailable, you can remove everything manually:
 
 1. Delete the binary:
 
@@ -122,7 +136,7 @@ To remove cx:
    rm ~/.local/bin/cx
    ```
 
-2. Optionally remove the conda prefix:
+2. Remove the conda prefix:
 
    ```bash
    rm -rf ~/.cx

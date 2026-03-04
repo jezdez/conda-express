@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Features
+
+- Add `cx uninstall` subcommand — removes the conda prefix, all named
+  environments, the cx binary, and PATH entries from shell profiles. Requires
+  interactive confirmation (or `--yes` to skip).
+- Add reusable GitHub Action (`action.yml`) for building custom cx binaries
+  with configurable packages. Use `uses: jezdez/conda-express@main` with
+  `packages`, `channels`, and `exclude` inputs.
+- Add reusable workflow (`.github/workflows/build-cx.yml`) that builds custom
+  cx binaries for all 5 platforms via `workflow_call`.
+- Support build-time environment variable overrides (`CX_PACKAGES`,
+  `CX_CHANNELS`, `CX_EXCLUDE`) in `build.rs` for custom builds without
+  editing `pixi.toml`.
+
 ## 0.1.7
 
 ### Internal

@@ -30,8 +30,10 @@ Inspired by uv's single-binary distribution model, cx aims to be the fastest way
 | `cx help` (clap auto-generated) | Done |
 | Output filtering (create/env create) | Done |
 | Installer scripts (get-cx.sh, get-cx.ps1) | Done |
+| `cx uninstall` (anti-bootstrap) | Done |
+| Reusable GitHub Action / composite action | Done |
+| Build-time env var overrides (`CX_PACKAGES`, etc.) | Done |
 | Self-update (via conda-self plugin) | Not started |
-| Reusable GitHub Action | Not started |
 
 ### Numbers (macOS ARM64, debug/release)
 
@@ -66,6 +68,8 @@ pixi.toml              [tool.cx]: packages, channels, excludes
        |
        +---> shell -----------> alias for `conda spawn` (activate via subshell)
        |
+       +---> uninstall -------> remove prefix, envs, binary, PATH entries
+       |
        +---> help -----------> clap auto-generated help with quick start
        |
        +---> activate/deactivate/init --> disabled (guides to conda-spawn)
@@ -79,12 +83,13 @@ pixi.toml              [tool.cx]: packages, channels, excludes
 `build.rs` performs the full solve at `cargo build` time:
 
 1. Reads `[tool.cx]` from `pixi.toml` (packages, channels, excludes)
-2. Hashes the config; skips solve if cached lockfile matches
-3. Fetches repodata via `rattler_repodata_gateway` (sharded)
-4. Solves via `rattler_solve` (resolvo)
-5. Filters out excluded packages and their exclusive dependencies
-6. Writes a rattler-lock v6 lockfile to `$OUT_DIR/cx.lock`
-7. Binary embeds it via `include_str!`
+2. Applies environment variable overrides if set (`CX_PACKAGES`, `CX_CHANNELS`, `CX_EXCLUDE`)
+3. Hashes the config (including overrides); skips solve if cached lockfile matches
+4. Fetches repodata via `rattler_repodata_gateway` (sharded)
+5. Solves via `rattler_solve` (resolvo)
+6. Filters out excluded packages and their exclusive dependencies
+7. Writes a rattler-lock v6 lockfile to `$OUT_DIR/cx.lock`
+8. Binary embeds it via `include_str!`
 
 At runtime, bootstrap parses the embedded lockfile, extracts `RepoDataRecord`s, and passes them directly to `rattler::install::Installer` — no repodata fetch, no solve.
 
@@ -116,6 +121,7 @@ conda-express/
   Cargo.toml            Rust project manifest (crate: conda-express, binary: cx)
   pyproject.toml        maturin config for PyPI wheel builds
   pixi.toml             Dev environment + [tool.cx] package config + docs deps
+  action.yml            Composite GitHub Action for building custom cx binaries
   pixi.lock             Locked dev dependencies
   build.rs              Compile-time solver and lockfile generator
   cx.lock               Cached rattler-lock v6 lockfile (checked in)
@@ -155,6 +161,7 @@ conda-express/
     workflows/
       ci.yml            CI: build, test, lint on all platforms (canary artifacts)
       release.yml       Build binaries + wheels, publish to GitHub Releases, PyPI, and crates.io
+      build-cx.yml      Reusable workflow for building custom cx binaries (workflow_call)
       docs.yml          Build and deploy Sphinx docs to GitHub Pages
 ```
 
@@ -194,6 +201,18 @@ exclude = ["conda-libmamba-solver"]
 
 Both `build.rs` (compile-time) and the runtime binary read from `pixi.toml`. Changing it triggers an automatic re-solve on the next `cargo build`.
 
+### Build-time environment variable overrides
+
+For custom builds (e.g. via the reusable GitHub Action), `build.rs` supports environment variable overrides that replace the `pixi.toml` values:
+
+| Variable | Overrides | Format |
+|---|---|---|
+| `CX_PACKAGES` | `[tool.cx].packages` | Comma-separated match specs |
+| `CX_CHANNELS` | `[tool.cx].channels` | Comma-separated channel names |
+| `CX_EXCLUDE` | `[tool.cx].exclude` | Comma-separated package names |
+
+When overrides are active, the checked-in `cx.lock` is skipped (a fresh solve runs) and the repo-root lockfile is not overwritten.
+
 ## CLI
 
 ```
@@ -201,6 +220,7 @@ cx bootstrap [--force] [--prefix DIR] [--channel CH] [--package PKG]
              [--exclude PKG] [--no-exclude] [--no-lock] [--lockfile PATH]
 cx status [--prefix DIR]
 cx shell [ENV]           # alias for conda spawn (activate via subshell)
+cx uninstall [--prefix DIR] [--yes]  # remove prefix, envs, binary, PATH entries
 cx <any-conda-command>   # transparently delegates to conda
 ```
 
@@ -259,10 +279,14 @@ All workflows use `pixi` for toolchain management:
 
 - **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately.
 - **`release.yml`** — triggers on tag push (`v*`). Orchestrates the full release pipeline: builds native binaries, builds maturin platform wheels and sdist, creates a GitHub Release with binary assets, publishes wheels to PyPI via trusted publishing (OIDC), and publishes the crate to crates.io via trusted publishing (`rust-lang/crates-io-auth-action`). All steps run as separate jobs with dependency ordering.
+- **`build-cx.yml`** — reusable workflow (`workflow_call`) for building custom cx binaries. Accepts `packages`, `channels`, `exclude`, and `ref` inputs. Builds all 5 platforms using the composite action and uploads binary artifacts with checksums.
 - **`docs.yml`** — triggers on push to `main` (docs paths), PRs, and manual dispatch. Builds Sphinx documentation and deploys to GitHub Pages.
+
+### Composite action (`action.yml`)
+
+The repo root contains a composite GitHub Action that lets other repos build custom cx binaries with `uses: jezdez/conda-express@main`. It accepts `packages`, `channels`, `exclude`, and `ref` inputs, checks out conda-express, builds with env var overrides, and outputs the `binary-path` and `asset-name`. Callers handle their own platform matrix.
 
 ## Future work
 
 - **conda-self updater plugin**: Pluggable backend for conda-self so `conda self update` can delegate to cx/rattler for cx-managed prefixes (handles post-solve exclusion of libmamba). This is the canonical update path — cx intentionally does not implement its own update command.
-- **GitHub Action**: Reusable action to build custom cx binaries with configurable package lists.
 - **Upstream conda-forge**: Make `conda-libmamba-solver` an optional dependency of conda on conda-forge, eliminating the need for post-solve exclusion entirely.

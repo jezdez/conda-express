@@ -171,3 +171,15 @@ cx bootstrap --force
 In the future, `conda self update` (via conda-self) will be the canonical
 update command. See the [design document](design.md) for details.
 :::
+
+## Uninstalling
+
+To completely remove cx, the conda prefix, and all environments:
+
+```bash
+cx uninstall
+```
+
+This shows what will be removed and asks for confirmation. It also cleans up
+PATH entries from shell profiles. See the [CLI reference](reference/cli.md#cx-uninstall)
+for all options.

@@ -137,7 +137,7 @@ packages = [
 exclude = ["conda-libmamba-solver"]
 ```
 
-Edit this section to customize what cx installs, then rebuild.
+Edit this section to customize what cx installs, then rebuild. You can also override these values at build time using environment variables — see [Building custom cx binaries](#building-custom-cx-binaries) below.
 
 ## CLI reference
 
@@ -154,6 +154,10 @@ cx bootstrap [OPTIONS]           Bootstrap a fresh conda installation
 
 cx status [--prefix DIR]         Show cx installation status
 cx shell [ENV]                   Alias for conda spawn (activate via subshell)
+cx uninstall [OPTIONS]           Remove cx, conda prefix, and all environments
+  --prefix DIR                   Target directory (default: ~/.cx)
+  -y, --yes                      Skip confirmation prompt
+
 cx help                          Getting-started guide
 cx <conda-args>                  Passed through to conda
 ```
@@ -177,6 +181,69 @@ cx shell myenv
 ```
 
 Updating the base installation is handled by `conda self update` (via conda-self).
+
+## Building custom cx binaries
+
+You can build a cx binary with your own set of packages using the composite GitHub Action or the reusable workflow.
+
+### Composite action (`uses: jezdez/conda-express@main`)
+
+Use in a step within your own workflow. You control the platform matrix:
+
+```yaml
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: jezdez/conda-express@main
+        id: cx
+        with:
+          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.cx.outputs.asset-name }}
+          path: ${{ steps.cx.outputs.binary-path }}
+```
+
+### Reusable workflow
+
+Builds all 5 platforms in one call:
+
+```yaml
+jobs:
+  build-cx:
+    uses: jezdez/conda-express/.github/workflows/build-cx.yml@main
+    with:
+      packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+```
+
+### Build-time environment variables
+
+When building from source, you can override the package configuration without editing `pixi.toml`:
+
+| Variable | Overrides | Format |
+|---|---|---|
+| `CX_PACKAGES` | `[tool.cx].packages` | Comma-separated match specs |
+| `CX_CHANNELS` | `[tool.cx].channels` | Comma-separated channel names |
+| `CX_EXCLUDE` | `[tool.cx].exclude` | Comma-separated package names |
+
+```bash
+CX_PACKAGES="python >=3.12, conda >=25.1, numpy" pixi run build
+```
+
+## Uninstalling
+
+To completely remove cx, the conda prefix, all environments, and the cx binary:
+
+```bash
+cx uninstall
+```
+
+This will show what will be removed and ask for confirmation. Use `--yes` to skip the prompt. The command also cleans up PATH entries from shell profiles that were added by the installer.
 
 ## How it works
 

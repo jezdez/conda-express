@@ -93,6 +93,45 @@ Or skip the lockfile entirely for a live solve:
 cx bootstrap --no-lock
 ```
 
+## Uninstall (`cx uninstall`)
+
+cx provides a clean uninstall command that reverses the bootstrap:
+
+```bash
+cx uninstall
+```
+
+This will:
+
+1. List what will be removed (prefix, named environments, cx binary)
+2. Ask for confirmation (`--yes` to skip)
+3. Remove the conda prefix and all environments
+4. Remove the cx binary
+5. Clean up PATH entries from shell profiles
+
+## GitHub Action for custom builds
+
+Build a cx binary with your own package set using the composite action:
+
+```yaml
+- uses: jezdez/conda-express@main
+  with:
+    packages: "python >=3.12, conda >=25.1, numpy, pandas"
+```
+
+Or use the reusable workflow to build all 5 platforms at once:
+
+```yaml
+jobs:
+  build-cx:
+    uses: jezdez/conda-express/.github/workflows/build-cx.yml@main
+    with:
+      packages: "python >=3.12, conda >=25.1, numpy, pandas"
+```
+
+The action accepts `packages`, `channels`, `exclude`, and `ref` inputs and
+outputs the `binary-path` and `asset-name` for downstream steps.
+
 ## Multi-platform support
 
 cx builds and tests on 5 platforms via GitHub Actions:

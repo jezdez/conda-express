@@ -88,6 +88,34 @@ pixi run build
 The first build after a config change triggers a compile-time re-solve. A
 content hash ensures the solve is skipped when the config hasn't changed.
 
+### Environment variable overrides
+
+For custom builds without editing `pixi.toml` (e.g. via the
+[GitHub Action](../features.md#github-action-for-custom-builds) or CI),
+`build.rs` supports environment variable overrides:
+
+| Variable | Overrides | Format |
+|---|---|---|
+| `CX_PACKAGES` | `packages` | Comma-separated [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html) strings |
+| `CX_CHANNELS` | `channels` | Comma-separated channel names |
+| `CX_EXCLUDE` | `exclude` | Comma-separated package names |
+
+Empty values are ignored (the `pixi.toml` defaults are used).
+
+```bash
+# Build with extra packages baked in
+CX_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy" pixi run build
+
+# Build with a different channel
+CX_CHANNELS="conda-forge, bioconda" pixi run build
+```
+
+When overrides are active:
+
+- The checked-in `cx.lock` is skipped (a fresh solve is performed)
+- The lockfile cache still works based on a hash of the config + overrides
+- The repo-root `cx.lock` is **not** overwritten (the solve is one-off)
+
 ## Default prefix
 
 The default installation prefix is `~/.cx`. Override it per-command with the
