@@ -4,14 +4,6 @@
 
 ## 0.2.0
 
-### Fixes
-
-- Fix Homebrew formula update in release workflow — shell variables were
-  not expanded inside the single-quoted Python heredoc, resulting in
-  placeholder checksums.
-
-## 0.1.8
-
 ### Features
 
 - Add `cx uninstall` subcommand — removes the conda prefix, all named
@@ -32,6 +24,12 @@
   shell scripts are repositioned as an alternative for CI and Windows.
 - Release workflow automatically updates the Homebrew formula with new
   version and checksums on each tag push.
+
+### Fixes
+
+- Fix Homebrew formula update in release workflow — shell variables were
+  not expanded inside the single-quoted Python heredoc, resulting in
+  placeholder checksums.
 
 ### Documentation
 
