@@ -293,7 +293,4 @@ The repo root contains a composite GitHub Action that lets other repos build cus
 
 ## Future work
 
-- **conda-self updater plugin**: Pluggable backend for conda-self so `conda self update` can delegate to cx/rattler for cx-managed prefixes (handles post-solve exclusion of libmamba). This is the canonical update path — cx intentionally does not implement its own update command.
-- **homebrew-core**: Submit the formula to homebrew-core once cx has enough adoption, enabling `brew install cx` without a tap.
-- **conda-forge package**: Publish cx as a conda-forge feedstock for users who already have a conda installation and want cx as an additional tool.
-- **Upstream conda-forge**: Make `conda-libmamba-solver` an optional dependency of conda on conda-forge, eliminating the need for post-solve exclusion entirely.
+See [PLAN.md](PLAN.md) for the full roadmap, including the conda-self updater plugin design, homebrew-core submission, conda-forge feedstock, and upstream work.
