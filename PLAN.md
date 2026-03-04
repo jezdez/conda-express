@@ -223,9 +223,9 @@ These improve conda's ecosystem health but are **not required** for cx:
 1. **Make conda-libmamba-solver optional on conda-forge** -- would eliminate the need for cx's post-solve exclusion hack entirely, and make `conda self update` work without a custom backend
 2. PR to conda/conda: make pycosat and menuinst optional (revive jaimergp's PR #14170 approach)
 3. Publish conda-classic-solver to defaults and conda-forge (unblocks solver extraction)
-4. Publish conda-rattler-solver, conda-spawn, conda-self, conda-pypi to PyPI
+4. Publish conda-rattler-solver, conda-spawn, conda-self to PyPI (conda-pypi 0.5.0 already on PyPI and conda-forge, pending defaults)
 5. Publish conda itself to PyPI (reclaim the yanked `conda` package name)
-6. **Publish conda-spawn to Anaconda defaults** -- conda-spawn is the only cx package not yet on defaults. All others (python, conda, conda-rattler-solver, conda-pypi, conda-self) are already available. Publishing conda-spawn to defaults would unblock a defaults-only cx configuration (no conda-forge dependency).
+6. **Publish conda-spawn to Anaconda defaults** -- conda-spawn is the only cx package not yet on defaults. All others (python, conda, conda-rattler-solver, conda-self) are already available; conda-pypi 0.5.0 is pending on defaults. Publishing conda-spawn to defaults would unblock a defaults-only cx configuration (no conda-forge dependency).
 
 ---
 
@@ -276,6 +276,6 @@ Conda also already has a pip-specific entry point at `conda.cli.main_pip:main`.
 ### Not yet on PyPI (plugin ecosystem)
 
 - **conda-spawn**: conda-forge only, but pure Python -- easy to publish
-- **conda-pypi**: conda-forge only, depends on `conda-index`. Provides `conda pypi install`, `conda pypi convert`, experimental wheel channels in repodata ([draft CEP PR #145](https://github.com/conda/ceps/pull/145)), editable/VCS package support, PEP-668 `EXTERNALLY-MANAGED` marker integration
+- **conda-pypi**: 0.5.0 on PyPI and conda-forge (pending defaults). Depends on `conda-index`. Provides `conda pypi install`, `conda pypi convert`, experimental wheel channels in repodata ([draft CEP PR #145](https://github.com/conda/ceps/pull/145)), editable/VCS package support, PEP-668 `EXTERNALLY-MANAGED` marker integration
 - **conda-rattler-solver**: Not on PyPI yet, but pure Python + py-rattler (which IS on PyPI)
 - **conda-self**: conda-forge only, essentially pure Python
