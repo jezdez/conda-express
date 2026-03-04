@@ -1,0 +1,95 @@
+# Build a custom cx binary
+
+This guide shows how to build a cx binary with your own set of conda packages
+baked in. This is useful when you want to distribute a bootstrapper that
+includes domain-specific packages (e.g. numpy, pandas) out of the box.
+
+## Using the GitHub Action
+
+The simplest approach. Add a workflow to your repo that calls the cx
+composite action:
+
+```yaml
+name: Build custom cx
+on: [push]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: jezdez/conda-express@main
+        id: cx
+        with:
+          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.cx.outputs.asset-name }}
+          path: ${{ steps.cx.outputs.binary-path }}
+```
+
+The action builds cx for the runner's platform and outputs the path to the
+binary. Use a matrix to build for multiple platforms.
+
+See the [GitHub Action reference](../reference/github-action.md) for all
+inputs and outputs.
+
+## Using the reusable workflow
+
+If you want all 5 platforms built without managing a matrix yourself:
+
+```yaml
+name: Build custom cx
+on: [push]
+
+jobs:
+  build-cx:
+    uses: jezdez/conda-express/.github/workflows/build.yml@main
+    with:
+      packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+      channels: "conda-forge"
+      exclude: "conda-libmamba-solver"
+```
+
+Binary artifacts for all platforms are uploaded automatically.
+
+## Building locally
+
+Set environment variables to override the default package list, then build:
+
+```bash
+git clone https://github.com/jezdez/conda-express.git
+cd conda-express
+
+CX_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy" \
+  pixi run build
+```
+
+The binary is at `target/release/cx`.
+
+### Available overrides
+
+| Variable | Effect |
+|---|---|
+| `CX_PACKAGES` | Replace the default package list |
+| `CX_CHANNELS` | Replace the default channels |
+| `CX_EXCLUDE` | Replace the default exclusions |
+
+Empty values are ignored. See the {ref}`configuration reference <env-var-overrides>`
+for details on how overrides interact with the lockfile cache.
+
+## Choosing packages
+
+When specifying packages, keep in mind:
+
+- Always include the core set: `python`, `conda`, `conda-rattler-solver`,
+  and `conda-spawn` (cx depends on these at runtime)
+- Use [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html)
+  syntax for version constraints (e.g. `numpy >=1.26`)
+- The build performs a full dependency solve at compile time, so all
+  transitive dependencies are resolved and locked
+- The resulting binary is self-contained with an embedded lockfile

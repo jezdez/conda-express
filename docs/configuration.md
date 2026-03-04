@@ -88,10 +88,11 @@ pixi run build
 The first build after a config change triggers a compile-time re-solve. A
 content hash ensures the solve is skipped when the config hasn't changed.
 
+(env-var-overrides)=
 ### Environment variable overrides
 
 For custom builds without editing `pixi.toml` (e.g. via the
-[GitHub Action](../features.md#github-action-for-custom-builds) or CI),
+{doc}`GitHub Action <reference/github-action>` or CI),
 `build.rs` supports environment variable overrides:
 
 | Variable | Overrides | Format |

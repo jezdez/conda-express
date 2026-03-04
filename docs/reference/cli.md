@@ -106,6 +106,7 @@ exit    # or Ctrl+D
 
 ---
 
+(cli-cx-uninstall)=
 ## `cx uninstall`
 
 Completely remove cx: the conda prefix (including all named environments),

@@ -137,11 +137,11 @@ One binary, one command. No Python, no installer, no shell modifications require
 Get up and running in minutes.
 :::
 
-:::{grid-item-card} Configuration
-:link: configuration
+:::{grid-item-card} Build custom cx binaries
+:link: guides/custom-builds
 :link-type: doc
 
-Customize packages, channels, and exclusions.
+Bake your own packages into a cx binary.
 :::
 
 :::{grid-item-card} CLI reference
@@ -151,30 +151,64 @@ Customize packages, channels, and exclusions.
 All commands and options.
 :::
 
-:::{grid-item-card} Installer reference
-:link: reference/installer
+:::{grid-item-card} GitHub Action reference
+:link: reference/github-action
 :link-type: doc
 
-How the install scripts work.
+Inputs, outputs, and behavior of the composite action and reusable workflow.
 :::
 
-:::{grid-item-card} GitHub Action
-:link: features
+:::{grid-item-card} Configuration
+:link: configuration
 :link-type: doc
 
-Build custom cx binaries with your own packages.
+Build-time and runtime settings.
+:::
+
+:::{grid-item-card} Architecture
+:link: design
+:link-type: doc
+
+Design decisions and internals.
 :::
 
 ::::::
 
 ```{toctree}
 :hidden:
+:caption: Tutorials
 
 quickstart
-features
-configuration
+```
+
+```{toctree}
+:hidden:
+:caption: How-to guides
+
+guides/custom-builds
+```
+
+```{toctree}
+:hidden:
+:caption: Reference
+
 reference/cli
+reference/github-action
 reference/installer
+configuration
+```
+
+```{toctree}
+:hidden:
+:caption: Explanation
+
+features
 design
+```
+
+```{toctree}
+:hidden:
+:caption: Project
+
 changelog
 ```

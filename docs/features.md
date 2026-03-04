@@ -111,26 +111,17 @@ This will:
 
 ## GitHub Action for custom builds
 
-Build a cx binary with your own package set using the composite action:
+cx ships a composite GitHub Action and a reusable workflow that let you build
+custom cx binaries with your own package set baked in. The build performs a
+full compile-time dependency solve, producing a self-contained binary with
+an embedded lockfile — just like the official cx releases.
 
-```yaml
-- uses: jezdez/conda-express@main
-  with:
-    packages: "python >=3.12, conda >=25.1, numpy, pandas"
-```
+This is powered by the same {ref}`environment variable overrides <env-var-overrides>`
+that work locally, but wrapped in a ready-to-use Action.
 
-Or use the reusable workflow to build all 5 platforms at once:
-
-```yaml
-jobs:
-  build-cx:
-    uses: jezdez/conda-express/.github/workflows/build.yml@main
-    with:
-      packages: "python >=3.12, conda >=25.1, numpy, pandas"
-```
-
-The action accepts `packages`, `channels`, `exclude`, and `ref` inputs and
-outputs the `binary-path` and `asset-name` for downstream steps.
+See the [GitHub Action reference](reference/github-action.md) for inputs,
+outputs, and behavior. For a step-by-step walkthrough, see the
+[custom builds guide](guides/custom-builds.md).
 
 ## Multi-platform support
 

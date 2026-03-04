@@ -192,5 +192,5 @@ cx uninstall
 ```
 
 This shows what will be removed and asks for confirmation. It also cleans up
-PATH entries from shell profiles. See the [CLI reference](reference/cli.md#cx-uninstall)
+PATH entries from shell profiles. See the {ref}`CLI reference <cli-cx-uninstall>`
 for all options.
