@@ -1,5 +1,7 @@
 # conda-express (cx): Feasibility Analysis and Implementation Plan
 
+> For architecture, current features, and file structure see [DESIGN.md](DESIGN.md).
+
 ## 1. Publishing cx to PyPI via maturin (like uv)
 
 ### The uv pattern
@@ -14,40 +16,9 @@
 3. **Pre-built platform wheels** (~20 MB each) are uploaded to PyPI for every target
 4. **sdist fallback** builds from source if no wheel is available (requires Rust toolchain)
 
-### Applying this to cx
+### Applying this to cx -- DONE
 
-cx can use the same approach. This is **much simpler** than publishing conda itself to PyPI:
-
-- No upstream conda changes needed (no pycosat/menuinst optionality, no solver extraction)
-- No need to publish conda plugins to PyPI individually
-- cx is a single Rust binary -- maturin handles the entire wheel build
-- `pip install conda-express` gives you `cx`, which bootstraps conda from conda-forge on first run
-
-```toml
-# pyproject.toml for PyPI publishing
-[build-system]
-requires = ["maturin>=1.0,<2.0"]
-build-backend = "maturin"
-
-[project]
-name = "conda-express"
-description = "A lightweight, single-binary conda bootstrapper — powered by rattler"
-requires-python = ">=3.8"
-
-[tool.maturin]
-bindings = "bin"
-manifest-path = "Cargo.toml"
-module-name = "conda_express"
-python-source = "python"
-strip = true
-```
-
-```
-python/conda_express/
-  __init__.py       # exposes find_cx_bin()
-  __main__.py       # python -m conda_express -> exec cx
-  _find_cx.py       # locate cx binary in sysconfig paths
-```
+cx uses the same approach. `pip install conda-express` gives you `cx`, which bootstraps conda from conda-forge on first run. Published via trusted publishing (OIDC) in the `release.yml` workflow.
 
 ### Comparison: cx on PyPI vs. conda on PyPI
 
@@ -58,9 +29,7 @@ python/conda_express/
 | Solver | rattler (compiled in) + conda-rattler-solver (installed from conda-forge) | conda-rattler-solver (from PyPI, needs py-rattler) |
 | conda-forge packages | Full access (bootstraps a real conda env) | Limited to what's on PyPI |
 | Install experience | `pip install conda-express && cx bootstrap` | `pip install conda` |
-| Time to ship | Weeks (add maturin config + CI) | Months (upstream PRs, coordination) |
-
-**Recommendation**: Publish cx to PyPI now (Phase 1). Pursue upstream conda PyPI publishing as a separate, lower-priority effort that benefits conda's long-term ecosystem health but is not on the critical path.
+| Time to ship | ~~Weeks~~ Done | Months (upstream PRs, coordination) |
 
 ---
 
@@ -102,143 +71,7 @@ Not required for cx, but valuable for conda's long-term health.
 
 ---
 
-## 4. conda-express (cx) Architecture
-
-### Current implementation (Phase 0 -- complete)
-
-cx is a working Rust binary (~17 MB release) that bootstraps conda from conda-forge. Published as `conda-express` on crates.io, binary name `cx`.
-
-```
-cx (Rust binary, ~17 MB release)
-
-First run (cx bootstrap):
-  -> parse embedded rattler-lock v6 lockfile (compiled in by build.rs)
-  -> download + install 86 packages into ~/.cx/
-  -> write .condarc (solver: rattler, auto_activate_base: false)
-  -> write conda-meta/frozen (CEP 22 — protects base prefix)
-  -> exec: ~/.cx/bin/conda <args>
-
-Subsequent runs (cx <any-conda-command>):
-  -> check ~/.cx/ exists
-  -> exec: ~/.cx/bin/conda <args>
-
-Updating (conda self update):
-  -> conda-self handles via pluggable backend (future)
-  -> cx backend delegates to rattler for solve+install with exclusions
-
-Disabled commands (cx activate/deactivate/init):
-  -> prints guidance to use conda-spawn instead
-```
-
-### Key features implemented
-
-| Feature | Status |
-|---|---|
-| Single-binary bootstrapper | Done |
-| Compile-time lockfile (rattler-lock v6) | Done |
-| Post-solve package exclusion (libmamba + 27 deps) | Done |
-| conda-rattler-solver as default solver | Done |
-| conda-spawn activation model | Done |
-| Disabled commands (activate, deactivate, init) | Done |
-| Auto-bootstrap on first conda command | Done |
-| `.condarc` with recommended settings | Done |
-| External lockfile override (`--lockfile`) | Done |
-| Live solve fallback (`--no-lock`) | Done |
-| Multi-platform CI via pixi | Done |
-| Release binary builds via GitHub Actions | Done |
-| CEP 22 frozen base prefix | Done |
-| `cx help` (clap auto-generated) | Done |
-| Output filtering (create/env create) | Done |
-| Installer scripts (get-cx.sh, get-cx.ps1) | Done |
-| Self-update (via conda-self plugin) | Not started |
-| PyPI distribution (maturin platform wheels) | Done |
-| Reusable GitHub Action | Not started |
-
-### Performance (macOS ARM64)
-
-| Metric | Value |
-|---|---|
-| Release binary size | ~17 MB |
-| Installed packages (base) | 86 |
-| Excluded packages (libmamba tree) | 27 |
-| Bootstrap time (embedded lockfile) | ~3–5 s |
-| Bootstrap time (live solve) | ~7–8 s |
-
-### Architecture
-
-```
-pixi.toml              [tool.cx]: packages, channels, excludes
-       |
-       v
-    build.rs           Compile-time: solve + filter + write lockfile
-       |
-       v
-    cx.lock            rattler-lock v6 (embedded via include_str!)
-       |
-       v
-      cx               Single binary (~17 MB release)
-       |
-       +---> bootstrap -----> install from lockfile (fast path)
-       |                       or live solve (fallback)
-       |                       write CEP 22 frozen marker
-       |
-       +---> status -----------> show cx prefix metadata
-       |
-       +---> help ------------> clap auto-generated help with quick start
-       |
-       +---> activate/deactivate/init --> disabled (guides to conda-spawn)
-       |
-       +---> create / env create --> subprocess with output filtering
-       |                             (replaces conda activate hints with cx shell)
-       |
-       +---> <any conda arg> --> hand off to installed conda binary
-       |                         (includes `conda self update` via conda-self)
-```
-
-### Development environment
-
-cx uses [pixi](https://pixi.sh) to manage the Rust toolchain from conda-forge:
-
-```bash
-pixi run build         # cargo build --release
-pixi run test          # cargo test
-pixi run lint          # fmt-check + clippy
-```
-
-CI workflows use `prefix-dev/setup-pixi` to replicate the same environment on all 5 platforms (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Windows ARM64 is not yet supported because conda is not available on conda-forge for `win-arm64`.
-
-### Compile-time lockfile
-
-`build.rs` reads `[tool.cx]` from `pixi.toml`, solves at `cargo build` time, filters exclusions, and writes a rattler-lock v6 lockfile embedded into the binary. A content-hash cache skips the solve when the config hasn't changed.
-
-### Package exclusion
-
-conda on conda-forge hard-depends on `conda-libmamba-solver`. cx removes it and its 27 exclusive native dependencies via a post-solve transitive dependency pruning algorithm, reducing the install from 113 to 86 packages. The `.condarc` is configured with `solver: rattler` so conda never tries to load the missing plugin.
-
-### Rattler crates used
-
-All on crates.io under BSD-3-Clause:
-
-- `rattler` -- package installation engine
-- `rattler_conda_types` -- MatchSpec, Channel, Platform, RepoDataRecord
-- `rattler_repodata_gateway` -- repodata fetching (sharded/CEP-16)
-- `rattler_solve` (resolvo) -- SAT-based dependency solving
-- `rattler_lock` -- lockfile read/write (v6 format)
-- `rattler_networking` -- auth middleware, OCI support
-- `rattler_virtual_packages` -- system capability detection
-- `rattler_cache` -- cache directory management
-
-### conda-spawn as the primary activation model
-
-cx ships with conda-spawn and disables `conda activate`, `conda deactivate`, and `conda init`:
-
-- `conda spawn env-name` launches a new shell subprocess with the environment activated
-- No `conda init` required, no `.bashrc`/`.zshrc` modifications
-- Users add `~/.cx/condabin` to their PATH (one-time setup)
-
----
-
-## 5. Prior Art: Uniconda (jaimergp)
+## 4. Prior Art: Uniconda (jaimergp)
 
 [uniconda](https://github.com/jaimergp/uniconda) was jaimergp's earlier attempt, using **PyOxidizer** to build a single-binary conda.
 
@@ -255,7 +88,7 @@ cx ships with conda-spawn and disables `conda activate`, `conda deactivate`, and
 
 ---
 
-## 6. Self-Update via conda-self (pluggable backend)
+## 5. Self-Update via conda-self (pluggable backend)
 
 ### Design principle
 
@@ -336,55 +169,7 @@ cx bootstrap --force
 
 ---
 
-## 7. Reusable GitHub Action for Building Custom Bootstrapper Binaries
-
-### Concept
-
-A GitHub Action that lets anyone build their own "cx-type" binary with a custom set of packages. This makes the rattler bootstrapper pattern reusable beyond just conda.
-
-### Use cases
-
-- **cx**: `python conda conda-rattler-solver conda-spawn conda-self`
-- **nanoforge**: same as cx but with `conda-build rattler-build`
-- **custom tool**: `python jupyterlab` -- a single binary that bootstraps a JupyterLab environment
-- **ML toolkit**: `python pytorch torchvision` -- one binary to bootstrap a PyTorch env
-
-### Action interface
-
-```yaml
-# .github/workflows/build.yml
-jobs:
-  build:
-    uses: jezdez/conda-express/.github/workflows/build.yml@main
-    with:
-      name: cx
-      packages: >
-        python >=3.13
-        conda >=26.1
-        conda-rattler-solver
-        conda-spawn
-        conda-self
-      channels: conda-forge
-      platforms: >
-        linux-x64
-        linux-aarch64
-        macos-x64
-        macos-arm64
-        windows-x64
-      entry-point: conda
-      self-update-repo: jezdez/conda-express
-```
-
-### How it works
-
-1. The action checks out the cx Rust template project
-2. Injects the package list, channels, entry point, and self-update config into `pixi.toml`'s `[tool.cx]` section
-3. Builds natively on each target platform using GitHub runners and `pixi`
-4. Outputs platform-specific binaries as build artifacts or attaches them to a GitHub release
-
----
-
-## 8. Key Risks and Open Questions
+## 6. Key Risks and Open Questions
 
 - ~~**First-run time**: Solving + downloading + installing from conda-forge takes ~30-60 seconds on a fast network.~~ **Solved**: Compile-time lockfile reduces bootstrap to ~3–5 s (no solve needed at runtime).
 - **Requires network on first run**: No offline-first option without additional work (could pre-populate a package cache in the binary, but adds size).
@@ -405,27 +190,29 @@ jobs:
 
 ### Phase 0: cx Rust prototype -- COMPLETE
 
-~~Build a working cx binary using rattler crates.~~ **Done.** All core functionality implemented and tested:
+All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for the full feature table and architecture.
 
-1. ~~Create a new Rust project with configurable package list~~ -> `pixi.toml` `[tool.cx]` section
-2. ~~Implement bootstrap: solve + install packages from conda-forge~~ -> compile-time lockfile + rattler Installer
-3. ~~Implement exec: detect existing prefix, exec entry-point binary~~ -> Unix execvp hand-off
-4. ~~Package exclusion: remove conda-libmamba-solver and 27 deps~~ -> post-solve transitive pruning
-5. ~~Disabled commands: activate, deactivate, init~~ -> guides users to conda-spawn
-6. ~~Multi-platform CI/CD~~ -> GitHub Actions with pixi, canary artifacts + release binaries
-7. ~~Code restructuring~~ -> 5 modules (cli, config, install, exec, main) + build.rs
+### Phase 1: Ecosystem integration -- IN PROGRESS
 
-### Phase 1: conda-self plugin, PyPI publishing, and GitHub Action
+| Task | Status |
+|---|---|
+| Publish cx to PyPI via maturin | Done |
+| Publish cx to crates.io | Done |
+| Reusable GitHub Action (composite action + workflow) | Done |
+| Build-time env var overrides (`CX_PACKAGES`, etc.) | Done |
+| `cx uninstall` subcommand | Done |
+| Homebrew formula (same-repo tap) | Done |
+| Installer scripts (get-cx.sh, get-cx.ps1) | Done |
+| Homebrew-core submission | Not started (needs adoption first) |
+| conda-forge feedstock | Not started |
+| conda-self pluggable updater backend | Not started |
 
-1. **conda-self pluggable updater backend** -- propose hook design to conda-self maintainers, implement hook spec and default conda backend in conda-self, implement cx backend (shells out to `cx _internal-update` for rattler-based solve+install with exclusions). This makes `conda self update` the canonical update command for all conda users.
-2. ~~**Publish cx to PyPI via maturin**~~ -- **Done.** `pyproject.toml` with `bindings = "bin"`, Python wrapper in `python/conda_express/`. PyPI and crates.io publishing are consolidated into the unified `release.yml` workflow using trusted publishing (OIDC) for both.
-3. Build the reusable GitHub Action for compiling custom bootstrapper binaries from a package list
+### Phase 2: Production polish
 
-### Phase 2: Production
-
-1. ~~Documentation and migration guide from miniconda/miniforge~~ **Done.** Sphinx docs using `conda-sphinx-theme` with MyST Markdown, following the `conda-workspaces`/`conda-tasks` pattern. Pages: quickstart, features, configuration, CLI reference, installer reference, design, changelog. Build via `pixi run -e docs docs`. Deployed to GitHub Pages via `docs.yml`.
-2. ~~Installer scripts~~ **Done.** `scripts/get-cx.sh` (macOS/Linux) and `scripts/get-cx.ps1` (Windows PowerShell) with platform detection, checksum verification, PATH setup, and optional auto-bootstrap. Served from GitHub Pages at clean URLs.
-3. Explore crate name transfer for `cx` on crates.io (currently published as `conda-express`)
+| Task | Status |
+|---|---|
+| Documentation (Sphinx, Diataxis structure) | Done |
+| Explore crate name transfer for `cx` on crates.io | Not started |
 
 ### Upstream work (nice to have -- independent of cx)
 
@@ -487,6 +274,6 @@ Conda also already has a pip-specific entry point at `conda.cli.main_pip:main`.
 ### Not yet on PyPI (plugin ecosystem)
 
 - **conda-spawn**: conda-forge only, but pure Python -- easy to publish
-- **conda-pypi**: conda-forge only, depends on `conda-index`. Provides `conda pypi install`, `conda pypi convert`, experimental wheel channels in repodata ([draft CEP](https://github.com/conda/ceps/pull/145)), editable/VCS package support, PEP-668 `EXTERNALLY-MANAGED` marker integration
+- **conda-pypi**: conda-forge only, depends on `conda-index`. Provides `conda pypi install`, `conda pypi convert`, experimental wheel channels in repodata ([draft CEP PR #145](https://github.com/conda/ceps/pull/145)), editable/VCS package support, PEP-668 `EXTERNALLY-MANAGED` marker integration
 - **conda-rattler-solver**: Not on PyPI yet, but pure Python + py-rattler (which IS on PyPI)
 - **conda-self**: conda-forge only, essentially pure Python

@@ -156,8 +156,11 @@ conda-express/
     configuration.md    Build-time and runtime config reference
     design.md           Includes DESIGN.md via MyST include
     changelog.md        Symlink to ../CHANGELOG.md
+    guides/
+      custom-builds.md  How to build custom cx binaries
     reference/
       cli.md            CLI reference
+      github-action.md  Composite action and reusable workflow reference
       installer.md      Installer script reference
   .github/
     workflows/
