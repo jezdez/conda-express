@@ -242,10 +242,7 @@ async fn cmd_bootstrap(
         None => install::from_solve(prefix, &channels, &specs, excludes).await?,
     };
 
-    if !excludes.is_empty() {
-        write_condarc(prefix)?;
-    }
-
+    write_condarc(prefix)?;
     write_frozen(prefix)?;
     write_metadata(prefix, &channels, &specs, excludes)?;
 
