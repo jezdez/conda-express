@@ -11,6 +11,11 @@ const AFTER_HELP: &str = "\x1b[1;4mQuick start:\x1b[0m
   cx shell myenv                         Activate (spawns a subshell)
   exit                                   Leave the environment
 
+\x1b[1;4mManagement:\x1b[0m
+
+  cx status                              Show installation details
+  cx uninstall                           Remove cx, conda, and all environments
+
 \x1b[1;4mPass-through:\x1b[0m
 
   Any command not listed above is passed through to conda:
@@ -83,6 +88,17 @@ pub enum Command {
     Shell {
         /// Name of the environment to activate
         env: Option<String>,
+    },
+
+    /// Uninstall cx: remove the conda prefix, environments, and optionally the cx binary
+    Uninstall {
+        /// Target prefix directory (default: ~/.cx)
+        #[clap(long)]
+        prefix: Option<PathBuf>,
+
+        /// Skip confirmation prompt
+        #[clap(long, short)]
+        yes: bool,
     },
 
     /// Show this help message

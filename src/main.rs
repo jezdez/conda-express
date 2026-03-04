@@ -45,8 +45,9 @@ async fn async_main() -> miette::Result<()> {
             print_disabled_init();
         }
         // Commands handled by clap (cx's own subcommands, flags, bare invocation)
-        Some("bootstrap") | Some("status") | Some("shell") | Some("help") | Some("--help")
-        | Some("-h") | Some("--version") | Some("-V") | None => {
+        Some("bootstrap") | Some("status") | Some("shell") | Some("uninstall")
+        | Some("help") | Some("--help") | Some("-h") | Some("--version") | Some("-V")
+        | None => {
             let cli = Cli::parse();
             match cli.command {
                 Some(Command::Bootstrap {
@@ -78,6 +79,10 @@ async fn async_main() -> miette::Result<()> {
                 Some(Command::Status { prefix }) => {
                     let prefix = prefix.map(Ok).unwrap_or_else(default_prefix)?;
                     return cmd_status(&prefix);
+                }
+                Some(Command::Uninstall { prefix, yes }) => {
+                    let prefix = prefix.map(Ok).unwrap_or_else(default_prefix)?;
+                    return cmd_uninstall(&prefix, yes);
                 }
                 Some(Command::Shell { env }) => {
                     let prefix = default_prefix()?;
@@ -286,6 +291,156 @@ fn cmd_status(prefix: &Path) -> miette::Result<()> {
     );
 
     Ok(())
+}
+
+fn cmd_uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
+    if !is_bootstrapped(prefix) {
+        eprintln!(
+            "{} No conda installation found at {}",
+            console::style("!").yellow().bold(),
+            prefix.display()
+        );
+        eprintln!("  Nothing to uninstall.");
+        return Ok(());
+    }
+
+    let envs_dir = prefix.join("envs");
+    let named_envs: Vec<String> = if envs_dir.is_dir() {
+        std::fs::read_dir(&envs_dir)
+            .into_diagnostic()?
+            .filter_map(|entry| {
+                let entry = entry.ok()?;
+                if entry.path().join("conda-meta").is_dir() {
+                    Some(entry.file_name().to_string_lossy().into_owned())
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        vec![]
+    };
+
+    let cx_binary = env::current_exe().ok();
+
+    eprintln!(
+        "{} This will permanently remove:",
+        console::style("!").yellow().bold()
+    );
+    eprintln!("   Conda prefix: {}", prefix.display());
+    if !named_envs.is_empty() {
+        eprintln!(
+            "   Named environments ({}): {}",
+            named_envs.len(),
+            named_envs.join(", ")
+        );
+    }
+    if let Some(ref bin) = cx_binary {
+        eprintln!("   cx binary: {}", bin.display());
+    }
+
+    if !yes {
+        eprint!("\n   Continue? [y/N] ");
+        let mut input = String::new();
+        std::io::stdin()
+            .read_line(&mut input)
+            .into_diagnostic()
+            .context("failed to read from stdin")?;
+        if !matches!(input.trim().to_lowercase().as_str(), "y" | "yes") {
+            eprintln!("  Aborted.");
+            return Ok(());
+        }
+    }
+
+    eprintln!(
+        "\n{} Removing conda prefix at {}",
+        console::style(">>").cyan().bold(),
+        prefix.display()
+    );
+    std::fs::remove_dir_all(prefix)
+        .into_diagnostic()
+        .context("failed to remove conda prefix")?;
+
+    if let Some(ref bin) = cx_binary
+        && bin.exists()
+    {
+        eprintln!(
+            "{} Removing cx binary at {}",
+            console::style(">>").cyan().bold(),
+            bin.display()
+        );
+        std::fs::remove_file(bin)
+            .into_diagnostic()
+            .context("failed to remove cx binary")?;
+    }
+
+    remove_shell_path_entries(prefix);
+
+    eprintln!(
+        "\n{} cx has been uninstalled.",
+        console::style("✔").green().bold()
+    );
+
+    Ok(())
+}
+
+fn remove_shell_path_entries(prefix: &Path) {
+    let condabin_path = format!(
+        "export PATH=\"{}/condabin:$PATH\"",
+        prefix.display()
+    );
+    let install_dir = env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    let install_path = install_dir
+        .as_ref()
+        .map(|d| format!("export PATH=\"{}:$PATH\"", d.display()));
+
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return,
+    };
+
+    let profiles: Vec<std::path::PathBuf> = vec![
+        home.join(".bashrc"),
+        home.join(".zshrc"),
+        home.join(".config/fish/config.fish"),
+    ];
+
+    for profile in &profiles {
+        if !profile.exists() {
+            continue;
+        }
+        let Ok(contents) = std::fs::read_to_string(profile) else {
+            continue;
+        };
+
+        let mut changed = false;
+        let filtered: Vec<&str> = contents
+            .lines()
+            .filter(|line| {
+                let dominated = line.trim() == condabin_path
+                    || install_path
+                        .as_ref()
+                        .is_some_and(|p| line.trim() == p);
+                if dominated {
+                    changed = true;
+                }
+                !dominated
+            })
+            .collect();
+
+        if changed {
+            let new_contents = filtered.join("\n");
+            if std::fs::write(profile, &new_contents).is_ok() {
+                eprintln!(
+                    "{} Cleaned PATH entry from {}",
+                    console::style(">>").cyan().bold(),
+                    profile.display()
+                );
+            }
+        }
+    }
 }
 
 // ─── Disabled commands (shell integration replaced by conda-spawn) ───────────
