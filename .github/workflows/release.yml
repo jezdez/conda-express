@@ -174,23 +174,26 @@ jobs:
 
           read_sha() { awk '{print $1}' "checksums/cx-${1}.sha256"; }
 
-          SHA_MACOS_ARM="$(read_sha aarch64-apple-darwin)"
-          SHA_MACOS_INTEL="$(read_sha x86_64-apple-darwin)"
-          SHA_LINUX_ARM="$(read_sha aarch64-unknown-linux-gnu)"
-          SHA_LINUX_INTEL="$(read_sha x86_64-unknown-linux-gnu)"
+          export CX_VERSION="$VERSION"
+          export CX_FORMULA="$FORMULA"
+          export CX_SHA_MACOS_ARM="$(read_sha aarch64-apple-darwin)"
+          export CX_SHA_MACOS_INTEL="$(read_sha x86_64-apple-darwin)"
+          export CX_SHA_LINUX_ARM="$(read_sha aarch64-unknown-linux-gnu)"
+          export CX_SHA_LINUX_INTEL="$(read_sha x86_64-unknown-linux-gnu)"
 
           python3 << 'PYEOF'
-          import re
+          import os
 
-          version = "$VERSION"
+          version = os.environ["CX_VERSION"]
+          formula = os.environ["CX_FORMULA"]
           shas = {
-              "aarch64-apple-darwin": "$SHA_MACOS_ARM",
-              "x86_64-apple-darwin": "$SHA_MACOS_INTEL",
-              "aarch64-unknown-linux-gnu": "$SHA_LINUX_ARM",
-              "x86_64-unknown-linux-gnu": "$SHA_LINUX_INTEL",
+              "aarch64-apple-darwin": os.environ["CX_SHA_MACOS_ARM"],
+              "x86_64-apple-darwin": os.environ["CX_SHA_MACOS_INTEL"],
+              "aarch64-unknown-linux-gnu": os.environ["CX_SHA_LINUX_ARM"],
+              "x86_64-unknown-linux-gnu": os.environ["CX_SHA_LINUX_INTEL"],
           }
 
-          with open("$FORMULA") as f:
+          with open(formula) as f:
               lines = f.readlines()
 
           out = []
@@ -210,7 +213,7 @@ jobs:
               else:
                   out.append(line)
 
-          with open("$FORMULA", "w") as f:
+          with open(formula, "w") as f:
               f.writelines(out)
           PYEOF
 
