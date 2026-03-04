@@ -124,7 +124,7 @@ Or use the reusable workflow to build all 5 platforms at once:
 ```yaml
 jobs:
   build-cx:
-    uses: jezdez/conda-express/.github/workflows/build-cx.yml@main
+    uses: jezdez/conda-express/.github/workflows/build.yml@main
     with:
       packages: "python >=3.12, conda >=25.1, numpy, pandas"
 ```

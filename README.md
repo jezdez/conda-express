@@ -216,7 +216,7 @@ Builds all 5 platforms in one call:
 ```yaml
 jobs:
   build-cx:
-    uses: jezdez/conda-express/.github/workflows/build-cx.yml@main
+    uses: jezdez/conda-express/.github/workflows/build.yml@main
     with:
       packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
 ```

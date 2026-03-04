@@ -161,7 +161,7 @@ conda-express/
     workflows/
       ci.yml            CI: build, test, lint on all platforms (canary artifacts)
       release.yml       Build binaries + wheels, publish to GitHub Releases, PyPI, and crates.io
-      build-cx.yml      Reusable workflow for building custom cx binaries (workflow_call)
+      build.yml      Reusable workflow for building custom cx binaries (workflow_call)
       docs.yml          Build and deploy Sphinx docs to GitHub Pages
 ```
 
@@ -279,7 +279,7 @@ All workflows use `pixi` for toolchain management:
 
 - **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately.
 - **`release.yml`** — triggers on tag push (`v*`). Orchestrates the full release pipeline: builds native binaries, builds maturin platform wheels and sdist, creates a GitHub Release with binary assets, publishes wheels to PyPI via trusted publishing (OIDC), and publishes the crate to crates.io via trusted publishing (`rust-lang/crates-io-auth-action`). All steps run as separate jobs with dependency ordering.
-- **`build-cx.yml`** — reusable workflow (`workflow_call`) for building custom cx binaries. Accepts `packages`, `channels`, `exclude`, and `ref` inputs. Builds all 5 platforms using the composite action and uploads binary artifacts with checksums.
+- **`build.yml`** — reusable workflow (`workflow_call`) for building custom cx binaries. Accepts `packages`, `channels`, `exclude`, and `ref` inputs. Builds all 5 platforms using the composite action and uploads binary artifacts with checksums.
 - **`docs.yml`** — triggers on push to `main` (docs paths), PRs, and manual dispatch. Builds Sphinx documentation and deploys to GitHub Pages.
 
 ### Composite action (`action.yml`)
