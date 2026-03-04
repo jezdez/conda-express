@@ -65,27 +65,46 @@ fn main() {
     let env_packages = env::var("CX_PACKAGES").ok().filter(|v| !v.is_empty());
     let env_channels = env::var("CX_CHANNELS").ok().filter(|v| !v.is_empty());
     let env_exclude = env::var("CX_EXCLUDE").ok().filter(|v| !v.is_empty());
-    let has_env_overrides = env_packages.is_some() || env_channels.is_some() || env_exclude.is_some();
+    let has_env_overrides =
+        env_packages.is_some() || env_channels.is_some() || env_exclude.is_some();
 
     if let Some(ref val) = env_packages {
-        config.tool.cx.packages = val.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        config.tool.cx.packages = val
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         eprintln!("cx: CX_PACKAGES override: {:?}", config.tool.cx.packages);
     }
     if let Some(ref val) = env_channels {
-        config.tool.cx.channels = val.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        config.tool.cx.channels = val
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         eprintln!("cx: CX_CHANNELS override: {:?}", config.tool.cx.channels);
     }
     if let Some(ref val) = env_exclude {
-        config.tool.cx.exclude = val.split(',').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect();
+        config.tool.cx.exclude = val
+            .split(',')
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
         eprintln!("cx: CX_EXCLUDE override: {:?}", config.tool.cx.exclude);
     }
 
     let input_hash = {
         let mut hasher = Sha256::new();
         hasher.update(config_contents.as_bytes());
-        if let Some(ref v) = env_packages { hasher.update(v.as_bytes()); }
-        if let Some(ref v) = env_channels { hasher.update(v.as_bytes()); }
-        if let Some(ref v) = env_exclude { hasher.update(v.as_bytes()); }
+        if let Some(ref v) = env_packages {
+            hasher.update(v.as_bytes());
+        }
+        if let Some(ref v) = env_channels {
+            hasher.update(v.as_bytes());
+        }
+        if let Some(ref v) = env_exclude {
+            hasher.update(v.as_bytes());
+        }
         format!("{:x}", hasher.finalize())
     };
 

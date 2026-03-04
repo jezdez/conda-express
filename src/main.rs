@@ -45,9 +45,8 @@ async fn async_main() -> miette::Result<()> {
             print_disabled_init();
         }
         // Commands handled by clap (cx's own subcommands, flags, bare invocation)
-        Some("bootstrap") | Some("status") | Some("shell") | Some("uninstall")
-        | Some("help") | Some("--help") | Some("-h") | Some("--version") | Some("-V")
-        | None => {
+        Some("bootstrap") | Some("status") | Some("shell") | Some("uninstall") | Some("help")
+        | Some("--help") | Some("-h") | Some("--version") | Some("-V") | None => {
             let cli = Cli::parse();
             match cli.command {
                 Some(Command::Bootstrap {
@@ -385,10 +384,7 @@ fn cmd_uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
 }
 
 fn remove_shell_path_entries(prefix: &Path) {
-    let condabin_path = format!(
-        "export PATH=\"{}/condabin:$PATH\"",
-        prefix.display()
-    );
+    let condabin_path = format!("export PATH=\"{}/condabin:$PATH\"", prefix.display());
     let install_dir = env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
@@ -420,9 +416,7 @@ fn remove_shell_path_entries(prefix: &Path) {
             .lines()
             .filter(|line| {
                 let dominated = line.trim() == condabin_path
-                    || install_path
-                        .as_ref()
-                        .is_some_and(|p| line.trim() == p);
+                    || install_path.as_ref().is_some_and(|p| line.trim() == p);
                 if dominated {
                     changed = true;
                 }
