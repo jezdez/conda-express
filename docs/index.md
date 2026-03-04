@@ -8,7 +8,7 @@ cx replaces the miniconda/constructor installation pattern with a ~17 MB static 
 
 ::::{tab-set}
 
-:::{tab-item} Homebrew (recommended)
+:::{tab-item} Homebrew
 ```bash
 brew tap jezdez/conda-express https://github.com/jezdez/conda-express
 brew install jezdez/conda-express/cx
@@ -29,37 +29,21 @@ curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
 ```
-
-The script detects your platform, downloads the binary, verifies the
-checksum, updates your shell profile / PATH, and runs `cx bootstrap`.
 :::
 
-:::{tab-item} GitHub Releases
-Download the binary for your platform from the
-[latest release](https://github.com/jezdez/conda-express/releases/latest):
-
-| Platform | File |
-|---|---|
-| Linux x86_64 | `cx-x86_64-unknown-linux-gnu` |
-| Linux ARM64 | `cx-aarch64-unknown-linux-gnu` |
-| macOS Intel | `cx-x86_64-apple-darwin` |
-| macOS Apple Silicon | `cx-aarch64-apple-darwin` |
-| Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
-:::
-
-:::{tab-item} PyPI
+:::{tab-item} pip / cargo
 ```bash
 pip install conda-express
 ```
-:::
 
-:::{tab-item} crates.io
 ```bash
 cargo install conda-express
 ```
 :::
 
 ::::
+
+See the {doc}`quickstart <quickstart>` for all installation methods.
 
 ## Quick example
 

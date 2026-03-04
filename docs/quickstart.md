@@ -81,13 +81,11 @@ sudo mv cx-* /usr/local/bin/cx
 ```
 ::::
 
-::::{tab-item} PyPI
+::::{tab-item} pip / cargo
 ```bash
 pip install conda-express
 ```
-::::
 
-::::{tab-item} crates.io
 ```bash
 cargo install conda-express
 ```
