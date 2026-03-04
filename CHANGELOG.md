@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+## 0.2.0
+
+### Fixes
+
+- Fix Homebrew formula update in release workflow — shell variables were
+  not expanded inside the single-quoted Python heredoc, resulting in
+  placeholder checksums.
+
 ## 0.1.8
 
 ### Features
