@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.8
+
 ### Features
 
 - Add `cx uninstall` subcommand — removes the conda prefix, all named
@@ -22,6 +24,16 @@
   shell scripts are repositioned as an alternative for CI and Windows.
 - Release workflow automatically updates the Homebrew formula with new
   version and checksums on each tag push.
+
+### Documentation
+
+- Restructure docs following the Diataxis framework (tutorials, how-to
+  guides, reference, explanation).
+- Add GitHub Action reference page (`docs/reference/github-action.md`).
+- Add custom builds how-to guide (`docs/guides/custom-builds.md`).
+- Add sphinx-design enhancements: badges on Action inputs, dropdowns for
+  CLI output examples, octicon icons on landing page cards.
+- Consolidate installation tabs (merge PyPI and crates.io into one tab).
 
 ## 0.1.7
 
