@@ -66,7 +66,8 @@ cx status [OPTIONS]
 `--prefix DIR`
 : Target prefix directory. Default: `~/.cx`
 
-### Output
+:::{admonition} Example output
+:class: dropdown
 
 ```
 cx 0.1.0
@@ -77,6 +78,7 @@ cx 0.1.0
   installed: 86 packages
   conda:    /Users/you/.cx/bin/conda
 ```
+:::
 
 ---
 
@@ -144,7 +146,8 @@ cx uninstall --yes
 cx uninstall --prefix /opt/conda
 ```
 
-### Output
+:::{admonition} Example output
+:class: dropdown
 
 ```
 ! This will permanently remove:
@@ -160,6 +163,7 @@ cx uninstall --prefix /opt/conda
 
 ✔ cx has been uninstalled.
 ```
+:::
 
 ---
 
@@ -168,7 +172,8 @@ cx uninstall --prefix /opt/conda
 The following conda commands are intentionally disabled in cx because they
 conflict with the conda-spawn activation model:
 
-### `cx activate` / `cx deactivate`
+:::{admonition} `cx activate` / `cx deactivate`
+:class: dropdown
 
 Prints a message directing users to `cx shell` instead:
 
@@ -182,8 +187,10 @@ Prints a message directing users to `cx shell` instead:
 
   To leave the environment, exit the subshell (Ctrl+D or `exit`).
 ```
+:::
 
-### `cx init`
+:::{admonition} `cx init`
+:class: dropdown
 
 Prints a message explaining that shell profile modifications are unnecessary:
 
@@ -199,6 +206,7 @@ Prints a message explaining that shell profile modifications are unnecessary:
 
     cx shell myenv
 ```
+:::
 
 ---
 

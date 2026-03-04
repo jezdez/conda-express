@@ -97,28 +97,28 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies are exclude
 ::::::{grid} 1 1 2 2
 :gutter: 3
 
-:::{grid-item-card} Fast
+:::{grid-item-card} {octicon}`zap` Fast
 :link: features
 :link-type: doc
 
 Bootstrap a full conda environment in ~3–5 seconds from an embedded lockfile. No repodata fetch, no solve at runtime.
 :::
 
-:::{grid-item-card} Small
+:::{grid-item-card} {octicon}`package` Small
 :link: features
 :link-type: doc
 
 ~17 MB single binary. Installs 86 packages instead of 113 by excluding unnecessary native dependencies.
 :::
 
-:::{grid-item-card} Modern
+:::{grid-item-card} {octicon}`rocket` Modern
 :link: features
 :link-type: doc
 
 Uses conda-rattler-solver (resolvo) instead of libmamba. conda-spawn for activation instead of shell profile hacks.
 :::
 
-:::{grid-item-card} Simple
+:::{grid-item-card} {octicon}`check-circle` Simple
 :link: quickstart
 :link-type: doc
 
@@ -130,42 +130,42 @@ One binary, one command. No Python, no installer, no shell modifications require
 ::::::{grid} 1 1 2 3
 :gutter: 3
 
-:::{grid-item-card} Quick start
+:::{grid-item-card} {octicon}`rocket` Quick start
 :link: quickstart
 :link-type: doc
 
 Get up and running in minutes.
 :::
 
-:::{grid-item-card} Build custom cx binaries
+:::{grid-item-card} {octicon}`tools` Build custom cx binaries
 :link: guides/custom-builds
 :link-type: doc
 
 Bake your own packages into a cx binary.
 :::
 
-:::{grid-item-card} CLI reference
+:::{grid-item-card} {octicon}`terminal` CLI reference
 :link: reference/cli
 :link-type: doc
 
 All commands and options.
 :::
 
-:::{grid-item-card} GitHub Action reference
+:::{grid-item-card} {octicon}`play` GitHub Action reference
 :link: reference/github-action
 :link-type: doc
 
 Inputs, outputs, and behavior of the composite action and reusable workflow.
 :::
 
-:::{grid-item-card} Configuration
+:::{grid-item-card} {octicon}`gear` Configuration
 :link: configuration
 :link-type: doc
 
 Build-time and runtime settings.
 :::
 
-:::{grid-item-card} Architecture
+:::{grid-item-card} {octicon}`cpu` Architecture
 :link: design
 :link-type: doc
 
