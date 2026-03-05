@@ -92,6 +92,7 @@ fn main() {
     let input_hash = {
         let mut hasher = Sha256::new();
         hasher.update(config_contents.as_bytes());
+        hasher.update(Platform::current().as_str().as_bytes());
         if let Some(ref v) = env_packages {
             hasher.update(v.as_bytes());
         }
