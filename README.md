@@ -1,7 +1,11 @@
 # conda-express (cx)
 
 [![CI](https://github.com/jezdez/conda-express/actions/workflows/ci.yml/badge.svg)](https://github.com/jezdez/conda-express/actions/workflows/ci.yml)
+[![Docs](https://github.com/jezdez/conda-express/actions/workflows/docs.yml/badge.svg)](https://jezdez.github.io/conda-express/)
 [![codecov](https://codecov.io/gh/jezdez/conda-express/graph/badge.svg)](https://codecov.io/gh/jezdez/conda-express)
+[![License](https://img.shields.io/github/license/jezdez/conda-express)](https://github.com/jezdez/conda-express/blob/main/LICENSE)
+[![Crates.io](https://img.shields.io/crates/v/conda-express)](https://crates.io/crates/conda-express)
+[![PyPI](https://img.shields.io/pypi/v/conda-express)](https://pypi.org/project/conda-express/)
 
 A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
