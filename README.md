@@ -1,5 +1,8 @@
 # conda-express (cx)
 
+[![CI](https://github.com/jezdez/conda-express/actions/workflows/ci.yml/badge.svg)](https://github.com/jezdez/conda-express/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/jezdez/conda-express/graph/badge.svg)](https://codecov.io/gh/jezdez/conda-express)
+
 A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
 cx replaces the miniconda/constructor installation pattern with a ~17 MB static binary that bootstraps a fully functional conda environment in seconds.
