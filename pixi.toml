@@ -7,12 +7,15 @@ license = "BSD-3-Clause"
 
 [dependencies]
 rust = ">=1.85"
+cargo-llvm-cov = ">=0.6"
 
 [tasks]
 build = "cargo build --release"
 build-debug = "cargo build"
 test = "cargo test --release"
 test-all = "cargo test --release --features online_tests,slow_tests"
+coverage = "cargo llvm-cov --lcov --output-path lcov.info"
+coverage-html = "cargo llvm-cov --html"
 fmt-check = "cargo fmt --check"
 clippy = "cargo clippy --all-targets -- -D warnings"
 lint = { depends-on = ["fmt-check", "clippy"] }
