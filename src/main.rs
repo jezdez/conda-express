@@ -8,6 +8,7 @@ use rattler_conda_types::PrefixRecord;
 
 mod cli;
 mod config;
+mod exclude;
 mod exec;
 mod install;
 
@@ -160,14 +161,6 @@ async fn ensure_bootstrapped(prefix: &Path) -> miette::Result<()> {
     Ok(())
 }
 
-fn conda_executable(prefix: &Path) -> std::path::PathBuf {
-    if cfg!(windows) {
-        prefix.join("Scripts").join("conda.exe")
-    } else {
-        prefix.join("bin").join("conda")
-    }
-}
-
 // ─── Commands ────────────────────────────────────────────────────────────────
 
 async fn cmd_bootstrap(
@@ -276,7 +269,7 @@ fn cmd_status(prefix: &Path) -> miette::Result<()> {
     let installed = PrefixRecord::collect_from_prefix::<PrefixRecord>(prefix).into_diagnostic()?;
     println!("  installed: {} packages", installed.len());
 
-    let conda_bin = conda_executable(prefix);
+    let conda_bin = exec::conda_binary(prefix);
     println!(
         "  conda:    {}",
         if conda_bin.exists() {
@@ -494,4 +487,23 @@ fn init_tracing() -> miette::Result<()> {
         .into_diagnostic()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_is_bootstrapped_true() {
+        let tmp = TempDir::new().unwrap();
+        std::fs::create_dir(tmp.path().join("conda-meta")).unwrap();
+        assert!(is_bootstrapped(tmp.path()));
+    }
+
+    #[test]
+    fn test_is_bootstrapped_false() {
+        let tmp = TempDir::new().unwrap();
+        assert!(!is_bootstrapped(tmp.path()));
+    }
 }

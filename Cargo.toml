@@ -6,6 +6,10 @@ description = "A lightweight, single-binary conda bootstrapper — powered by ra
 license = "BSD-3-Clause"
 readme = "README.md"
 
+[lib]
+name = "conda_express"
+path = "src/lib.rs"
+
 [[bin]]
 name = "cx"
 path = "src/main.rs"
@@ -27,6 +31,8 @@ rustls-tls = [
   "rattler_networking/rustls-tls",
   "rattler_cache/rustls-tls",
 ]
+online_tests = []
+slow_tests = []
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
@@ -73,3 +79,12 @@ opt-level = 2
 [profile.release]
 lto = "thin"
 strip = true
+
+[dev-dependencies]
+assert_cmd = "2"
+assert_matches = "1"
+insta = { version = "1", features = ["yaml"] }
+predicates = "3"
+rstest = "0.24"
+temp-env = "0.3"
+tempfile = "3"

@@ -12,6 +12,7 @@ rust = ">=1.85"
 build = "cargo build --release"
 build-debug = "cargo build"
 test = "cargo test --release"
+test-all = "cargo test --release --features online_tests,slow_tests"
 fmt-check = "cargo fmt --check"
 clippy = "cargo clippy --all-targets -- -D warnings"
 lint = { depends-on = ["fmt-check", "clippy"] }

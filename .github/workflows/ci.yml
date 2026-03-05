@@ -48,6 +48,17 @@ jobs:
       - name: Test
         run: pixi run test
 
+      - name: Smoke test
+        shell: bash
+        run: |
+          if [[ "$TARGET" == *"windows"* ]]; then
+            BIN="target/release/cx.exe"
+          else
+            BIN="target/release/cx"
+          fi
+          "$BIN" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
+          "$BIN" status --prefix "$RUNNER_TEMP/cx-smoke"
+
       - name: Stage binary
         shell: bash
         run: |

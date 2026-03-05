@@ -1,0 +1,43 @@
+---
+source: tests/cli_integration.rs
+expression: stdout
+---
+cx (conda-express) is a lightweight, single-binary bootstrapper for conda.
+
+It installs a minimal conda environment from an embedded lockfile in seconds,
+uses conda-rattler-solver instead of libmamba, and conda-spawn for activation.
+
+Usage: cx [COMMAND]
+
+Commands:
+  bootstrap  Bootstrap a fresh conda installation into the prefix
+  status     Print cx status (prefix, channels, packages, excludes)
+  shell      Activate an environment via subshell (alias for conda spawn)
+  uninstall  Uninstall cx: remove the conda prefix, environments, and optionally the cx binary
+  help       Show this help message
+
+Options:
+  -h, --help
+          Print help (see a summary with '-h')
+
+  -V, --version
+          Print version
+
+Quick start:
+
+  cx bootstrap                           Install conda into ~/.cx
+  cx create -n myenv python=3.12 numpy   Create an environment
+  cx shell myenv                         Activate (spawns a subshell)
+  exit                                   Leave the environment
+
+Management:
+
+  cx status                              Show installation details
+  cx uninstall                           Remove cx, conda, and all environments
+
+Pass-through:
+
+  Any command not listed above is passed through to conda:
+  cx install, cx remove, cx list, cx env, cx info, cx config, ...
+
+Docs: https://jezdez.github.io/conda-express/

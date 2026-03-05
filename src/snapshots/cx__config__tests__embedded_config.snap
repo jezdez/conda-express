@@ -1,0 +1,15 @@
+---
+source: src/config.rs
+expression: "serde_json::json!({\n    \"channels\": config.channels, \"packages\": config.packages, \"exclude\":\n    config.exclude,\n})"
+---
+channels:
+  - conda-forge
+packages:
+  - python >=3.12
+  - conda >=25.1
+  - conda-rattler-solver
+  - conda-spawn
+  - conda-pypi
+  - conda-self
+exclude:
+  - conda-libmamba-solver

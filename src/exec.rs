@@ -7,7 +7,7 @@ use std::process::Stdio;
 
 use miette::IntoDiagnostic;
 
-fn conda_binary(prefix: &Path) -> std::path::PathBuf {
+pub(crate) fn conda_binary(prefix: &Path) -> std::path::PathBuf {
     if cfg!(windows) {
         prefix.join("Scripts").join("conda.exe")
     } else {
@@ -101,7 +101,7 @@ pub fn needs_output_filtering(args: &[&str]) -> bool {
     }
 }
 
-fn extract_env_name(args: &[&str]) -> Option<String> {
+pub(crate) fn extract_env_name(args: &[&str]) -> Option<String> {
     let mut iter = args.iter();
     while let Some(arg) = iter.next() {
         match *arg {
@@ -127,4 +127,50 @@ fn hand_off(mut cmd: std::process::Command) -> miette::Result<()> {
 fn hand_off(mut cmd: std::process::Command) -> miette::Result<()> {
     let status = cmd.status().into_diagnostic()?;
     std::process::exit(status.code().unwrap_or(1));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rstest::rstest;
+    use std::path::Path;
+
+    #[rstest]
+    #[case::create(&["create", "-n", "test"], true)]
+    #[case::env_create(&["env", "create", "-n", "test"], true)]
+    #[case::env_list(&["env", "list"], false)]
+    #[case::install(&["install", "numpy"], false)]
+    #[case::list(&["list"], false)]
+    #[case::empty(&[], false)]
+    fn test_needs_output_filtering(#[case] args: &[&str], #[case] expected: bool) {
+        assert_eq!(needs_output_filtering(args), expected);
+    }
+
+    #[rstest]
+    #[case::short_flag(&["create", "-n", "myenv"], Some("myenv"))]
+    #[case::long_flag(&["create", "--name", "myenv"], Some("myenv"))]
+    #[case::equals_syntax(&["create", "--name=myenv"], Some("myenv"))]
+    #[case::prefix_flag(&["create", "-p", "/tmp"], None)]
+    #[case::empty(&[], None)]
+    fn test_extract_env_name(#[case] args: &[&str], #[case] expected: Option<&str>) {
+        assert_eq!(extract_env_name(args), expected.map(String::from));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn test_conda_binary_unix() {
+        assert_eq!(
+            conda_binary(Path::new("/opt/conda")),
+            Path::new("/opt/conda/bin/conda")
+        );
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn test_conda_binary_windows() {
+        assert_eq!(
+            conda_binary(Path::new("C:\\conda")),
+            Path::new("C:\\conda\\Scripts\\conda.exe")
+        );
+    }
 }

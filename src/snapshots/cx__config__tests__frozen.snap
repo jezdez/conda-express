@@ -1,0 +1,7 @@
+---
+source: src/config.rs
+expression: contents
+---
+{
+  "message": "This base environment is managed by cx (conda-express).\nCreate a new environment instead: conda create -n myenv\nTo re-bootstrap: cx bootstrap --force\nTo override: pass --override-frozen-env"
+}

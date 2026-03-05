@@ -127,3 +127,108 @@ default_channels:
     eprintln!("   Wrote {}", condarc_path.display());
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_embedded_config_parses() {
+        let config = embedded_config();
+        assert!(!config.channels.is_empty(), "channels should be non-empty");
+        assert!(!config.packages.is_empty(), "packages should be non-empty");
+    }
+
+    #[test]
+    fn test_embedded_config_snapshot() {
+        let config = embedded_config();
+        insta::assert_yaml_snapshot!(
+            "embedded_config",
+            serde_json::json!({
+                "channels": config.channels,
+                "packages": config.packages,
+                "exclude": config.exclude,
+            })
+        );
+    }
+
+    #[test]
+    fn test_write_and_read_metadata_roundtrip() {
+        let tmp = TempDir::new().unwrap();
+
+        let channels = vec!["conda-forge".to_string()];
+        let packages = vec!["python".to_string(), "conda".to_string()];
+        let excludes = vec!["conda-libmamba-solver".to_string()];
+
+        write_metadata(tmp.path(), &channels, &packages, &excludes).unwrap();
+
+        let meta = read_metadata(tmp.path()).unwrap();
+        assert_eq!(meta.channels, channels);
+        assert_eq!(meta.packages, packages);
+        assert_eq!(meta.excludes, excludes);
+    }
+
+    #[test]
+    fn test_write_metadata_includes_version() {
+        let tmp = TempDir::new().unwrap();
+
+        write_metadata(tmp.path(), &[], &[], &[]).unwrap();
+
+        let meta = read_metadata(tmp.path()).unwrap();
+        assert_eq!(
+            meta.version,
+            env!("CARGO_PKG_VERSION"),
+            "metadata version should match crate version"
+        );
+    }
+
+    #[test]
+    fn test_read_metadata_fallback() {
+        let tmp = TempDir::new().unwrap();
+
+        let meta = read_metadata(tmp.path()).unwrap();
+        let embedded = embedded_config();
+        assert_eq!(meta.channels, embedded.channels);
+        assert_eq!(meta.packages, embedded.packages);
+        assert_eq!(meta.excludes, embedded.exclude);
+        assert_eq!(
+            meta.version, "unknown",
+            "fallback version should be 'unknown'"
+        );
+    }
+
+    #[test]
+    fn test_write_condarc_snapshot() {
+        let tmp = TempDir::new().unwrap();
+        write_condarc(tmp.path()).unwrap();
+
+        let contents = std::fs::read_to_string(tmp.path().join(".condarc")).unwrap();
+        insta::assert_snapshot!("condarc", contents);
+    }
+
+    #[test]
+    fn test_write_condarc_idempotent() {
+        let tmp = TempDir::new().unwrap();
+        write_condarc(tmp.path()).unwrap();
+        let first = std::fs::read_to_string(tmp.path().join(".condarc")).unwrap();
+
+        write_condarc(tmp.path()).unwrap();
+        let second = std::fs::read_to_string(tmp.path().join(".condarc")).unwrap();
+
+        assert_eq!(
+            first, second,
+            "writing condarc twice should produce identical content"
+        );
+    }
+
+    #[test]
+    fn test_write_frozen_snapshot() {
+        let tmp = TempDir::new().unwrap();
+        write_frozen(tmp.path()).unwrap();
+
+        let contents =
+            std::fs::read_to_string(tmp.path().join("conda-meta").join("frozen")).unwrap();
+        insta::assert_snapshot!("frozen", contents);
+    }
+}
