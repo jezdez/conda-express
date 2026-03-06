@@ -2,27 +2,27 @@ class Cx < Formula
   desc "Lightweight single-binary conda bootstrapper powered by rattler"
   homepage "https://github.com/jezdez/conda-express"
   license "BSD-3-Clause"
-  version "0.2.0"
+  version "0.3.0"
 
   on_macos do
     on_arm do
       url "https://github.com/jezdez/conda-express/releases/download/v#{version}/cx-aarch64-apple-darwin"
-      sha256 "c46e34c65d4b3f31b5d9cc42e1c83e97c5cbb2fa49b4de65583d2132d0e76453"
+      sha256 "3e2670a31852dd752eb5c8398d7c34156c7e0dcf14c8178c7754aa0f32a452a7"
     end
     on_intel do
       url "https://github.com/jezdez/conda-express/releases/download/v#{version}/cx-x86_64-apple-darwin"
-      sha256 "bccc86b6ac7f5e74c3b4a7e887f677c49a002350727fe8b9dbc6ab3725e5c2e7"
+      sha256 "77d3d455f5f831d7e4e36aec23793bf8f838946fdf67fe257fc24cff69dd65a7"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/jezdez/conda-express/releases/download/v#{version}/cx-aarch64-unknown-linux-gnu"
-      sha256 "59b16e5d81608dd5a90d316db92d8c31b29ba2d8935509bf36963641d214978e"
+      sha256 "e764498d61b25796ce69bd518881c725b32ca6230f87285d80c5c8aff210672e"
     end
     on_intel do
       url "https://github.com/jezdez/conda-express/releases/download/v#{version}/cx-x86_64-unknown-linux-gnu"
-      sha256 "8aaed8985c7af600c1a6925c04abe246b7012d33153fbc4be5dd6f4e8d36de6e"
+      sha256 "0723a4da73c2980fb9db9cba97159de1b0093e7bd586021c19f6b59a6cae38d3"
     end
   end
 
