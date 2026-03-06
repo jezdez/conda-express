@@ -264,4 +264,4 @@ jobs:
       - name: Publish crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-auth.outputs.token }}
-        run: pixi run cargo publish --locked
+        run: pixi run cargo publish --locked --no-verify
