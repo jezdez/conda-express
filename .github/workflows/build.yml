@@ -59,7 +59,7 @@ jobs:
     steps:
       - name: Build cx
         id: build
-        uses: jezdez/conda-express@${{ inputs.ref }}
+        uses: jezdez/conda-express@main
         with:
           packages: ${{ inputs.packages }}
           channels: ${{ inputs.channels }}
