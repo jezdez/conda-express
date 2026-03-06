@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-03-06)
 
 ### Features
 
@@ -38,6 +38,7 @@
 - Always write prefix-level `.condarc` during bootstrap.
 - Update embedded lockfile to `conda-pypi 0.5.0`.
 - Add CI, Docs, Codecov, License, Crates.io, and PyPI badges to README.
+- Trigger release workflow from GitHub Release publication instead of tag push.
 
 ## 0.2.0
 
