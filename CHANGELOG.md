@@ -1,44 +1,19 @@
 # Changelog
 
-## 0.3.0 (2026-03-06)
-
-### Features
-
-- Add code coverage tracking with `cargo-llvm-cov` and Codecov integration.
-- Add `pixi run coverage` and `pixi run coverage-html` tasks.
+## 0.3.1 (2026-03-06)
 
 ### Fixes
 
-- Fix cross-platform CI test failures — include target platform in lockfile
-  hash so each CI runner does a fresh solve instead of reusing a lockfile
-  built for a different platform.
-- Fix Windows snapshot test failure — normalize `cx.exe` to `cx` in help
-  output before snapshot comparison.
-- Fix docs workflow failure — add `pixi.lock` to trigger paths so the
-  workflow re-runs when the lockfile is updated.
+- Fix crates.io publish — `build.rs` writes lockfiles during compilation,
+  which `cargo publish --verify` rejects. Skip verification since builds are
+  already validated by CI.
+- Fix `build.yml` reusable workflow validation error on push events — pin
+  action reference to `@main` instead of dynamic `inputs.ref` in the `uses:`
+  field.
 
-### Testing
+## 0.3.0 (2026-03-06)
 
-- Add comprehensive test suite (72 tests total) with `rstest`, `insta`
-  snapshot testing, and `assert_matches`.
-- Extract `filter_excluded_packages` into shared `exclude` module with
-  7 unit tests covering transitive deps, diamond graphs, and multi-exclude.
-- Add offline unit tests for `commands.rs` (`status`, `uninstall`,
-  `clean_path_entries_from_profiles`), `install.rs` (`parse_specs`,
-  `apply_excludes`), and `exec.rs` (`build_command`).
-- Extract `clean_path_entries_from_profiles` for testability — previous
-  test reimplemented the logic inline without calling the actual function.
-- Improve test quality: verify `CONDA_ROOT_PREFIX` env var, add invalid
-  spec error path test, use `TempDir` instead of hardcoded `/tmp/`,
-  standardize imports, tighten test helper visibility.
-
-### Internal
-
-- Extract command implementations from `main.rs` into `commands.rs` module.
-- Always write prefix-level `.condarc` during bootstrap.
-- Update embedded lockfile to `conda-pypi 0.5.0`.
-- Add CI, Docs, Codecov, License, Crates.io, and PyPI badges to README.
-- Trigger release workflow from GitHub Release publication instead of tag push.
+w
 
 ## 0.2.0
 
