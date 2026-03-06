@@ -26,7 +26,9 @@ fn test_cx_version() {
 
 #[test]
 fn test_cx_status_nonexistent_prefix() {
-    cx().args(["status", "--prefix", "/tmp/cx-nonexistent-prefix-test"])
+    let tmp = TempDir::new().unwrap();
+    let nonexistent = tmp.path().join("does-not-exist");
+    cx().args(["status", "--prefix", nonexistent.to_str().unwrap()])
         .assert()
         .success()
         .stderr(predicate::str::contains("No conda installation found"));

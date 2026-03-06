@@ -104,7 +104,7 @@ pub(crate) mod tests {
     };
     use reqwest::Url;
 
-    pub(crate) fn make_record(name: &str, depends: &[&str]) -> RepoDataRecord {
+    fn make_record(name: &str, depends: &[&str]) -> RepoDataRecord {
         let mut record = PackageRecord::new(
             PackageName::new_unchecked(name),
             VersionWithSource::from_str("1.0").unwrap(),

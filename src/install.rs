@@ -263,7 +263,10 @@ async fn run_installer(
     Ok(())
 }
 
-pub(crate) fn apply_excludes(packages: Vec<RepoDataRecord>, excludes: &[String]) -> Vec<RepoDataRecord> {
+pub(crate) fn apply_excludes(
+    packages: Vec<RepoDataRecord>,
+    excludes: &[String],
+) -> Vec<RepoDataRecord> {
     if excludes.is_empty() {
         return packages;
     }
@@ -325,6 +328,13 @@ mod tests {
         let result = parse_specs(&[]);
         assert!(result.is_ok(), "empty specs should parse successfully");
         assert!(result.unwrap().is_empty());
+    }
+
+    #[test]
+    fn test_parse_specs_invalid() {
+        let specs = vec![">=>=not_a_package!!!".to_string()];
+        let result = parse_specs(&specs);
+        assert!(result.is_err(), "malformed spec should fail to parse");
     }
 
     #[test]

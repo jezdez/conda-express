@@ -134,6 +134,7 @@ mod tests {
     use super::*;
     use rstest::rstest;
     use std::path::Path;
+    use tempfile::TempDir;
 
     #[rstest]
     #[case::create(&["create", "-n", "test"], true)]
@@ -176,7 +177,7 @@ mod tests {
 
     #[test]
     fn test_build_command_missing_binary() {
-        let tmp = tempfile::TempDir::new().unwrap();
+        let tmp = TempDir::new().unwrap();
         let result = build_command(tmp.path(), &["info"]);
         assert!(
             result.is_err(),
@@ -186,7 +187,7 @@ mod tests {
 
     #[test]
     fn test_build_command_with_binary() {
-        let tmp = tempfile::TempDir::new().unwrap();
+        let tmp = TempDir::new().unwrap();
         let bin_dir = if cfg!(windows) {
             tmp.path().join("Scripts")
         } else {
@@ -211,5 +212,16 @@ mod tests {
         );
         let args: Vec<_> = cmd.get_args().collect();
         assert_eq!(args.len(), 2, "should have 2 args");
+
+        let envs: Vec<_> = cmd.get_envs().collect();
+        let root_prefix = envs
+            .iter()
+            .find(|(k, _)| *k == "CONDA_ROOT_PREFIX")
+            .expect("CONDA_ROOT_PREFIX should be set");
+        assert_eq!(
+            root_prefix.1.unwrap(),
+            tmp.path().as_os_str(),
+            "CONDA_ROOT_PREFIX should point to the prefix"
+        );
     }
 }

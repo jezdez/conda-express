@@ -265,13 +265,21 @@ fn remove_shell_path_entries(prefix: &Path) {
         None => return,
     };
 
-    let profiles: Vec<std::path::PathBuf> = vec![
+    let profiles = vec![
         home.join(".bashrc"),
         home.join(".zshrc"),
         home.join(".config/fish/config.fish"),
     ];
 
-    for profile in &profiles {
+    clean_path_entries_from_profiles(&profiles, &condabin_path, install_path.as_deref());
+}
+
+pub(crate) fn clean_path_entries_from_profiles(
+    profiles: &[std::path::PathBuf],
+    condabin_path: &str,
+    install_path: Option<&str>,
+) {
+    for profile in profiles {
         if !profile.exists() {
             continue;
         }
@@ -283,8 +291,8 @@ fn remove_shell_path_entries(prefix: &Path) {
         let filtered: Vec<&str> = contents
             .lines()
             .filter(|line| {
-                let dominated = line.trim() == condabin_path
-                    || install_path.as_ref().is_some_and(|p| line.trim() == p);
+                let dominated =
+                    line.trim() == condabin_path || install_path.is_some_and(|p| line.trim() == p);
                 if dominated {
                     changed = true;
                 }
@@ -401,7 +409,10 @@ mod tests {
         .unwrap();
 
         let result = status(prefix);
-        assert!(result.is_ok(), "status on bootstrapped prefix should succeed");
+        assert!(
+            result.is_ok(),
+            "status on bootstrapped prefix should succeed"
+        );
     }
 
     #[test]
@@ -415,12 +426,9 @@ mod tests {
     }
 
     #[test]
-    fn test_remove_shell_path_entries_cleans_profiles() {
+    fn test_clean_path_entries_removes_condabin() {
         let tmp = TempDir::new().unwrap();
-        let prefix = tmp.path().join("fake-cx");
-        std::fs::create_dir(&prefix).unwrap();
-
-        let condabin_line = format!("export PATH=\"{}/condabin:$PATH\"", prefix.display());
+        let condabin_line = "export PATH=\"/home/user/.cx/condabin:$PATH\"";
         let bashrc = tmp.path().join(".bashrc");
         std::fs::write(
             &bashrc,
@@ -428,29 +436,8 @@ mod tests {
         )
         .unwrap();
 
-        let profiles = vec![bashrc.clone()];
-        let install_path: Option<String> = None;
+        clean_path_entries_from_profiles(std::slice::from_ref(&bashrc), condabin_line, None);
 
-        let mut cleaned = false;
-        for profile in &profiles {
-            let contents = std::fs::read_to_string(profile).unwrap();
-            let filtered: Vec<&str> = contents
-                .lines()
-                .filter(|line| {
-                    let dominated = line.trim() == condabin_line
-                        || install_path.as_ref().is_some_and(|p| line.trim() == p);
-                    if dominated {
-                        cleaned = true;
-                    }
-                    !dominated
-                })
-                .collect();
-            if cleaned {
-                std::fs::write(profile, filtered.join("\n")).unwrap();
-            }
-        }
-
-        assert!(cleaned, "should have found and removed the PATH entry");
         let result = std::fs::read_to_string(&bashrc).unwrap();
         assert!(
             !result.contains("condabin"),
@@ -460,5 +447,57 @@ mod tests {
             result.contains("alias ll"),
             "other lines should be preserved"
         );
+    }
+
+    #[test]
+    fn test_clean_path_entries_removes_install_dir() {
+        let tmp = TempDir::new().unwrap();
+        let install_line = "export PATH=\"/usr/local/bin:$PATH\"";
+        let zshrc = tmp.path().join(".zshrc");
+        std::fs::write(
+            &zshrc,
+            format!("# zshrc\n{install_line}\nexport EDITOR=vim\n"),
+        )
+        .unwrap();
+
+        clean_path_entries_from_profiles(
+            std::slice::from_ref(&zshrc),
+            "export PATH=\"/unused/condabin:$PATH\"",
+            Some(install_line),
+        );
+
+        let result = std::fs::read_to_string(&zshrc).unwrap();
+        assert!(
+            !result.contains("/usr/local/bin"),
+            "install dir line should be removed"
+        );
+        assert!(
+            result.contains("EDITOR=vim"),
+            "other lines should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_clean_path_entries_skips_missing_profiles() {
+        let tmp = TempDir::new().unwrap();
+        let missing = tmp.path().join("nonexistent");
+        clean_path_entries_from_profiles(&[missing], "whatever", None);
+    }
+
+    #[test]
+    fn test_clean_path_entries_no_change_when_no_match() {
+        let tmp = TempDir::new().unwrap();
+        let bashrc = tmp.path().join(".bashrc");
+        let original = "# my bashrc\nalias ll='ls -la'\n";
+        std::fs::write(&bashrc, original).unwrap();
+
+        clean_path_entries_from_profiles(
+            std::slice::from_ref(&bashrc),
+            "export PATH=\"/not/present:$PATH\"",
+            None,
+        );
+
+        let result = std::fs::read_to_string(&bashrc).unwrap();
+        assert_eq!(result, original, "file should be unchanged when no match");
     }
 }

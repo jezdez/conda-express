@@ -120,7 +120,6 @@ pub enum LockSource {
 mod tests {
     use super::*;
     use assert_matches::assert_matches;
-    use clap::Parser;
 
     #[test]
     fn test_parse_bootstrap_defaults() {
