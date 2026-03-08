@@ -1,3 +1,6 @@
 /target
 /.pixi
 /docs/_build
+spike/cx-wasm-spike/target/
+spike/cx-wasm-spike/www/cx_wasm_spike*
+spike/cx-wasm-spike/www/cx.lock

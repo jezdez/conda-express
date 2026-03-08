@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>cx WASM Spike</title>
+    <style>
+        body { font-family: system-ui, sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+        pre { background: #f5f5f5; padding: 1rem; border-radius: 4px; overflow-x: auto; max-height: 400px; }
+        .status { color: #666; }
+        .success { color: #2a7; font-weight: bold; }
+        .error { color: #c33; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; margin-right: 0.5rem; }
+        button:disabled { opacity: 0.5; cursor: default; }
+        select { padding: 0.4rem; font-size: 1rem; }
+        textarea { width: 100%; height: 150px; font-family: monospace; font-size: 0.85rem; }
+        .controls { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0; }
+        details { margin: 1rem 0; }
+        summary { cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <h1>cx WASM Spike</h1>
+    <p id="init-status" class="status">Loading WASM module...</p>
+
+    <div class="controls">
+        <button id="load-cxlock-btn" disabled>Load cx.lock from project</button>
+        <span>or paste your own lockfile below</span>
+    </div>
+
+    <details>
+        <summary>Lockfile input</summary>
+        <textarea id="lockfile-input" placeholder="Paste lockfile content here, or click 'Load cx.lock'..."></textarea>
+    </details>
+
+    <div class="controls">
+        <label for="platform-select"><strong>Platform:</strong></label>
+        <select id="platform-select" disabled>
+            <option value="">Load a lockfile first</option>
+        </select>
+        <button id="parse-btn" disabled>Parse</button>
+    </div>
+
+    <h3>Packages <span id="pkg-count"></span></h3>
+    <pre id="names-output">Load a lockfile and click Parse</pre>
+
+    <h3>Download URLs</h3>
+    <pre id="urls-output">-</pre>
+
+    <script type="module">
+        import init, { cx_init, get_platforms, get_package_names, get_package_urls } from './cx_wasm_spike.js';
+
+        const statusEl = document.getElementById('init-status');
+        const loadBtn = document.getElementById('load-cxlock-btn');
+        const parseBtn = document.getElementById('parse-btn');
+        const lockfileInput = document.getElementById('lockfile-input');
+        const platformSelect = document.getElementById('platform-select');
+        const namesOutput = document.getElementById('names-output');
+        const urlsOutput = document.getElementById('urls-output');
+        const pkgCount = document.getElementById('pkg-count');
+
+        let wasmReady = false;
+
+        async function run() {
+            try {
+                await init();
+                const version = cx_init();
+                statusEl.textContent = 'WASM loaded: ' + version;
+                statusEl.className = 'success';
+                loadBtn.disabled = false;
+                wasmReady = true;
+            } catch (e) {
+                statusEl.textContent = 'Failed to load WASM: ' + e;
+                statusEl.className = 'error';
+            }
+        }
+
+        function updatePlatforms() {
+            const content = lockfileInput.value;
+            if (!content.trim() || !wasmReady) return;
+
+            try {
+                const platforms = JSON.parse(get_platforms(content));
+
+                while (platformSelect.firstChild) {
+                    platformSelect.removeChild(platformSelect.firstChild);
+                }
+
+                for (const p of platforms) {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    platformSelect.appendChild(opt);
+                }
+                platformSelect.disabled = false;
+                parseBtn.disabled = false;
+            } catch (e) {
+                const opt = document.createElement('option');
+                opt.textContent = 'Error detecting platforms';
+                while (platformSelect.firstChild) {
+                    platformSelect.removeChild(platformSelect.firstChild);
+                }
+                platformSelect.appendChild(opt);
+            }
+        }
+
+        loadBtn.addEventListener('click', async () => {
+            try {
+                loadBtn.textContent = 'Loading...';
+                const resp = await fetch('/cx.lock');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const text = await resp.text();
+                lockfileInput.value = text;
+                loadBtn.textContent = 'Loaded (' + Math.round(text.length / 1024) + ' KB)';
+                updatePlatforms();
+            } catch (e) {
+                loadBtn.textContent = 'Failed: ' + e.message;
+            }
+        });
+
+        lockfileInput.addEventListener('input', updatePlatforms);
+
+        parseBtn.addEventListener('click', () => {
+            const content = lockfileInput.value;
+            const platform = platformSelect.value;
+            if (!content.trim() || !platform) return;
+
+            try {
+                const t0 = performance.now();
+                const names = JSON.parse(get_package_names(content, platform));
+                const urls = JSON.parse(get_package_urls(content, platform));
+                const elapsed = (performance.now() - t0).toFixed(1);
+
+                pkgCount.textContent = '(' + names.length + ' packages, ' + elapsed + 'ms)';
+
+                namesOutput.textContent = names.length > 0
+                    ? names.join('\n')
+                    : 'No packages found for ' + platform;
+
+                urlsOutput.textContent = urls.length > 0
+                    ? urls.join('\n')
+                    : 'No URLs found';
+            } catch (e) {
+                namesOutput.textContent = 'Error: ' + e;
+            }
+        });
+
+        run();
+    </script>
+</body>
+</html>
