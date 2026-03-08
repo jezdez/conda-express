@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "crates/cx-web"]
+
 [package]
 name = "conda-express"
 version = "0.3.1"

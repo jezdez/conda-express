@@ -1,7 +1,10 @@
 [package]
-name = "cx-wasm-spike"
+name = "cx-web"
 version = "0.1.0"
 edition = "2024"
+description = "Browser-based conda environment bootstrapper — WASM module powered by rattler"
+license = "BSD-3-Clause"
+repository = "https://github.com/jezdez/conda-express"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -33,6 +36,5 @@ tar = { version = "0.4", default-features = false }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
-[profile.release]
-lto = true
-opt-level = "s"
+[package.metadata.wasm-pack.profile.release]
+wasm-opt = false

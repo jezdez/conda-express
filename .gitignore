@@ -1,7 +1,8 @@
 /target
 /.pixi
 /docs/_build
-spike/cx-wasm-spike/target/
-spike/cx-wasm-spike/www/cx_wasm_spike*
-spike/cx-wasm-spike/www/cx.lock
-spike/cx-wasm-spike/www/test.conda
+crates/cx-web/target/
+crates/cx-web/pkg/
+crates/cx-web/www/cx_web*
+crates/cx-web/www/cx.lock
+crates/cx-web/www/test.conda

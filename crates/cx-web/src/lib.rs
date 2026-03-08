@@ -63,8 +63,8 @@ pub fn get_package_urls(lockfile_content: &str, platform_str: &str) -> String {
 
 #[wasm_bindgen]
 pub fn cx_init() -> String {
-    web_sys::console::log_1(&"cx-wasm-spike initialized".into());
-    format!("cx-wasm-spike v{}", env!("CARGO_PKG_VERSION"))
+    web_sys::console::log_1(&"cx-web initialized".into());
+    format!("cx-web v{}", env!("CARGO_PKG_VERSION"))
 }
 
 /// Fetch bytes from a URL using the browser Fetch API with a 5-minute timeout.
