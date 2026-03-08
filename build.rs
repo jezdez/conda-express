@@ -57,12 +57,16 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CX_PACKAGES");
     println!("cargo:rerun-if-env-changed=CX_CHANNELS");
     println!("cargo:rerun-if-env-changed=CX_EXCLUDE");
+    println!("cargo:rerun-if-env-changed=CX_PLATFORM");
 
     let env_packages = env::var("CX_PACKAGES").ok().filter(|v| !v.is_empty());
     let env_channels = env::var("CX_CHANNELS").ok().filter(|v| !v.is_empty());
     let env_exclude = env::var("CX_EXCLUDE").ok().filter(|v| !v.is_empty());
-    let has_env_overrides =
-        env_packages.is_some() || env_channels.is_some() || env_exclude.is_some();
+    let env_platform = env::var("CX_PLATFORM").ok().filter(|v| !v.is_empty());
+    let has_env_overrides = env_packages.is_some()
+        || env_channels.is_some()
+        || env_exclude.is_some()
+        || env_platform.is_some();
 
     if let Some(ref val) = env_packages {
         config.tool.cx.packages = val
@@ -89,10 +93,20 @@ fn main() {
         eprintln!("cx: CX_EXCLUDE override: {:?}", config.tool.cx.exclude);
     }
 
+    let target_platform = if let Some(ref val) = env_platform {
+        let p = val
+            .parse::<Platform>()
+            .unwrap_or_else(|_| panic!("cx: invalid CX_PLATFORM value: {val}"));
+        eprintln!("cx: CX_PLATFORM override: {p}");
+        p
+    } else {
+        Platform::current()
+    };
+
     let input_hash = {
         let mut hasher = Sha256::new();
         hasher.update(config_contents.as_bytes());
-        hasher.update(Platform::current().as_str().as_bytes());
+        hasher.update(target_platform.as_str().as_bytes());
         if let Some(ref v) = env_packages {
             hasher.update(v.as_bytes());
         }
@@ -139,7 +153,7 @@ fn main() {
         .expect("failed to create tokio runtime");
 
     let lock_content = runtime
-        .block_on(solve_and_lock(&config.tool.cx))
+        .block_on(solve_and_lock(&config.tool.cx, target_platform))
         .expect("cx: failed to solve");
 
     std::fs::write(&lock_path, &lock_content).expect("failed to write cx.lock");
@@ -163,9 +177,11 @@ fn main() {
 }
 
 /// Fetch repodata, solve, filter exclusions, and produce a lockfile string.
-async fn solve_and_lock(config: &CxConfig) -> Result<String, Box<dyn std::error::Error>> {
+async fn solve_and_lock(
+    config: &CxConfig,
+    platform: Platform,
+) -> Result<String, Box<dyn std::error::Error>> {
     let channel_config = ChannelConfig::default_with_root_dir(env::current_dir()?);
-    let platform = Platform::current();
 
     let match_specs: Vec<MatchSpec> = config
         .packages
@@ -220,12 +236,17 @@ async fn solve_and_lock(config: &CxConfig) -> Result<String, Box<dyn std::error:
         start.elapsed().as_secs_f64()
     );
 
-    let virtual_packages = rattler_virtual_packages::VirtualPackage::detect(
-        &rattler_virtual_packages::VirtualPackageOverrides::default(),
-    )?
-    .iter()
-    .map(|vpkg| GenericVirtualPackage::from(vpkg.clone()))
-    .collect::<Vec<_>>();
+    let virtual_packages = if platform == Platform::current() {
+        rattler_virtual_packages::VirtualPackage::detect(
+            &rattler_virtual_packages::VirtualPackageOverrides::default(),
+        )?
+        .iter()
+        .map(|vpkg| GenericVirtualPackage::from(vpkg.clone()))
+        .collect::<Vec<_>>()
+    } else {
+        eprintln!("cx: cross-solving for {platform}, using no virtual packages");
+        Vec::new()
+    };
 
     let solver_task = SolverTask {
         virtual_packages,
