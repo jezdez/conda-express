@@ -6,6 +6,7 @@ use rattler_lock::LockFile;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
+use crate::error::CxWebError;
 use crate::extract;
 
 #[derive(Debug, Serialize)]
@@ -29,17 +30,20 @@ pub struct BootstrapResult {
 }
 
 /// Parse lockfile records for a given platform.
-pub(crate) fn get_records(lockfile_content: &str, platform: Platform) -> Result<Vec<RepoDataRecord>, String> {
+pub(crate) fn get_records(
+    lockfile_content: &str,
+    platform: Platform,
+) -> Result<Vec<RepoDataRecord>, CxWebError> {
     let reader = Cursor::new(lockfile_content.as_bytes());
     let lockfile =
-        LockFile::from_reader(reader).map_err(|e| format!("failed to parse lockfile: {e}"))?;
+        LockFile::from_reader(reader).map_err(|e| CxWebError::LockfileParse(e.to_string()))?;
     let env = lockfile
         .default_environment()
-        .ok_or("no default environment in lockfile")?;
+        .ok_or(CxWebError::NoDefaultEnvironment)?;
 
     env.conda_repodata_records(platform)
-        .map_err(|e| format!("failed to get records: {e}"))?
-        .ok_or_else(|| format!("no records for platform {}", platform.as_str()))
+        .map_err(|e| CxWebError::LockfileParse(e.to_string()))?
+        .ok_or_else(|| CxWebError::NoRecordsForPlatform(platform.as_str().to_string()))
 }
 
 /// Bootstrap a conda environment from a lockfile: download and extract all packages.
@@ -50,9 +54,9 @@ pub async fn bootstrap_impl(
     lockfile_content: &str,
     platform_str: &str,
     progress: Option<&js_sys::Function>,
-) -> Result<BootstrapResult, String> {
+) -> Result<BootstrapResult, CxWebError> {
     let platform = Platform::from_str(platform_str)
-        .map_err(|_| format!("unknown platform: {platform_str}"))?;
+        .map_err(|_| CxWebError::PlatformUnknown(platform_str.to_string()))?;
 
     let records = get_records(lockfile_content, platform)?;
     let total = records.len();
@@ -130,7 +134,7 @@ pub async fn bootstrap_impl(
 async fn download_and_extract_package(
     name: &str,
     url: &str,
-) -> Result<extract::CondaPackageContents, String> {
+) -> Result<extract::CondaPackageContents, CxWebError> {
     web_sys::console::log_1(&format!("  Downloading {name} from {url}").into());
     let bytes = crate::fetch_bytes(url).await?;
     web_sys::console::log_1(
@@ -142,7 +146,7 @@ async fn download_and_extract_package(
     } else if url.ends_with(".tar.bz2") {
         extract::extract_tar_bz2(&bytes)
     } else {
-        Err(format!("unknown package format: {url}"))
+        Err(CxWebError::UnknownPackageFormat(url.to_string()))
     };
 
     if let Ok(ref contents) = result {

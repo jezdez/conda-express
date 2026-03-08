@@ -162,11 +162,10 @@
         const bootstrapBtn = document.getElementById('bootstrap-btn');
 
         let wasmReady = false;
-        let wasmModule = null;
 
         async function run() {
             try {
-                wasmModule = await init();
+                await init();
                 const version = cx_init();
                 statusEl.textContent = 'WASM loaded: ' + version;
                 statusEl.className = 'success';
@@ -179,29 +178,25 @@
             }
         }
 
+        function populateSelect(selectEl, platforms) {
+            while (selectEl.firstChild) selectEl.removeChild(selectEl.firstChild);
+            for (const p of platforms) {
+                const opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                selectEl.appendChild(opt);
+            }
+            selectEl.disabled = false;
+        }
+
         function updatePlatforms() {
             const content = lockfileInput.value;
             if (!content.trim() || !wasmReady) return;
             try {
-                const platforms = JSON.parse(get_platforms(content));
-                while (platformSelect.firstChild) platformSelect.removeChild(platformSelect.firstChild);
-                for (const p of platforms) {
-                    const opt = document.createElement('option');
-                    opt.value = p;
-                    opt.textContent = p;
-                    platformSelect.appendChild(opt);
-                }
-                platformSelect.disabled = false;
+                const platforms = get_platforms(content);
+                populateSelect(platformSelect, platforms);
                 parseBtn.disabled = false;
-
-                while (bootstrapPlatform.firstChild) bootstrapPlatform.removeChild(bootstrapPlatform.firstChild);
-                for (const p of platforms) {
-                    const opt = document.createElement('option');
-                    opt.value = p;
-                    opt.textContent = p;
-                    bootstrapPlatform.appendChild(opt);
-                }
-                bootstrapPlatform.disabled = false;
+                populateSelect(bootstrapPlatform, platforms);
                 planBtn.disabled = false;
                 bootstrapBtn.disabled = false;
             } catch (e) {
@@ -231,14 +226,15 @@
             if (!content.trim() || !platform) return;
             try {
                 const t0 = performance.now();
-                const names = JSON.parse(get_package_names(content, platform));
-                const urls = JSON.parse(get_package_urls(content, platform));
+                const names = get_package_names(content, platform);
+                const urls = get_package_urls(content, platform);
                 const elapsed = (performance.now() - t0).toFixed(1);
                 pkgCount.textContent = '(' + names.length + ' packages, ' + elapsed + 'ms)';
                 namesOutput.textContent = names.length > 0 ? names.join('\n') : 'No packages found for ' + platform;
                 urlsOutput.textContent = urls.length > 0 ? urls.join('\n') : 'No URLs found';
             } catch (e) {
-                namesOutput.textContent = 'Error: ' + e;
+                namesOutput.textContent = 'Error: ' + e.message;
+                namesOutput.className = 'error';
             }
         });
 
@@ -274,7 +270,6 @@
             extractResults.style.display = 'block';
         }
 
-        // Download from URL
         downloadBtn.addEventListener('click', async () => {
             const url = pkgUrlInput.value.trim();
             if (!url || !wasmReady) return;
@@ -284,25 +279,18 @@
             extractResults.style.display = 'none';
             try {
                 const t0 = performance.now();
-                const resultJson = await download_and_list_package(url);
+                const data = await download_and_list_package(url);
                 const elapsed = (performance.now() - t0).toFixed(0);
-                const data = JSON.parse(resultJson);
-                if (data.error) {
-                    extractStatus.textContent = 'Error: ' + data.error;
-                    extractStatus.className = 'error';
-                } else {
-                    extractStatus.textContent = 'Extracted in ' + elapsed + 'ms';
-                    extractStatus.className = 'success';
-                    showExtractResults(data);
-                }
+                extractStatus.textContent = 'Extracted in ' + elapsed + 'ms';
+                extractStatus.className = 'success';
+                showExtractResults(data);
             } catch (e) {
-                extractStatus.textContent = 'Error: ' + e;
+                extractStatus.textContent = 'Error: ' + e.message;
                 extractStatus.className = 'error';
             }
             downloadBtn.disabled = false;
         });
 
-        // Drag-and-drop .conda file
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('dragover');
@@ -326,57 +314,45 @@
             try {
                 const arrayBuf = await file.arrayBuffer();
                 const bytes = new Uint8Array(arrayBuf);
-
-                // Use the WASM extract function directly via wasm-bindgen raw API
-                // Since we don't have a direct "extract from bytes" binding yet,
-                // we'll create a local blob URL and use download_and_list_package
                 const blob = new Blob([bytes], { type: 'application/octet-stream' });
                 const blobUrl = URL.createObjectURL(blob);
 
                 const t0 = performance.now();
-                const resultJson = await download_and_list_package(blobUrl);
+                const data = await download_and_list_package(blobUrl);
                 const elapsed = (performance.now() - t0).toFixed(0);
                 URL.revokeObjectURL(blobUrl);
 
-                const data = JSON.parse(resultJson);
-                if (data.error) {
-                    extractStatus.textContent = 'Error: ' + data.error;
-                    extractStatus.className = 'error';
-                } else {
-                    extractStatus.textContent = 'Extracted ' + file.name + ' in ' + elapsed + 'ms';
-                    extractStatus.className = 'success';
-                    showExtractResults(data);
-                }
+                extractStatus.textContent = 'Extracted ' + file.name + ' in ' + elapsed + 'ms';
+                extractStatus.className = 'success';
+                showExtractResults(data);
                 dropZone.textContent = 'Drop another .conda file here';
             } catch (e) {
-                extractStatus.textContent = 'Error: ' + e;
+                extractStatus.textContent = 'Error: ' + e.message;
                 extractStatus.className = 'error';
                 dropZone.textContent = 'Drop a .conda file here';
             }
         });
 
-        // Bootstrap plan
         planBtn.addEventListener('click', () => {
             const content = lockfileInput.value;
             const platform = bootstrapPlatform.value;
             if (!content.trim() || !platform || !wasmReady) return;
 
-            const data = JSON.parse(cx_bootstrap_plan(content, platform));
             const planResults = document.getElementById('plan-results');
             const planSummary = document.getElementById('plan-summary');
 
-            if (data.error) {
-                planSummary.textContent = 'Error: ' + data.error;
-                planSummary.className = 'error';
-            } else {
+            try {
+                const data = cx_bootstrap_plan(content, platform);
                 planSummary.textContent = data.package_count + ' packages, '
                     + formatSize(data.total_download_size) + ' to download for ' + platform;
                 planSummary.className = 'success';
+            } catch (e) {
+                planSummary.textContent = 'Error: ' + e.message;
+                planSummary.className = 'error';
             }
             planResults.style.display = 'block';
         });
 
-        // Full bootstrap
         bootstrapBtn.addEventListener('click', async () => {
             const content = lockfileInput.value;
             const platform = bootstrapPlatform.value;
@@ -404,54 +380,48 @@
 
             try {
                 const t0 = performance.now();
-                const resultJson = await cx_bootstrap(content, platform, progressCb);
+                const data = await cx_bootstrap(content, platform, progressCb);
                 const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-                const data = JSON.parse(resultJson);
 
-                if (data.error) {
-                    bsStatus.textContent = 'Error: ' + data.error;
-                    bsStatus.className = 'error';
-                } else {
-                    progressBar.style.width = '100%';
-                    bsStatus.textContent = 'Bootstrap complete in ' + elapsed + 's';
-                    bsStatus.className = 'success';
+                progressBar.style.width = '100%';
+                bsStatus.textContent = 'Bootstrap complete in ' + elapsed + 's';
+                bsStatus.className = 'success';
 
-                    document.getElementById('bootstrap-summary').textContent =
-                        '(' + data.packages.length + ' packages, '
-                        + data.total_files + ' files, '
-                        + formatSize(data.total_size) + ')';
+                document.getElementById('bootstrap-summary').textContent =
+                    '(' + data.packages.length + ' packages, '
+                    + data.total_files + ' files, '
+                    + formatSize(data.total_size) + ')';
 
-                    const tbody = document.querySelector('#bootstrap-table tbody');
-                    tbody.innerHTML = '';
-                    for (const pkg of data.packages) {
-                        const tr = document.createElement('tr');
-                        const tdName = document.createElement('td');
-                        tdName.textContent = pkg.name;
-                        const tdVer = document.createElement('td');
-                        tdVer.textContent = pkg.version;
-                        const tdFiles = document.createElement('td');
-                        tdFiles.className = 'size';
-                        tdFiles.textContent = (pkg.info_files.length + pkg.pkg_files.length).toString();
-                        const tdSize = document.createElement('td');
-                        tdSize.className = 'size';
-                        tdSize.textContent = formatSize(pkg.total_size);
-                        tr.appendChild(tdName);
-                        tr.appendChild(tdVer);
-                        tr.appendChild(tdFiles);
-                        tr.appendChild(tdSize);
-                        tbody.appendChild(tr);
-                    }
+                const tbody = document.querySelector('#bootstrap-table tbody');
+                tbody.innerHTML = '';
+                for (const pkg of data.packages) {
+                    const tr = document.createElement('tr');
+                    const tdName = document.createElement('td');
+                    tdName.textContent = pkg.name;
+                    const tdVer = document.createElement('td');
+                    tdVer.textContent = pkg.version;
+                    const tdFiles = document.createElement('td');
+                    tdFiles.className = 'size';
+                    tdFiles.textContent = (pkg.info_files.length + pkg.pkg_files.length).toString();
+                    const tdSize = document.createElement('td');
+                    tdSize.className = 'size';
+                    tdSize.textContent = formatSize(pkg.total_size);
+                    tr.appendChild(tdName);
+                    tr.appendChild(tdVer);
+                    tr.appendChild(tdFiles);
+                    tr.appendChild(tdSize);
+                    tbody.appendChild(tr);
+                }
 
-                    bsResults.style.display = 'block';
+                bsResults.style.display = 'block';
 
-                    if (data.errors.length > 0) {
-                        const errDiv = document.getElementById('bootstrap-errors');
-                        document.getElementById('bootstrap-error-list').textContent = data.errors.join('\n');
-                        errDiv.style.display = 'block';
-                    }
+                if (data.errors.length > 0) {
+                    const errDiv = document.getElementById('bootstrap-errors');
+                    document.getElementById('bootstrap-error-list').textContent = data.errors.join('\n');
+                    errDiv.style.display = 'block';
                 }
             } catch (e) {
-                bsStatus.textContent = 'Error: ' + e;
+                bsStatus.textContent = 'Error: ' + e.message;
                 bsStatus.className = 'error';
             }
 
