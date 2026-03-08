@@ -1,0 +1,30 @@
+{
+  "name": "@conda-express/jupyterlite-cx",
+  "version": "0.1.0",
+  "description": "JupyterLite extension that bootstraps a conda environment via cx-web",
+  "license": "BSD-3-Clause",
+  "private": true,
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "lib/**/*.{js,d.ts,map}"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "clean": "rimraf lib tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@lumino/coreutils": "^2.1.0"
+  },
+  "peerDependencies": {
+    "@jupyterlab/application": "^4.0.0"
+  },
+  "devDependencies": {
+    "@jupyterlab/application": "^4.0.0",
+    "rimraf": "^5.0.0",
+    "typescript": "~5.3.0"
+  },
+  "jupyterlab": {
+    "extension": true
+  }
+}
