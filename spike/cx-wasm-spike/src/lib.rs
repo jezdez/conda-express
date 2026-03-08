@@ -4,7 +4,7 @@ mod extract;
 use std::io::Cursor;
 use std::str::FromStr;
 
-use rattler_conda_types::{Platform, RepoDataRecord};
+use rattler_conda_types::Platform;
 use rattler_lock::LockFile;
 use wasm_bindgen::prelude::*;
 
@@ -16,16 +16,12 @@ pub fn get_platforms(lockfile_content: &str) -> String {
         Ok(lf) => lf,
         Err(_) => return "[]".to_string(),
     };
-    let default_env = match lockfile.default_environment() {
-        Some(env) => env,
+    let env = match lockfile.default_environment() {
+        Some(e) => e,
         None => return "[]".to_string(),
     };
 
-    let platforms: Vec<String> = default_env
-        .platforms()
-        .map(|p| p.as_str().to_string())
-        .collect();
-
+    let platforms: Vec<String> = env.platforms().map(|p| p.as_str().to_string()).collect();
     serde_json::to_string(&platforms).unwrap_or_else(|_| "[]".to_string())
 }
 
@@ -36,8 +32,17 @@ pub fn get_package_names(lockfile_content: &str, platform_str: &str) -> String {
         Ok(p) => p,
         Err(_) => return format!("{{\"error\": \"unknown platform: {platform_str}\"}}"),
     };
-    let names = packages_from_lockfile(lockfile_content, platform);
-    serde_json::to_string(&names).unwrap_or_else(|_| "[]".to_string())
+    match bootstrap::get_records(lockfile_content, platform) {
+        Ok(records) => {
+            let mut names: Vec<String> = records
+                .into_iter()
+                .map(|r| r.package_record.name.as_normalized().to_string())
+                .collect();
+            names.sort();
+            serde_json::to_string(&names).unwrap_or_else(|_| "[]".to_string())
+        }
+        Err(e) => serde_json::json!({"error": e}).to_string(),
+    }
 }
 
 /// Parse a lockfile and return package download URLs as a JSON array for the given platform.
@@ -47,8 +52,13 @@ pub fn get_package_urls(lockfile_content: &str, platform_str: &str) -> String {
         Ok(p) => p,
         Err(_) => return format!("{{\"error\": \"unknown platform: {platform_str}\"}}"),
     };
-    let urls = package_urls_from_lockfile(lockfile_content, platform);
-    serde_json::to_string(&urls).unwrap_or_else(|_| "[]".to_string())
+    match bootstrap::get_records(lockfile_content, platform) {
+        Ok(records) => {
+            let urls: Vec<String> = records.into_iter().map(|r| r.url.to_string()).collect();
+            serde_json::to_string(&urls).unwrap_or_else(|_| "[]".to_string())
+        }
+        Err(e) => serde_json::json!({"error": e}).to_string(),
+    }
 }
 
 #[wasm_bindgen]
@@ -78,6 +88,8 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
 
     let window = web_sys::window().ok_or("no global window")?;
 
+    // into_js_value() leaks the Closure (calls forget() internally).
+    // Acceptable here: one small alloc per fetch, freed when page unloads.
     let timeout_id = window
         .set_timeout_with_callback_and_timeout_and_arguments_0(
             &wasm_bindgen::closure::Closure::<dyn Fn()>::new({
@@ -181,22 +193,10 @@ pub fn cx_bootstrap_plan(lockfile_content: &str, platform_str: &str) -> String {
         }
     };
 
-    let reader = Cursor::new(lockfile_content.as_bytes());
-    let lockfile = match LockFile::from_reader(reader) {
-        Ok(lf) => lf,
-        Err(e) => return serde_json::json!({"error": format!("parse error: {e}")}).to_string(),
+    let records = match bootstrap::get_records(lockfile_content, platform) {
+        Ok(r) => r,
+        Err(e) => return serde_json::json!({"error": e}).to_string(),
     };
-
-    let env = match lockfile.default_environment() {
-        Some(e) => e,
-        None => return serde_json::json!({"error": "no default environment"}).to_string(),
-    };
-
-    let records: Vec<RepoDataRecord> = env
-        .conda_repodata_records(platform)
-        .ok()
-        .flatten()
-        .unwrap_or_default();
 
     let packages: Vec<serde_json::Value> = records
         .iter()
@@ -222,44 +222,6 @@ pub fn cx_bootstrap_plan(lockfile_content: &str, platform_str: &str) -> String {
         "packages": packages,
     })
     .to_string()
-}
-
-fn packages_from_lockfile(lockfile_content: &str, platform: Platform) -> Vec<String> {
-    let reader = Cursor::new(lockfile_content.as_bytes());
-    let lockfile = LockFile::from_reader(reader).expect("failed to parse lockfile");
-    let default_env = lockfile
-        .default_environment()
-        .expect("no default environment");
-
-    let records: Vec<RepoDataRecord> = default_env
-        .conda_repodata_records(platform)
-        .ok()
-        .flatten()
-        .unwrap_or_default();
-
-    let mut names: Vec<String> = records
-        .into_iter()
-        .map(|r| r.package_record.name.as_normalized().to_string())
-        .collect();
-
-    names.sort();
-    names
-}
-
-fn package_urls_from_lockfile(lockfile_content: &str, platform: Platform) -> Vec<String> {
-    let reader = Cursor::new(lockfile_content.as_bytes());
-    let lockfile = LockFile::from_reader(reader).expect("failed to parse lockfile");
-    let default_env = lockfile
-        .default_environment()
-        .expect("no default environment");
-
-    let records: Vec<RepoDataRecord> = default_env
-        .conda_repodata_records(platform)
-        .ok()
-        .flatten()
-        .unwrap_or_default();
-
-    records.into_iter().map(|r| r.url.to_string()).collect()
 }
 
 #[cfg(test)]

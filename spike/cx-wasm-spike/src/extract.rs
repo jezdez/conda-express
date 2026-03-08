@@ -42,16 +42,13 @@ pub fn extract_conda(bytes: &[u8]) -> Result<CondaPackageContents, String> {
                 .map_err(|e| format!("failed to read ZIP entry {name}: {e}"))?;
 
             let is_info = name.starts_with("info-");
-            let files = extract_tar_zst(entry)?;
-
-            for file in files {
+            for file in extract_tar_zst(entry)? {
                 total_size += file.size;
                 if is_info {
-                    &mut info_files
+                    info_files.push(file);
                 } else {
-                    &mut pkg_files
+                    pkg_files.push(file);
                 }
-                .push(file);
             }
         }
     }

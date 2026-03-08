@@ -29,7 +29,7 @@ pub struct BootstrapResult {
 }
 
 /// Parse lockfile records for a given platform.
-fn get_records(lockfile_content: &str, platform: Platform) -> Result<Vec<RepoDataRecord>, String> {
+pub(crate) fn get_records(lockfile_content: &str, platform: Platform) -> Result<Vec<RepoDataRecord>, String> {
     let reader = Cursor::new(lockfile_content.as_bytes());
     let lockfile =
         LockFile::from_reader(reader).map_err(|e| format!("failed to parse lockfile: {e}"))?;
