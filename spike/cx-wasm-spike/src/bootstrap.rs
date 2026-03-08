@@ -82,7 +82,7 @@ pub async fn bootstrap_impl(
             );
         }
 
-        match download_and_extract_package(&url).await {
+        match download_and_extract_package(&name, &url).await {
             Ok(contents) => {
                 let file_count = contents.info_files.len() + contents.pkg_files.len();
                 result.total_files += file_count;
@@ -128,15 +128,32 @@ pub async fn bootstrap_impl(
 }
 
 async fn download_and_extract_package(
+    name: &str,
     url: &str,
 ) -> Result<extract::CondaPackageContents, String> {
+    web_sys::console::log_1(&format!("  Downloading {name} from {url}").into());
     let bytes = crate::fetch_bytes(url).await?;
+    web_sys::console::log_1(
+        &format!("  Downloaded {name}: {} KB, extracting...", bytes.len() / 1024).into(),
+    );
 
-    if url.ends_with(".conda") {
+    let result = if url.ends_with(".conda") {
         extract::extract_conda(&bytes)
     } else if url.ends_with(".tar.bz2") {
-        Err("tar.bz2 extraction not yet implemented".to_string())
+        extract::extract_tar_bz2(&bytes)
     } else {
         Err(format!("unknown package format: {url}"))
+    };
+
+    if let Ok(ref contents) = result {
+        web_sys::console::log_1(
+            &format!(
+                "  Extracted {name}: {} files",
+                contents.info_files.len() + contents.pkg_files.len()
+            )
+            .into(),
+        );
     }
+
+    result
 }

@@ -1,5 +1,6 @@
 use std::io::{Cursor, Read};
 
+use bzip2_rs::DecoderReader;
 use ruzstd::decoding::StreamingDecoder;
 use serde::Serialize;
 
@@ -52,6 +53,40 @@ pub fn extract_conda(bytes: &[u8]) -> Result<CondaPackageContents, String> {
                 }
                 .push(file);
             }
+        }
+    }
+
+    Ok(CondaPackageContents {
+        info_files,
+        pkg_files,
+        total_size,
+    })
+}
+
+/// Extract a `.tar.bz2` archive from raw bytes.
+pub fn extract_tar_bz2(bytes: &[u8]) -> Result<CondaPackageContents, String> {
+    let reader = Cursor::new(bytes);
+    let decoder = DecoderReader::new(reader);
+    let mut tar = tar::Archive::new(decoder);
+    let mut info_files = Vec::new();
+    let mut pkg_files = Vec::new();
+    let mut total_size = 0usize;
+
+    for entry_result in tar.entries().map_err(|e| format!("tar entries error: {e}"))? {
+        let entry = entry_result.map_err(|e| format!("tar entry error: {e}"))?;
+        let path = entry
+            .path()
+            .map_err(|e| format!("tar path error: {e}"))?
+            .to_string_lossy()
+            .into_owned();
+        let size = entry.size() as usize;
+        total_size += size;
+
+        let file = ExtractedFile { path: path.clone(), size };
+        if path.starts_with("info/") {
+            info_files.push(file);
+        } else {
+            pkg_files.push(file);
         }
     }
 

@@ -57,40 +57,64 @@ pub fn cx_init() -> String {
     format!("cx-wasm-spike v{}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Fetch bytes from a URL using the browser Fetch API.
+/// Fetch bytes from a URL using the browser Fetch API with a 5-minute timeout.
 pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
     use js_sys::{ArrayBuffer, Uint8Array};
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
-    use web_sys::{Request, RequestInit, RequestMode, Response};
+    use web_sys::{AbortController, Request, RequestInit, RequestMode, Response};
+
+    let controller =
+        AbortController::new().map_err(|e| format!("AbortController error: {e:?}"))?;
+    let signal = controller.signal();
 
     let opts = RequestInit::new();
     opts.set_method("GET");
     opts.set_mode(RequestMode::Cors);
+    opts.set_signal(Some(&signal));
 
     let request =
         Request::new_with_str_and_init(url, &opts).map_err(|e| format!("request error: {e:?}"))?;
 
     let window = web_sys::window().ok_or("no global window")?;
-    let resp_val = JsFuture::from(window.fetch_with_request(&request))
-        .await
-        .map_err(|e| format!("fetch error: {e:?}"))?;
-    let resp: Response = resp_val.dyn_into().map_err(|_| "response cast failed")?;
 
-    if !resp.ok() {
-        return Err(format!("HTTP {}", resp.status()));
+    let timeout_id = window
+        .set_timeout_with_callback_and_timeout_and_arguments_0(
+            &wasm_bindgen::closure::Closure::<dyn Fn()>::new({
+                let controller = controller.clone();
+                move || controller.abort()
+            })
+            .into_js_value()
+            .unchecked_into(),
+            300_000, // 5-minute timeout for large packages
+        )
+        .map_err(|e| format!("setTimeout error: {e:?}"))?;
+
+    let result = async {
+        let resp_val = JsFuture::from(window.fetch_with_request(&request))
+            .await
+            .map_err(|e| format!("fetch error (timeout or CORS?): {e:?}"))?;
+        let resp: Response = resp_val.dyn_into().map_err(|_| "response cast failed")?;
+
+        if !resp.ok() {
+            return Err(format!("HTTP {}", resp.status()));
+        }
+
+        let buf_promise = resp
+            .array_buffer()
+            .map_err(|e| format!("array_buffer error: {e:?}"))?;
+        let buf_val = JsFuture::from(buf_promise)
+            .await
+            .map_err(|e| format!("buffer read error: {e:?}"))?;
+        let buf: ArrayBuffer = buf_val.dyn_into().map_err(|_| "buffer cast failed")?;
+        let array = Uint8Array::new(&buf);
+
+        Ok(array.to_vec())
     }
+    .await;
 
-    let buf_promise = resp
-        .array_buffer()
-        .map_err(|e| format!("array_buffer error: {e:?}"))?;
-    let buf_val = JsFuture::from(buf_promise)
-        .await
-        .map_err(|e| format!("buffer error: {e:?}"))?;
-    let buf: ArrayBuffer = buf_val.dyn_into().map_err(|_| "buffer cast failed")?;
-    let array = Uint8Array::new(&buf);
-
-    Ok(array.to_vec())
+    window.clear_timeout_with_handle(timeout_id);
+    result
 }
 
 /// Download a .conda package from the given URL and return a JSON listing of its contents.
@@ -109,7 +133,11 @@ async fn download_and_list_impl(url: &str) -> Result<String, String> {
     let size_kb = bytes.len() / 1024;
     web_sys::console::log_1(&format!("Downloaded {size_kb} KB, extracting...").into());
 
-    let contents = extract::extract_conda(&bytes)?;
+    let contents = if url.ends_with(".tar.bz2") {
+        extract::extract_tar_bz2(&bytes)?
+    } else {
+        extract::extract_conda(&bytes)?
+    };
 
     web_sys::console::log_1(
         &format!(
