@@ -4,3 +4,4 @@
 spike/cx-wasm-spike/target/
 spike/cx-wasm-spike/www/cx_wasm_spike*
 spike/cx-wasm-spike/www/cx.lock
+spike/cx-wasm-spike/www/test.conda

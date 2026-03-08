@@ -1,0 +1,86 @@
+use std::io::{Cursor, Read};
+
+use ruzstd::decoding::StreamingDecoder;
+use serde::Serialize;
+
+#[derive(Debug, Serialize)]
+pub struct ExtractedFile {
+    pub path: String,
+    pub size: usize,
+}
+
+#[derive(Debug, Serialize)]
+pub struct CondaPackageContents {
+    pub info_files: Vec<ExtractedFile>,
+    pub pkg_files: Vec<ExtractedFile>,
+    pub total_size: usize,
+}
+
+/// Extract a `.conda` archive from raw bytes, returning metadata about contents.
+///
+/// `.conda` format: outer uncompressed ZIP containing:
+///   - `info-*.tar.zst` (package metadata)
+///   - `pkg-*.tar.zst` (package files)
+pub fn extract_conda(bytes: &[u8]) -> Result<CondaPackageContents, String> {
+    let reader = Cursor::new(bytes);
+    let mut archive =
+        zip::ZipArchive::new(reader).map_err(|e| format!("failed to open ZIP: {e}"))?;
+
+    let mut info_files = Vec::new();
+    let mut pkg_files = Vec::new();
+    let mut total_size = 0usize;
+
+    let entry_names: Vec<String> = (0..archive.len())
+        .filter_map(|i| archive.by_index(i).ok().map(|e| e.name().to_string()))
+        .collect();
+
+    for name in &entry_names {
+        if name.ends_with(".tar.zst") {
+            let entry = archive
+                .by_name(name)
+                .map_err(|e| format!("failed to read ZIP entry {name}: {e}"))?;
+
+            let is_info = name.starts_with("info-");
+            let files = extract_tar_zst(entry)?;
+
+            for file in files {
+                total_size += file.size;
+                if is_info {
+                    &mut info_files
+                } else {
+                    &mut pkg_files
+                }
+                .push(file);
+            }
+        }
+    }
+
+    Ok(CondaPackageContents {
+        info_files,
+        pkg_files,
+        total_size,
+    })
+}
+
+/// Decompress a zstd-compressed tar stream and list the entries.
+fn extract_tar_zst<R: Read>(zst_reader: R) -> Result<Vec<ExtractedFile>, String> {
+    let mut zst_reader = zst_reader;
+    let decoder = StreamingDecoder::new(&mut zst_reader)
+        .map_err(|e| format!("zstd decode error: {e}"))?;
+
+    let mut tar = tar::Archive::new(decoder);
+    let mut files = Vec::new();
+
+    for entry_result in tar.entries().map_err(|e| format!("tar entries error: {e}"))? {
+        let entry = entry_result.map_err(|e| format!("tar entry error: {e}"))?;
+        let path = entry
+            .path()
+            .map_err(|e| format!("tar path error: {e}"))?
+            .to_string_lossy()
+            .into_owned();
+        let size = entry.size() as usize;
+        files.push(ExtractedFile { path, size });
+    }
+
+    Ok(files)
+}

@@ -1,3 +1,5 @@
+mod extract;
+
 use std::io::Cursor;
 use std::str::FromStr;
 
@@ -52,6 +54,73 @@ pub fn get_package_urls(lockfile_content: &str, platform_str: &str) -> String {
 pub fn cx_init() -> String {
     web_sys::console::log_1(&"cx-wasm-spike initialized".into());
     format!("cx-wasm-spike v{}", env!("CARGO_PKG_VERSION"))
+}
+
+/// Fetch bytes from a URL using the browser Fetch API.
+async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
+    use js_sys::{ArrayBuffer, Uint8Array};
+    use wasm_bindgen::JsCast;
+    use wasm_bindgen_futures::JsFuture;
+    use web_sys::{Request, RequestInit, RequestMode, Response};
+
+    let opts = RequestInit::new();
+    opts.set_method("GET");
+    opts.set_mode(RequestMode::Cors);
+
+    let request =
+        Request::new_with_str_and_init(url, &opts).map_err(|e| format!("request error: {e:?}"))?;
+
+    let window = web_sys::window().ok_or("no global window")?;
+    let resp_val = JsFuture::from(window.fetch_with_request(&request))
+        .await
+        .map_err(|e| format!("fetch error: {e:?}"))?;
+    let resp: Response = resp_val.dyn_into().map_err(|_| "response cast failed")?;
+
+    if !resp.ok() {
+        return Err(format!("HTTP {}", resp.status()));
+    }
+
+    let buf_promise = resp
+        .array_buffer()
+        .map_err(|e| format!("array_buffer error: {e:?}"))?;
+    let buf_val = JsFuture::from(buf_promise)
+        .await
+        .map_err(|e| format!("buffer error: {e:?}"))?;
+    let buf: ArrayBuffer = buf_val.dyn_into().map_err(|_| "buffer cast failed")?;
+    let array = Uint8Array::new(&buf);
+
+    Ok(array.to_vec())
+}
+
+/// Download a .conda package from the given URL and return a JSON listing of its contents.
+#[wasm_bindgen]
+pub async fn download_and_list_package(url: String) -> String {
+    match download_and_list_impl(&url).await {
+        Ok(json) => json,
+        Err(e) => serde_json::json!({"error": e}).to_string(),
+    }
+}
+
+async fn download_and_list_impl(url: &str) -> Result<String, String> {
+    web_sys::console::log_1(&format!("Downloading {url}...").into());
+
+    let bytes = fetch_bytes(url).await?;
+    let size_kb = bytes.len() / 1024;
+    web_sys::console::log_1(&format!("Downloaded {size_kb} KB, extracting...").into());
+
+    let contents = extract::extract_conda(&bytes)?;
+
+    web_sys::console::log_1(
+        &format!(
+            "Extracted {} info files + {} pkg files ({} KB total)",
+            contents.info_files.len(),
+            contents.pkg_files.len(),
+            contents.total_size / 1024
+        )
+        .into(),
+    );
+
+    serde_json::to_string(&contents).map_err(|e| format!("json error: {e}"))
 }
 
 fn packages_from_lockfile(lockfile_content: &str, platform: Platform) -> Vec<String> {

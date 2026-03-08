@@ -10,19 +10,34 @@
         .success { color: #2a7; font-weight: bold; }
         .error { color: #c33; }
         h1 { border-bottom: 2px solid #eee; padding-bottom: 0.5rem; }
+        h2 { margin-top: 2rem; border-bottom: 1px solid #eee; padding-bottom: 0.3rem; }
         button { padding: 0.5rem 1rem; font-size: 1rem; cursor: pointer; margin-right: 0.5rem; }
         button:disabled { opacity: 0.5; cursor: default; }
         select { padding: 0.4rem; font-size: 1rem; }
         textarea { width: 100%; height: 150px; font-family: monospace; font-size: 0.85rem; }
+        input[type="text"] { width: 100%; padding: 0.4rem; font-size: 0.9rem; font-family: monospace; box-sizing: border-box; }
         .controls { display: flex; align-items: center; gap: 0.5rem; margin: 1rem 0; }
         details { margin: 1rem 0; }
         summary { cursor: pointer; font-weight: bold; }
+        .drop-zone {
+            border: 2px dashed #ccc; border-radius: 8px; padding: 2rem;
+            text-align: center; color: #888; margin: 1rem 0; transition: all 0.2s;
+        }
+        .drop-zone.dragover { border-color: #2a7; background: #f0faf5; color: #2a7; }
+        .spinner { display: inline-block; width: 1em; height: 1em; border: 2px solid #ccc; border-top-color: #2a7; border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 0.5em; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        table { border-collapse: collapse; width: 100%; font-size: 0.85rem; }
+        th, td { text-align: left; padding: 0.3rem 0.8rem; border-bottom: 1px solid #eee; }
+        th { background: #f9f9f9; position: sticky; top: 0; }
+        .size { text-align: right; font-family: monospace; }
     </style>
 </head>
 <body>
     <h1>cx WASM Spike</h1>
     <p id="init-status" class="status">Loading WASM module...</p>
 
+    <!-- Lockfile parsing section -->
+    <h2>1. Lockfile Parsing</h2>
     <div class="controls">
         <button id="load-cxlock-btn" disabled>Load cx.lock from project</button>
         <span>or paste your own lockfile below</span>
@@ -47,8 +62,48 @@
     <h3>Download URLs</h3>
     <pre id="urls-output">-</pre>
 
+    <!-- Package extraction section -->
+    <h2>2. Package Download &amp; Extraction</h2>
+    <p>Download a <code>.conda</code> package and extract its contents in the browser using pure WASM.</p>
+
+    <div>
+        <label for="pkg-url"><strong>Package URL:</strong></label>
+        <input type="text" id="pkg-url" value="/test.conda" placeholder="https://conda.anaconda.org/conda-forge/noarch/tzdata-2024a-h0c530f3_0.conda">
+    </div>
+    <div class="controls">
+        <button id="download-btn" disabled>Download &amp; Extract</button>
+        <span>or drop a .conda file below</span>
+    </div>
+
+    <div class="drop-zone" id="drop-zone">
+        Drop a .conda file here
+    </div>
+
+    <p id="extract-status" class="status"></p>
+
+    <div id="extract-results" style="display:none;">
+        <h3>Info files <span id="info-count"></span></h3>
+        <div style="max-height:300px; overflow-y:auto;">
+            <table id="info-table">
+                <thead><tr><th>Path</th><th class="size">Size</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <h3>Package files <span id="pkg-file-count"></span></h3>
+        <div style="max-height:400px; overflow-y:auto;">
+            <table id="pkg-table">
+                <thead><tr><th>Path</th><th class="size">Size</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
     <script type="module">
-        import init, { cx_init, get_platforms, get_package_names, get_package_urls } from './cx_wasm_spike.js';
+        import init, {
+            cx_init, get_platforms, get_package_names, get_package_urls,
+            download_and_list_package
+        } from './cx_wasm_spike.js';
 
         const statusEl = document.getElementById('init-status');
         const loadBtn = document.getElementById('load-cxlock-btn');
@@ -58,16 +113,23 @@
         const namesOutput = document.getElementById('names-output');
         const urlsOutput = document.getElementById('urls-output');
         const pkgCount = document.getElementById('pkg-count');
+        const downloadBtn = document.getElementById('download-btn');
+        const pkgUrlInput = document.getElementById('pkg-url');
+        const extractStatus = document.getElementById('extract-status');
+        const extractResults = document.getElementById('extract-results');
+        const dropZone = document.getElementById('drop-zone');
 
         let wasmReady = false;
+        let wasmModule = null;
 
         async function run() {
             try {
-                await init();
+                wasmModule = await init();
                 const version = cx_init();
                 statusEl.textContent = 'WASM loaded: ' + version;
                 statusEl.className = 'success';
                 loadBtn.disabled = false;
+                downloadBtn.disabled = false;
                 wasmReady = true;
             } catch (e) {
                 statusEl.textContent = 'Failed to load WASM: ' + e;
@@ -78,14 +140,9 @@
         function updatePlatforms() {
             const content = lockfileInput.value;
             if (!content.trim() || !wasmReady) return;
-
             try {
                 const platforms = JSON.parse(get_platforms(content));
-
-                while (platformSelect.firstChild) {
-                    platformSelect.removeChild(platformSelect.firstChild);
-                }
-
+                while (platformSelect.firstChild) platformSelect.removeChild(platformSelect.firstChild);
                 for (const p of platforms) {
                     const opt = document.createElement('option');
                     opt.value = p;
@@ -95,12 +152,7 @@
                 platformSelect.disabled = false;
                 parseBtn.disabled = false;
             } catch (e) {
-                const opt = document.createElement('option');
-                opt.textContent = 'Error detecting platforms';
-                while (platformSelect.firstChild) {
-                    platformSelect.removeChild(platformSelect.firstChild);
-                }
-                platformSelect.appendChild(opt);
+                console.error('Platform detection error:', e);
             }
         }
 
@@ -124,24 +176,129 @@
             const content = lockfileInput.value;
             const platform = platformSelect.value;
             if (!content.trim() || !platform) return;
-
             try {
                 const t0 = performance.now();
                 const names = JSON.parse(get_package_names(content, platform));
                 const urls = JSON.parse(get_package_urls(content, platform));
                 const elapsed = (performance.now() - t0).toFixed(1);
-
                 pkgCount.textContent = '(' + names.length + ' packages, ' + elapsed + 'ms)';
-
-                namesOutput.textContent = names.length > 0
-                    ? names.join('\n')
-                    : 'No packages found for ' + platform;
-
-                urlsOutput.textContent = urls.length > 0
-                    ? urls.join('\n')
-                    : 'No URLs found';
+                namesOutput.textContent = names.length > 0 ? names.join('\n') : 'No packages found for ' + platform;
+                urlsOutput.textContent = urls.length > 0 ? urls.join('\n') : 'No URLs found';
             } catch (e) {
                 namesOutput.textContent = 'Error: ' + e;
+            }
+        });
+
+        function formatSize(bytes) {
+            if (bytes < 1024) return bytes + ' B';
+            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        }
+
+        function fillTable(tableId, files) {
+            const tbody = document.querySelector('#' + tableId + ' tbody');
+            tbody.innerHTML = '';
+            for (const f of files) {
+                const tr = document.createElement('tr');
+                const tdPath = document.createElement('td');
+                tdPath.textContent = f.path;
+                const tdSize = document.createElement('td');
+                tdSize.className = 'size';
+                tdSize.textContent = formatSize(f.size);
+                tr.appendChild(tdPath);
+                tr.appendChild(tdSize);
+                tbody.appendChild(tr);
+            }
+        }
+
+        function showExtractResults(data) {
+            document.getElementById('info-count').textContent =
+                '(' + data.info_files.length + ' files)';
+            document.getElementById('pkg-file-count').textContent =
+                '(' + data.pkg_files.length + ' files, ' + formatSize(data.total_size) + ' total)';
+            fillTable('info-table', data.info_files);
+            fillTable('pkg-table', data.pkg_files);
+            extractResults.style.display = 'block';
+        }
+
+        // Download from URL
+        downloadBtn.addEventListener('click', async () => {
+            const url = pkgUrlInput.value.trim();
+            if (!url || !wasmReady) return;
+            downloadBtn.disabled = true;
+            extractStatus.innerHTML = '<span class="spinner"></span>Downloading and extracting...';
+            extractStatus.className = 'status';
+            extractResults.style.display = 'none';
+            try {
+                const t0 = performance.now();
+                const resultJson = await download_and_list_package(url);
+                const elapsed = (performance.now() - t0).toFixed(0);
+                const data = JSON.parse(resultJson);
+                if (data.error) {
+                    extractStatus.textContent = 'Error: ' + data.error;
+                    extractStatus.className = 'error';
+                } else {
+                    extractStatus.textContent = 'Extracted in ' + elapsed + 'ms';
+                    extractStatus.className = 'success';
+                    showExtractResults(data);
+                }
+            } catch (e) {
+                extractStatus.textContent = 'Error: ' + e;
+                extractStatus.className = 'error';
+            }
+            downloadBtn.disabled = false;
+        });
+
+        // Drag-and-drop .conda file
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            if (!wasmReady) return;
+
+            const file = e.dataTransfer.files[0];
+            if (!file) return;
+
+            dropZone.textContent = 'Reading ' + file.name + '...';
+            extractStatus.innerHTML = '<span class="spinner"></span>Extracting ' + file.name + '...';
+            extractStatus.className = 'status';
+            extractResults.style.display = 'none';
+
+            try {
+                const arrayBuf = await file.arrayBuffer();
+                const bytes = new Uint8Array(arrayBuf);
+
+                // Use the WASM extract function directly via wasm-bindgen raw API
+                // Since we don't have a direct "extract from bytes" binding yet,
+                // we'll create a local blob URL and use download_and_list_package
+                const blob = new Blob([bytes], { type: 'application/octet-stream' });
+                const blobUrl = URL.createObjectURL(blob);
+
+                const t0 = performance.now();
+                const resultJson = await download_and_list_package(blobUrl);
+                const elapsed = (performance.now() - t0).toFixed(0);
+                URL.revokeObjectURL(blobUrl);
+
+                const data = JSON.parse(resultJson);
+                if (data.error) {
+                    extractStatus.textContent = 'Error: ' + data.error;
+                    extractStatus.className = 'error';
+                } else {
+                    extractStatus.textContent = 'Extracted ' + file.name + ' in ' + elapsed + 'ms';
+                    extractStatus.className = 'success';
+                    showExtractResults(data);
+                }
+                dropZone.textContent = 'Drop another .conda file here';
+            } catch (e) {
+                extractStatus.textContent = 'Error: ' + e;
+                extractStatus.className = 'error';
+                dropZone.textContent = 'Drop a .conda file here';
             }
         });
 
