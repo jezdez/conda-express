@@ -1,3 +1,4 @@
+mod bootstrap;
 mod extract;
 
 use std::io::Cursor;
@@ -57,7 +58,7 @@ pub fn cx_init() -> String {
 }
 
 /// Fetch bytes from a URL using the browser Fetch API.
-async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
+pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, String> {
     use js_sys::{ArrayBuffer, Uint8Array};
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
@@ -121,6 +122,78 @@ async fn download_and_list_impl(url: &str) -> Result<String, String> {
     );
 
     serde_json::to_string(&contents).map_err(|e| format!("json error: {e}"))
+}
+
+/// Bootstrap all packages from a lockfile for the given platform.
+///
+/// Downloads and extracts every .conda package. Returns JSON with the full file tree.
+/// `progress` is an optional JS callback: `progress(current, total, packageName)`.
+#[wasm_bindgen]
+pub async fn cx_bootstrap(
+    lockfile_content: String,
+    platform: String,
+    progress: Option<js_sys::Function>,
+) -> String {
+    match bootstrap::bootstrap_impl(&lockfile_content, &platform, progress.as_ref()).await {
+        Ok(result) => serde_json::to_string(&result).unwrap_or_else(|e| {
+            serde_json::json!({"error": format!("json error: {e}")}).to_string()
+        }),
+        Err(e) => serde_json::json!({"error": e}).to_string(),
+    }
+}
+
+/// Get a summary of what bootstrap would do: package count, names, total download size.
+#[wasm_bindgen]
+pub fn cx_bootstrap_plan(lockfile_content: &str, platform_str: &str) -> String {
+    let platform = match Platform::from_str(platform_str) {
+        Ok(p) => p,
+        Err(_) => {
+            return serde_json::json!({"error": format!("unknown platform: {platform_str}")})
+                .to_string()
+        }
+    };
+
+    let reader = Cursor::new(lockfile_content.as_bytes());
+    let lockfile = match LockFile::from_reader(reader) {
+        Ok(lf) => lf,
+        Err(e) => return serde_json::json!({"error": format!("parse error: {e}")}).to_string(),
+    };
+
+    let env = match lockfile.default_environment() {
+        Some(e) => e,
+        None => return serde_json::json!({"error": "no default environment"}).to_string(),
+    };
+
+    let records: Vec<RepoDataRecord> = env
+        .conda_repodata_records(platform)
+        .ok()
+        .flatten()
+        .unwrap_or_default();
+
+    let packages: Vec<serde_json::Value> = records
+        .iter()
+        .map(|r| {
+            serde_json::json!({
+                "name": r.package_record.name.as_normalized(),
+                "version": r.package_record.version.to_string(),
+                "url": r.url.to_string(),
+                "size": r.package_record.size,
+            })
+        })
+        .collect();
+
+    let total_size: u64 = records
+        .iter()
+        .filter_map(|r| r.package_record.size)
+        .sum();
+
+    serde_json::json!({
+        "platform": platform_str,
+        "package_count": packages.len(),
+        "total_download_size": total_size,
+        "packages": packages,
+    })
+    .to_string()
 }
 
 fn packages_from_lockfile(lockfile_content: &str, platform: Platform) -> Vec<String> {

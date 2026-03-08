@@ -99,10 +99,49 @@
         </div>
     </div>
 
+    <!-- Bootstrap section -->
+    <h2>3. Full Bootstrap</h2>
+    <p>Download and extract <strong>all</strong> packages from a lockfile for a given platform. Requires a lockfile loaded in section 1.</p>
+
+    <div class="controls">
+        <label for="bootstrap-platform"><strong>Platform:</strong></label>
+        <select id="bootstrap-platform" disabled>
+            <option value="">Load a lockfile first</option>
+        </select>
+        <button id="plan-btn" disabled>Plan</button>
+        <button id="bootstrap-btn" disabled>Bootstrap</button>
+    </div>
+
+    <div id="plan-results" style="display:none;">
+        <p id="plan-summary"></p>
+    </div>
+
+    <div id="bootstrap-progress" style="display:none;">
+        <p id="bootstrap-status" class="status"></p>
+        <div style="background:#eee; border-radius:4px; height:24px; margin:0.5rem 0; overflow:hidden;">
+            <div id="progress-bar" style="background:#2a7; height:100%; width:0%; transition:width 0.2s;"></div>
+        </div>
+        <p id="progress-label" class="status" style="font-size:0.85rem;"></p>
+    </div>
+
+    <div id="bootstrap-results" style="display:none;">
+        <h3>Bootstrap Summary <span id="bootstrap-summary"></span></h3>
+        <div style="max-height:400px; overflow-y:auto;">
+            <table id="bootstrap-table">
+                <thead><tr><th>Package</th><th>Version</th><th class="size">Files</th><th class="size">Size</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+        <div id="bootstrap-errors" style="display:none;">
+            <h4 class="error">Errors</h4>
+            <pre id="bootstrap-error-list"></pre>
+        </div>
+    </div>
+
     <script type="module">
         import init, {
             cx_init, get_platforms, get_package_names, get_package_urls,
-            download_and_list_package
+            download_and_list_package, cx_bootstrap, cx_bootstrap_plan
         } from './cx_wasm_spike.js';
 
         const statusEl = document.getElementById('init-status');
@@ -118,6 +157,9 @@
         const extractStatus = document.getElementById('extract-status');
         const extractResults = document.getElementById('extract-results');
         const dropZone = document.getElementById('drop-zone');
+        const bootstrapPlatform = document.getElementById('bootstrap-platform');
+        const planBtn = document.getElementById('plan-btn');
+        const bootstrapBtn = document.getElementById('bootstrap-btn');
 
         let wasmReady = false;
         let wasmModule = null;
@@ -151,6 +193,17 @@
                 }
                 platformSelect.disabled = false;
                 parseBtn.disabled = false;
+
+                while (bootstrapPlatform.firstChild) bootstrapPlatform.removeChild(bootstrapPlatform.firstChild);
+                for (const p of platforms) {
+                    const opt = document.createElement('option');
+                    opt.value = p;
+                    opt.textContent = p;
+                    bootstrapPlatform.appendChild(opt);
+                }
+                bootstrapPlatform.disabled = false;
+                planBtn.disabled = false;
+                bootstrapBtn.disabled = false;
             } catch (e) {
                 console.error('Platform detection error:', e);
             }
@@ -300,6 +353,110 @@
                 extractStatus.className = 'error';
                 dropZone.textContent = 'Drop a .conda file here';
             }
+        });
+
+        // Bootstrap plan
+        planBtn.addEventListener('click', () => {
+            const content = lockfileInput.value;
+            const platform = bootstrapPlatform.value;
+            if (!content.trim() || !platform || !wasmReady) return;
+
+            const data = JSON.parse(cx_bootstrap_plan(content, platform));
+            const planResults = document.getElementById('plan-results');
+            const planSummary = document.getElementById('plan-summary');
+
+            if (data.error) {
+                planSummary.textContent = 'Error: ' + data.error;
+                planSummary.className = 'error';
+            } else {
+                planSummary.textContent = data.package_count + ' packages, '
+                    + formatSize(data.total_download_size) + ' to download for ' + platform;
+                planSummary.className = 'success';
+            }
+            planResults.style.display = 'block';
+        });
+
+        // Full bootstrap
+        bootstrapBtn.addEventListener('click', async () => {
+            const content = lockfileInput.value;
+            const platform = bootstrapPlatform.value;
+            if (!content.trim() || !platform || !wasmReady) return;
+
+            bootstrapBtn.disabled = true;
+            planBtn.disabled = true;
+            const progressDiv = document.getElementById('bootstrap-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressLabel = document.getElementById('progress-label');
+            const bsStatus = document.getElementById('bootstrap-status');
+            const bsResults = document.getElementById('bootstrap-results');
+
+            progressDiv.style.display = 'block';
+            bsResults.style.display = 'none';
+            bsStatus.innerHTML = '<span class="spinner"></span>Starting bootstrap...';
+            bsStatus.className = 'status';
+            progressBar.style.width = '0%';
+
+            const progressCb = (current, total, name) => {
+                const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+                progressBar.style.width = pct + '%';
+                progressLabel.textContent = current + '/' + total + ': ' + name;
+            };
+
+            try {
+                const t0 = performance.now();
+                const resultJson = await cx_bootstrap(content, platform, progressCb);
+                const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+                const data = JSON.parse(resultJson);
+
+                if (data.error) {
+                    bsStatus.textContent = 'Error: ' + data.error;
+                    bsStatus.className = 'error';
+                } else {
+                    progressBar.style.width = '100%';
+                    bsStatus.textContent = 'Bootstrap complete in ' + elapsed + 's';
+                    bsStatus.className = 'success';
+
+                    document.getElementById('bootstrap-summary').textContent =
+                        '(' + data.packages.length + ' packages, '
+                        + data.total_files + ' files, '
+                        + formatSize(data.total_size) + ')';
+
+                    const tbody = document.querySelector('#bootstrap-table tbody');
+                    tbody.innerHTML = '';
+                    for (const pkg of data.packages) {
+                        const tr = document.createElement('tr');
+                        const tdName = document.createElement('td');
+                        tdName.textContent = pkg.name;
+                        const tdVer = document.createElement('td');
+                        tdVer.textContent = pkg.version;
+                        const tdFiles = document.createElement('td');
+                        tdFiles.className = 'size';
+                        tdFiles.textContent = (pkg.info_files.length + pkg.pkg_files.length).toString();
+                        const tdSize = document.createElement('td');
+                        tdSize.className = 'size';
+                        tdSize.textContent = formatSize(pkg.total_size);
+                        tr.appendChild(tdName);
+                        tr.appendChild(tdVer);
+                        tr.appendChild(tdFiles);
+                        tr.appendChild(tdSize);
+                        tbody.appendChild(tr);
+                    }
+
+                    bsResults.style.display = 'block';
+
+                    if (data.errors.length > 0) {
+                        const errDiv = document.getElementById('bootstrap-errors');
+                        document.getElementById('bootstrap-error-list').textContent = data.errors.join('\n');
+                        errDiv.style.display = 'block';
+                    }
+                }
+            } catch (e) {
+                bsStatus.textContent = 'Error: ' + e;
+                bsStatus.className = 'error';
+            }
+
+            bootstrapBtn.disabled = false;
+            planBtn.disabled = false;
         });
 
         run();
