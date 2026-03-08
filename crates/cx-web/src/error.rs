@@ -6,12 +6,14 @@ use wasm_bindgen::prelude::*;
 pub enum CxWebError {
     LockfileParse(String),
     PlatformUnknown(String),
+    NotEmbedded(String),
     NoDefaultEnvironment,
     NoRecordsForPlatform(String),
     FetchFailed(String),
     ExtractFailed(String),
     SerializeFailed(String),
     UnknownPackageFormat(String),
+    CallbackFailed(String),
 }
 
 impl fmt::Display for CxWebError {
@@ -19,12 +21,14 @@ impl fmt::Display for CxWebError {
         match self {
             Self::LockfileParse(e) => write!(f, "failed to parse lockfile: {e}"),
             Self::PlatformUnknown(p) => write!(f, "unknown platform: {p}"),
+            Self::NotEmbedded(what) => write!(f, "no embedded {what} (build without CX_LOCKFILE_PATH / CX_PLATFORM)"),
             Self::NoDefaultEnvironment => write!(f, "no default environment in lockfile"),
             Self::NoRecordsForPlatform(p) => write!(f, "no records for platform {p}"),
             Self::FetchFailed(e) => write!(f, "fetch failed: {e}"),
             Self::ExtractFailed(e) => write!(f, "extraction failed: {e}"),
             Self::SerializeFailed(e) => write!(f, "serialization failed: {e}"),
             Self::UnknownPackageFormat(url) => write!(f, "unknown package format: {url}"),
+            Self::CallbackFailed(e) => write!(f, "JS callback failed: {e}"),
         }
     }
 }

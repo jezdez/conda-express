@@ -109,7 +109,8 @@
             <option value="">Load a lockfile first</option>
         </select>
         <button id="plan-btn" disabled>Plan</button>
-        <button id="bootstrap-btn" disabled>Bootstrap</button>
+        <button id="bootstrap-btn" disabled>Bootstrap (metadata)</button>
+        <button id="streaming-btn" disabled>Bootstrap (streaming)</button>
     </div>
 
     <div id="plan-results" style="display:none;">
@@ -138,10 +139,23 @@
         </div>
     </div>
 
+    <div id="streaming-results" style="display:none;">
+        <h3>Streaming File Log <span id="streaming-summary"></span></h3>
+        <div style="max-height:400px; overflow-y:auto;">
+            <pre id="streaming-log" style="font-size:0.8rem; white-space:pre;"></pre>
+        </div>
+        <div id="streaming-errors" style="display:none;">
+            <h4 class="error">Errors</h4>
+            <pre id="streaming-error-list"></pre>
+        </div>
+    </div>
+
     <script type="module">
         import init, {
             cx_init, get_platforms, get_package_names, get_package_urls,
-            download_and_list_package, cx_bootstrap, cx_bootstrap_plan
+            download_and_list_package, cx_bootstrap, cx_bootstrap_plan,
+            cx_bootstrap_streaming, download_and_extract_package_streaming,
+            cx_embedded_lockfile, cx_embedded_platform, cx_bootstrap_embedded
         } from './cx_web.js';
 
         const statusEl = document.getElementById('init-status');
@@ -160,6 +174,7 @@
         const bootstrapPlatform = document.getElementById('bootstrap-platform');
         const planBtn = document.getElementById('plan-btn');
         const bootstrapBtn = document.getElementById('bootstrap-btn');
+        const streamingBtn = document.getElementById('streaming-btn');
 
         let wasmReady = false;
 
@@ -167,7 +182,13 @@
             try {
                 await init();
                 const version = cx_init();
-                statusEl.textContent = 'WASM loaded: ' + version;
+                const embeddedLock = cx_embedded_lockfile();
+                const embeddedPlatform = cx_embedded_platform();
+                let statusText = 'WASM loaded: ' + version;
+                if (embeddedLock) {
+                    statusText += ' | embedded lockfile (' + Math.round(embeddedLock.length / 1024) + ' KB) for ' + (embeddedPlatform || 'unknown platform');
+                }
+                statusEl.textContent = statusText;
                 statusEl.className = 'success';
                 loadBtn.disabled = false;
                 downloadBtn.disabled = false;
@@ -199,6 +220,7 @@
                 populateSelect(bootstrapPlatform, platforms);
                 planBtn.disabled = false;
                 bootstrapBtn.disabled = false;
+                streamingBtn.disabled = false;
             } catch (e) {
                 console.error('Platform detection error:', e);
             }
@@ -425,6 +447,76 @@
                 bsStatus.className = 'error';
             }
 
+            bootstrapBtn.disabled = false;
+            planBtn.disabled = false;
+        });
+
+        streamingBtn.addEventListener('click', async () => {
+            const content = lockfileInput.value;
+            const platform = bootstrapPlatform.value;
+            if (!content.trim() || !platform || !wasmReady) return;
+
+            streamingBtn.disabled = true;
+            bootstrapBtn.disabled = true;
+            planBtn.disabled = true;
+            const progressDiv = document.getElementById('bootstrap-progress');
+            const progressBar = document.getElementById('progress-bar');
+            const progressLabel = document.getElementById('progress-label');
+            const bsStatus = document.getElementById('bootstrap-status');
+            const bsResults = document.getElementById('bootstrap-results');
+            const streamingResults = document.getElementById('streaming-results');
+            const streamingLog = document.getElementById('streaming-log');
+            const streamingSummary = document.getElementById('streaming-summary');
+
+            progressDiv.style.display = 'block';
+            bsResults.style.display = 'none';
+            streamingResults.style.display = 'block';
+            streamingLog.textContent = '';
+            bsStatus.innerHTML = '<span class="spinner"></span>Starting streaming bootstrap...';
+            bsStatus.className = 'status';
+            progressBar.style.width = '0%';
+
+            let fileCount = 0;
+            let totalBytes = 0;
+            const progressCb = (current, total, name) => {
+                const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+                progressBar.style.width = pct + '%';
+                progressLabel.textContent = current + '/' + total + ': ' + name;
+            };
+            const onFile = (pkgName, path, bytes) => {
+                fileCount++;
+                totalBytes += bytes.length;
+                streamingLog.textContent += pkgName + '/' + path + ' (' + formatSize(bytes.length) + ')\n';
+                streamingSummary.textContent = '(' + fileCount + ' files, ' + formatSize(totalBytes) + ')';
+                // Auto-scroll to bottom
+                streamingLog.scrollTop = streamingLog.scrollHeight;
+            };
+
+            try {
+                const t0 = performance.now();
+                const data = await cx_bootstrap_streaming(content, platform, progressCb, onFile);
+                const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
+
+                progressBar.style.width = '100%';
+                bsStatus.textContent = 'Streaming bootstrap complete in ' + elapsed + 's';
+                bsStatus.className = 'success';
+
+                streamingSummary.textContent =
+                    '(' + data.packages_installed + '/' + data.total_packages + ' packages, '
+                    + data.total_files + ' files, '
+                    + formatSize(data.total_size) + ')';
+
+                if (data.errors.length > 0) {
+                    const errDiv = document.getElementById('streaming-errors');
+                    document.getElementById('streaming-error-list').textContent = data.errors.join('\n');
+                    errDiv.style.display = 'block';
+                }
+            } catch (e) {
+                bsStatus.textContent = 'Error: ' + e.message;
+                bsStatus.className = 'error';
+            }
+
+            streamingBtn.disabled = false;
             bootstrapBtn.disabled = false;
             planBtn.disabled = false;
         });

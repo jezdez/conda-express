@@ -11,6 +11,12 @@ use wasm_bindgen::prelude::*;
 
 use error::CxWebError;
 
+#[cfg(cx_embedded_lockfile)]
+const EMBEDDED_LOCKFILE: &str = include_str!(concat!(env!("OUT_DIR"), "/embedded_lockfile.txt"));
+
+#[cfg(cx_embedded_platform)]
+const EMBEDDED_PLATFORM: &str = include_str!(concat!(env!("OUT_DIR"), "/embedded_platform.txt"));
+
 #[wasm_bindgen(typescript_custom_section)]
 const TS_TYPES: &str = r#"
 export interface ExtractedFile {
@@ -55,6 +61,24 @@ export interface BootstrapPlan {
     total_download_size: number;
     packages: PackagePlanEntry[];
 }
+
+export interface StreamingBootstrapResult {
+    platform: string;
+    total_packages: number;
+    packages_installed: number;
+    total_files: number;
+    total_size: number;
+    errors: string[];
+}
+
+export interface ExtractStats {
+    file_count: number;
+    total_size: number;
+}
+
+export type OnFileCallback = (packageName: string, path: string, bytes: Uint8Array) => void;
+export type OnSingleFileCallback = (path: string, bytes: Uint8Array) => void;
+export type OnProgressCallback = (current: number, total: number, packageName: string) => void;
 "#;
 
 fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
@@ -117,6 +141,55 @@ pub fn get_package_urls(
 pub fn cx_init() -> String {
     web_sys::console::log_1(&"cx-web initialized".into());
     format!("cx-web v{}", env!("CARGO_PKG_VERSION"))
+}
+
+/// Returns the embedded lockfile content, or `undefined` if none was baked in at build time.
+#[wasm_bindgen]
+pub fn cx_embedded_lockfile() -> Option<String> {
+    #[cfg(cx_embedded_lockfile)]
+    {
+        Some(EMBEDDED_LOCKFILE.to_string())
+    }
+    #[cfg(not(cx_embedded_lockfile))]
+    {
+        None
+    }
+}
+
+/// Returns the embedded target platform (e.g. "emscripten-wasm32"), or `undefined`.
+#[wasm_bindgen]
+pub fn cx_embedded_platform() -> Option<String> {
+    #[cfg(cx_embedded_platform)]
+    {
+        Some(EMBEDDED_PLATFORM.to_string())
+    }
+    #[cfg(not(cx_embedded_platform))]
+    {
+        None
+    }
+}
+
+/// Convenience: streaming bootstrap using the embedded lockfile and platform.
+///
+/// Fails if no lockfile or platform was embedded at build time.
+#[wasm_bindgen]
+pub async fn cx_bootstrap_embedded(
+    on_progress: Option<js_sys::Function>,
+    on_file: js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let lockfile = cx_embedded_lockfile()
+        .ok_or_else(|| CxWebError::NotEmbedded("lockfile".into()))?;
+    let platform = cx_embedded_platform()
+        .ok_or_else(|| CxWebError::NotEmbedded("platform".into()))?;
+
+    let result = bootstrap::bootstrap_streaming_impl(
+        &lockfile,
+        &platform,
+        on_progress.as_ref(),
+        &on_file,
+    )
+    .await?;
+    to_js(&result)
 }
 
 /// Fetch bytes from a URL using the browser Fetch API with a 5-minute timeout.
@@ -235,6 +308,61 @@ pub async fn cx_bootstrap(
     let result =
         bootstrap::bootstrap_impl(&lockfile_content, &platform, progress.as_ref()).await?;
     to_js(&result)
+}
+
+/// Streaming bootstrap: download and extract all packages, calling `on_file` for each
+/// extracted file with `(packageName, path, bytes)`.
+///
+/// Use this to write files directly to a virtual filesystem (e.g., Emscripten MEMFS)
+/// without buffering everything in memory.
+///
+/// `on_progress` is an optional callback: `on_progress(current, total, packageName)`.
+/// `on_file` is a required callback: `on_file(packageName, path, bytes: Uint8Array)`.
+#[wasm_bindgen]
+pub async fn cx_bootstrap_streaming(
+    lockfile_content: String,
+    platform: String,
+    on_progress: Option<js_sys::Function>,
+    on_file: js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let result = bootstrap::bootstrap_streaming_impl(
+        &lockfile_content,
+        &platform,
+        on_progress.as_ref(),
+        &on_file,
+    )
+    .await?;
+    to_js(&result)
+}
+
+/// Download a single package and stream its extracted files to `on_file(path, bytes)`.
+///
+/// Returns extraction stats (file count, total size).
+#[wasm_bindgen]
+pub async fn download_and_extract_package_streaming(
+    url: String,
+    on_file: js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let bytes = fetch_bytes(&url).await?;
+
+    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWebError> {
+        let js_path = JsValue::from(path);
+        let js_bytes = js_sys::Uint8Array::from(data);
+        on_file
+            .call2(&JsValue::NULL, &js_path, &js_bytes)
+            .map_err(|e| CxWebError::CallbackFailed(format!("{e:?}")))?;
+        Ok(())
+    };
+
+    let stats = if url.ends_with(".conda") {
+        extract::extract_conda_streaming(&bytes, &mut file_cb)?
+    } else if url.ends_with(".tar.bz2") {
+        extract::extract_tar_bz2_streaming(&bytes, &mut file_cb)?
+    } else {
+        return Err(CxWebError::UnknownPackageFormat(url.to_string()).into());
+    };
+
+    to_js(&stats)
 }
 
 #[derive(Debug, Serialize)]

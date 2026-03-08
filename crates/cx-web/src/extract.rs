@@ -19,6 +19,12 @@ pub struct CondaPackageContents {
     pub total_size: usize,
 }
 
+#[derive(Debug, Default, Serialize)]
+pub struct ExtractStats {
+    pub file_count: usize,
+    pub total_size: usize,
+}
+
 /// Extract a `.conda` archive from raw bytes, returning metadata about contents.
 ///
 /// `.conda` format: outer uncompressed ZIP containing:
@@ -128,4 +134,103 @@ fn extract_tar_zst<R: Read>(zst_reader: R) -> Result<Vec<ExtractedFile>, CxWebEr
     }
 
     Ok(files)
+}
+
+// --- Streaming variants: yield (path, bytes) per file via callback ---
+
+/// Stream all entries from a tar archive, calling `on_file(path, bytes)` for each.
+fn stream_tar_entries<R: Read, F>(
+    tar: &mut tar::Archive<R>,
+    on_file: &mut F,
+) -> Result<ExtractStats, CxWebError>
+where
+    F: FnMut(&str, &[u8]) -> Result<(), CxWebError>,
+{
+    let mut stats = ExtractStats::default();
+
+    for entry_result in tar
+        .entries()
+        .map_err(|e| CxWebError::ExtractFailed(format!("tar entries error: {e}")))?
+    {
+        let mut entry =
+            entry_result.map_err(|e| CxWebError::ExtractFailed(format!("tar entry error: {e}")))?;
+        let path = entry
+            .path()
+            .map_err(|e| CxWebError::ExtractFailed(format!("tar path error: {e}")))?
+            .to_string_lossy()
+            .into_owned();
+
+        let mut buf = Vec::with_capacity(entry.size() as usize);
+        entry
+            .read_to_end(&mut buf)
+            .map_err(|e| CxWebError::ExtractFailed(format!("reading tar entry {path}: {e}")))?;
+
+        stats.file_count += 1;
+        stats.total_size += buf.len();
+        on_file(&path, &buf)?;
+    }
+
+    Ok(stats)
+}
+
+/// Extract a `.conda` archive, streaming each file's contents to the callback.
+///
+/// Calls `on_file(path, bytes)` for every file in the archive.
+/// Returns aggregate stats (file count, total bytes).
+pub fn extract_conda_streaming<F>(bytes: &[u8], mut on_file: F) -> Result<ExtractStats, CxWebError>
+where
+    F: FnMut(&str, &[u8]) -> Result<(), CxWebError>,
+{
+    let reader = Cursor::new(bytes);
+    let mut archive = zip::ZipArchive::new(reader)
+        .map_err(|e| CxWebError::ExtractFailed(format!("opening ZIP: {e}")))?;
+
+    let mut stats = ExtractStats::default();
+
+    let entry_names: Vec<String> = (0..archive.len())
+        .filter_map(|i| archive.by_index(i).ok().map(|e| e.name().to_string()))
+        .collect();
+
+    for name in &entry_names {
+        if name.ends_with(".tar.zst") {
+            let entry = archive.by_name(name).map_err(|e| {
+                CxWebError::ExtractFailed(format!("reading ZIP entry {name}: {e}"))
+            })?;
+            let inner = extract_tar_zst_streaming(entry, &mut on_file)?;
+            stats.file_count += inner.file_count;
+            stats.total_size += inner.total_size;
+        }
+    }
+
+    Ok(stats)
+}
+
+/// Extract a `.tar.bz2` archive, streaming each file's contents to the callback.
+pub fn extract_tar_bz2_streaming<F>(
+    bytes: &[u8],
+    mut on_file: F,
+) -> Result<ExtractStats, CxWebError>
+where
+    F: FnMut(&str, &[u8]) -> Result<(), CxWebError>,
+{
+    let reader = Cursor::new(bytes);
+    let decoder = DecoderReader::new(reader);
+    let mut tar = tar::Archive::new(decoder);
+    stream_tar_entries(&mut tar, &mut on_file)
+}
+
+/// Streaming variant of zstd tar extraction.
+fn extract_tar_zst_streaming<R: Read, F>(
+    zst_reader: R,
+    on_file: &mut F,
+) -> Result<ExtractStats, CxWebError>
+where
+    F: FnMut(&str, &[u8]) -> Result<(), CxWebError>,
+{
+    let mut zst_reader = zst_reader;
+    let decoder = StreamingDecoder::new(&mut zst_reader)
+        .map_err(|e| CxWebError::ExtractFailed(format!("zstd decode error: {e}")))?;
+
+    let mut tar = tar::Archive::new(decoder);
+    stream_tar_entries(&mut tar, on_file)
 }
