@@ -6,3 +6,5 @@ crates/cx-web/pkg/
 crates/cx-web/www/cx_web*
 crates/cx-web/www/cx.lock
 crates/cx-web/www/test.conda
+/output
+recipes/conda-browser/lockfile-env/.pixi
