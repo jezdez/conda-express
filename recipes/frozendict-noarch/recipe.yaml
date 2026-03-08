@@ -1,0 +1,35 @@
+context:
+  version: "2.4.6"
+
+package:
+  name: frozendict
+  version: ${{ version }}
+
+source:
+  url: https://pypi.org/packages/source/f/frozendict/frozendict-${{ version }}.tar.gz
+  sha256: df7cd16470fbd26fc4969a208efadc46319334eb97def1ddf48919b351192b8e
+
+build:
+  noarch: python
+  script:
+    - ${PYTHON} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.8
+    - pip
+    - setuptools
+  run:
+    - python >=3.8
+
+tests:
+  - python:
+      imports:
+        - frozendict
+
+about:
+  homepage: https://github.com/Marco-Sulla/python-frozendict
+  license: LGPL-3.0-only
+  summary: >
+    frozendict built as noarch (pure Python fallback, no C extension)
+    for emscripten-wasm32 compatibility.

@@ -1,0 +1,55 @@
+context:
+  version: "26.1.1"
+  conda_git: "https://github.com/conda/conda"
+
+package:
+  name: conda-browser
+  version: ${{ version }}
+
+source:
+  git: ${{ conda_git }}
+  tag: ${{ version }}
+  patches:
+    - patches/001-stub-subprocess.patch
+    - patches/002-skip-unneeded-deps.patch
+    - patches/003-platformdirs-memfs.patch
+    - patches/004-linking-memfs.patch
+    - patches/005-emscripten-os-compat.patch
+
+build:
+  noarch: python
+  script:
+    - ${PYTHON} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.12
+    - pip
+    - hatchling
+    - hatch-vcs
+  run:
+    - python >=3.12
+    - boltons >=23.0
+    - charset-normalizer
+    - frozendict >=2.4.2
+    - packaging >=23.0
+    - pluggy >=1.0.0
+    - requests >=2.31
+    - ruamel.yaml >=0.11.14
+    - setuptools >=60.0
+    - tqdm >=4
+
+tests:
+  - python:
+      imports:
+        - conda
+        - conda.cli
+        - conda.core.prefix_data
+      pip_check: false
+
+about:
+  homepage: https://github.com/conda/conda-express
+  license: BSD-3-Clause
+  summary: >
+    conda patched for browser/emscripten-wasm32: subprocess stubbed,
+    7 native deps removed, platformdirs replaced with MEMFS paths.

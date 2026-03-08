@@ -1,0 +1,112 @@
+diff --git a/conda/core/index.py b/conda/core/index.py
+index 50dcefe81..bcdf97ab6 100644
+--- a/conda/core/index.py
++++ b/conda/core/index.py
+@@ -648,7 +648,10 @@ def get_archspec_name() -> str | None:
+     if native_subdir != context.subdir:
+         return machine
+     else:
+-        import archspec.cpu
++        try:
++            import archspec.cpu
++        except ImportError:
++            return machine
+ 
+         return str(archspec.cpu.host())
+ 
+diff --git a/conda/gateways/repodata/jlap/fetch.py b/conda/gateways/repodata/jlap/fetch.py
+index 7dd830d2a..7083a3c2e 100644
+--- a/conda/gateways/repodata/jlap/fetch.py
++++ b/conda/gateways/repodata/jlap/fetch.py
+@@ -14,7 +14,10 @@ from hashlib import blake2b
+ from typing import TYPE_CHECKING
+ 
+ import jsonpatch
+-import zstandard
++try:
++    import zstandard
++except ImportError:
++    zstandard = None  # JLAP/zst repodata fetching unavailable on emscripten
+ from requests import HTTPError
+ 
+ from ....base.context import context
+diff --git a/conda/plugins/package_extractors/conda.py b/conda/plugins/package_extractors/conda.py
+index 8ed71fd00..a993079ba 100644
+--- a/conda/plugins/package_extractors/conda.py
++++ b/conda/plugins/package_extractors/conda.py
+@@ -31,7 +31,12 @@ def extract_conda_or_tarball(
+     :param tarball_full_path: Path to the package archive.
+     :param destination_directory: Directory to extract the package contents to.
+     """
+-    import conda_package_handling.api
++    try:
++        import conda_package_handling.api
++    except ImportError:
++        raise RuntimeError(
++            "conda_package_handling is not available in this environment"
++        )
+ 
+     # Convert PathType to string for conda_package_handling compatibility
+     tarball_full_path = os.fspath(tarball_full_path)
+diff --git a/conda/plugins/virtual_packages/cuda.py b/conda/plugins/virtual_packages/cuda.py
+index 45f0ccddc..2b071fea1 100644
+--- a/conda/plugins/virtual_packages/cuda.py
++++ b/conda/plugins/virtual_packages/cuda.py
+@@ -4,13 +4,8 @@
+ 
+ from __future__ import annotations
+ 
+-import ctypes
+ import functools
+-import itertools
+-import multiprocessing
+-import os
+-import platform
+-from contextlib import suppress
++import sys
+ from typing import TYPE_CHECKING
+ 
+ from ...auxlib import NULL
+@@ -25,23 +20,21 @@ def cuda_version():
+     """
+     Attempt to detect the version of CUDA present in the operating system.
+ 
+-    On Windows and Linux, the CUDA library is installed by the NVIDIA
+-    driver package, and is typically found in the standard library path,
+-    rather than with the CUDA SDK (which is optional for running CUDA apps).
+-
+-    On macOS, the CUDA library is only installed with the CUDA SDK, and
+-    might not be in the library path.
+-
+     Returns: version string (e.g., '9.2') or None if CUDA is not found.
+     """
++    if sys.platform == "emscripten":
++        return NULL
++
++    import ctypes
++    import itertools
++    import multiprocessing
++    import os
++    import platform
++    from contextlib import suppress
+ 
+-    # Do not inherit file descriptors and handles from the parent process.
+-    # The `fork` start method should be considered unsafe as it can lead to
+-    # crashes of the subprocess. The `spawn` start method is preferred.
+     context = multiprocessing.get_context("spawn")
+     queue = context.SimpleQueue()
+     try:
+-        # Spawn a subprocess to detect the CUDA version
+         detector = context.Process(
+             target=_cuda_driver_version_detector_target,
+             args=(queue,),
+@@ -51,8 +44,7 @@ def cuda_version():
+         detector.start()
+         detector.join(timeout=60.0)
+     finally:
+-        # Always cleanup the subprocess
+-        detector.kill()  # requires Python 3.7+
++        detector.kill()
+ 
+     if queue.empty():
+         return NULL

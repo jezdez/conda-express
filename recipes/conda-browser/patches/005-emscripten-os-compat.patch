@@ -1,0 +1,51 @@
+diff --git a/conda/cli/main_info.py b/conda/cli/main_info.py
+index ecc0a970b..2fde66396 100644
+--- a/conda/cli/main_info.py
++++ b/conda/cli/main_info.py
+@@ -291,8 +291,8 @@ def get_info_dict() -> dict[str, Any]:
+ 
+         info_dict["is_windows_admin"] = is_admin_on_windows()
+     else:
+-        info_dict["UID"] = os.geteuid()
+-        info_dict["GID"] = os.getegid()
++        info_dict["UID"] = getattr(os, "geteuid", lambda: 0)()
++        info_dict["GID"] = getattr(os, "getegid", lambda: 0)()
+ 
+     env_var_keys = {
+         "CIO_TEST",
+diff --git a/conda/common/_os/unix.py b/conda/common/_os/unix.py
+index 33b6a7830..972a764fb 100644
+--- a/conda/common/_os/unix.py
++++ b/conda/common/_os/unix.py
+@@ -13,4 +13,4 @@ def get_free_space_on_unix(dir_name):
+ 
+ def is_admin_on_unix():
+     # http://stackoverflow.com/a/1026626/2127762
+-    return os.geteuid() == 0
++    return getattr(os, "geteuid", lambda: 1)() == 0
+diff --git a/conda/exceptions.py b/conda/exceptions.py
+index eb883664e..5b3265cfc 100644
+--- a/conda/exceptions.py
++++ b/conda/exceptions.py
+@@ -1131,8 +1131,8 @@ class NotWritableError(CondaError, OSError):
+             )
+             kwargs.update(
+                 {
+-                    "uid": os.geteuid(),
+-                    "gid": os.getegid(),
++                    "uid": getattr(os, "geteuid", lambda: 0)(),
++                    "gid": getattr(os, "getegid", lambda: 0)(),
+                 }
+             )
+         super().__init__(message, **kwargs)
+@@ -1190,8 +1190,8 @@ class EnvironmentNotWritableError(CondaError):
+             )
+             kwargs.update(
+                 {
+-                    "uid": os.geteuid(),
+-                    "gid": os.getegid(),
++                    "uid": getattr(os, "geteuid", lambda: 0)(),
++                    "gid": getattr(os, "getegid", lambda: 0)(),
+                 }
+             )
+         super().__init__(message, **kwargs)

@@ -1,0 +1,63 @@
+diff --git a/conda/base/context.py b/conda/base/context.py
+index df6b0b97e..e3aa684ef 100644
+--- a/conda/base/context.py
++++ b/conda/base/context.py
+@@ -138,6 +138,12 @@ def user_data_dir(  # noqa: F811
+     version: str | None = None,
+     roaming: bool = False,
+ ) -> PathType:
++    if sys.platform == "emscripten":
++        base = os.environ.get("HOME", "/home/web_user")
++        path = join(base, ".local", "share")
++        if appname:
++            path = join(path, appname)
++        return path
+     # Defer platformdirs import to reduce import time for conda activate.
+     global user_data_dir
+     from platformdirs import user_data_dir
+diff --git a/conda/gateways/anaconda_client.py b/conda/gateways/anaconda_client.py
+index 75a16f782..89f6408d7 100644
+--- a/conda/gateways/anaconda_client.py
++++ b/conda/gateways/anaconda_client.py
+@@ -8,7 +8,17 @@ from logging import getLogger
+ from os.path import isdir, isfile, join
+ from stat import S_IREAD, S_IWRITE
+ 
+-from platformdirs import user_config_dir
++import sys
++
++if sys.platform == "emscripten":
++    def user_config_dir(appname=None, appauthor=None, version=None, roaming=False):
++        base = os.environ.get("HOME", "/home/web_user")
++        path = os.path.join(base, ".config")
++        if appname:
++            path = os.path.join(path, appname)
++        return path
++else:
++    from platformdirs import user_config_dir
+ 
+ from ..common.url import quote_plus, unquote_plus
+ from .disk.delete import rm_rf
+diff --git a/conda/notices/cache.py b/conda/notices/cache.py
+index 76f5eb1ff..1d7f3edb7 100644
+--- a/conda/notices/cache.py
++++ b/conda/notices/cache.py
+@@ -16,7 +16,17 @@ from functools import wraps
+ from pathlib import Path
+ from typing import TYPE_CHECKING
+ 
+-from platformdirs import user_cache_dir
++import sys
++
++if sys.platform == "emscripten":
++    def user_cache_dir(appname=None, appauthor=None, version=None, opinion=True):
++        base = os.environ.get("HOME", "/home/web_user")
++        path = os.path.join(base, ".cache")
++        if appname:
++            path = os.path.join(path, appname)
++        return path
++else:
++    from platformdirs import user_cache_dir
+ 
+ from ..base.constants import (
+     APP_NAME,

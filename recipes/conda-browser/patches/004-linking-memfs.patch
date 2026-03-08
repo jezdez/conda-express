@@ -1,0 +1,26 @@
+diff --git a/conda/gateways/disk/link.py b/conda/gateways/disk/link.py
+index 3fc3d1dde..87bdec0c1 100644
+--- a/conda/gateways/disk/link.py
++++ b/conda/gateways/disk/link.py
+@@ -37,7 +37,20 @@ except ImportError:  # pragma: no cover
+             os_chmod(path, mode)
+ 
+ 
+-if not on_win:  # pragma: win no cover
++if sys.platform == "emscripten":
++
++    def link(src, dst):
++        import shutil
++        shutil.copy2(src, dst)
++
++    def symlink(src, dst, target_is_directory=False):
++        import shutil
++        if isdir(src):
++            shutil.copytree(src, dst)
++        else:
++            shutil.copy2(src, dst)
++
++elif not on_win:  # pragma: win no cover
+     from os import link, symlink
+ 
+     link = link
