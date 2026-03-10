@@ -1,0 +1,35 @@
+context:
+  version: "0.1.0"
+
+package:
+  name: conda-emscripten
+  version: ${{ version }}
+
+source:
+  path: ../../python/conda-emscripten
+
+build:
+  noarch: python
+  script:
+    - ${PYTHON} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.12
+    - pip
+    - setuptools >=64
+  run:
+    - python >=3.12
+
+tests:
+  - python:
+      imports:
+        - conda_emscripten
+      pip_check: false
+
+about:
+  homepage: https://github.com/jezdez/conda-express
+  license: BSD-3-Clause
+  summary: >
+    Emscripten-specific conda plugins: solver (resolvo via cx-wasm),
+    package extractor, and virtual packages for browser environments.

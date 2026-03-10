@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "conda-emscripten"
+version = "0.1.0"
+description = "Emscripten-specific conda plugins: solver (resolvo via cx-wasm), package extractor, and virtual packages"
+license = "BSD-3-Clause"
+requires-python = ">=3.12"
+dependencies = ["conda>=25.1"]
+
+[project.entry-points.conda]
+conda-emscripten = "conda_emscripten.plugin"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["conda_emscripten*"]
