@@ -1,10 +1,10 @@
 /target
 /.pixi
 /docs/_build
-crates/cx-web/target/
-crates/cx-web/pkg/
-crates/cx-web/www/cx_web*
-crates/cx-web/www/cx.lock
-crates/cx-web/www/test.conda
+crates/cx-wasm/target/
+crates/cx-wasm/pkg/
+crates/cx-wasm/www/cx_wasm*
+crates/cx-wasm/www/cx.lock
+crates/cx-wasm/www/test.conda
 /output
-recipes/conda-browser/lockfile-env/.pixi
+recipes/conda-emscripten/lockfile-env/.pixi

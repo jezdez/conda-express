@@ -1,8 +1,8 @@
 /**
- * JupyterLite extension that bootstraps a conda environment via cx-web.
+ * JupyterLite extension that bootstraps a conda environment via cx-wasm.
  *
  * On activation, this plugin:
- * 1. Loads the cx-web WASM module
+ * 1. Loads the cx-wasm WASM module
  * 2. Streams all packages from the embedded lockfile to Emscripten MEMFS
  * 3. Writes conda config (.condarc, .cx.json) so conda works at runtime
  * 4. Reports progress to the console (UI progress can be wired separately)
@@ -28,13 +28,11 @@ function getEmscriptenFS(): EmscriptenFS | null {
 }
 
 /**
- * Dynamically import cx-web's WASM module.
- * The cx-web package must be available at runtime (bundled or served).
+ * Dynamically import the cx-wasm module.
+ * The cx-wasm package must be available at runtime (bundled or served).
  */
-async function loadCxWeb(): Promise<any> {
-  // cx-web is expected to be bundled or available as a package
-  // The exact import path depends on the deployment setup
-  const mod = await import(/* webpackIgnore: true */ '../cx_web.js');
+async function loadCxWasm(): Promise<any> {
+  const mod = await import(/* webpackIgnore: true */ '../cx_wasm.js');
   await mod.default();
   return mod;
 }
@@ -52,7 +50,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
     }
 
     try {
-      const cx = await loadCxWeb();
+      const cx = await loadCxWasm();
       const version = cx.cx_init();
       console.log(`[cx] loaded ${version}`);
 
@@ -61,7 +59,7 @@ const plugin: JupyterFrontEndPlugin<void> = {
 
       if (!embeddedLockfile || !embeddedPlatform) {
         console.warn(
-          '[cx] no embedded lockfile/platform — build cx-web with CX_LOCKFILE and CX_PLATFORM'
+          '[cx] no embedded lockfile/platform — build cx-wasm with CX_LOCKFILE and CX_PLATFORM'
         );
         return;
       }
