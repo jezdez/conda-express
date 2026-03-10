@@ -3,7 +3,7 @@ context:
   conda_git: "https://github.com/conda/conda"
 
 package:
-  name: conda-browser
+  name: conda
   version: ${{ version }}
 
 source:
@@ -15,6 +15,7 @@ source:
     - patches/003-platformdirs-memfs.patch
     - patches/004-linking-memfs.patch
     - patches/005-emscripten-os-compat.patch
+    - patches/006-no-threading-emscripten.patch
 
 build:
   noarch: python
@@ -48,8 +49,8 @@ tests:
       pip_check: false
 
 about:
-  homepage: https://github.com/conda/conda-express
+  homepage: https://github.com/conda/conda
   license: BSD-3-Clause
   summary: >
-    conda patched for browser/emscripten-wasm32: subprocess stubbed,
-    7 native deps removed, platformdirs replaced with MEMFS paths.
+    conda patched for emscripten-wasm32: subprocess stubbed,
+    native deps removed, platformdirs replaced with MEMFS paths.

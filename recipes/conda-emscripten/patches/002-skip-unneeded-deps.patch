@@ -1,3 +1,18 @@
+diff --git a/conda/base/context.py b/conda/base/context.py
+index df6b0b97e..c1a2e3f4d 100644
+--- a/conda/base/context.py
++++ b/conda/base/context.py
+@@ -1030,7 +1030,10 @@ class Context(Configuration):
+     @property
+     def use_only_tar_bz2(self) -> bool:
+         # we avoid importing this at the top to avoid PATH issues.  Ensure that this
+         #    is only called when use_only_tar_bz2 is first called.
++        if sys.platform == "emscripten":
++            return self._use_only_tar_bz2
++
+         import conda_package_handling.api
+ 
+         return (
 diff --git a/conda/core/index.py b/conda/core/index.py
 index 50dcefe81..bcdf97ab6 100644
 --- a/conda/core/index.py

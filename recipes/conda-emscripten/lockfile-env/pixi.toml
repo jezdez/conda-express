@@ -1,12 +1,12 @@
 [workspace]
-name = "conda-browser-lockfile"
-description = "Generates an emscripten-wasm32 lockfile for cx-web to bootstrap conda in the browser"
+name = "conda-emscripten-lockfile"
+description = "Generates an emscripten-wasm32 lockfile for cx-wasm to bootstrap conda in the browser"
 # NOTE: The first channel must be a file:// URL pointing to the rattler-build output
 # directory at the repo root. Replace the path below with your local workspace path
 # before running `pixi lock`. The generated pixi.lock will contain machine-specific
 # paths; the browser test page (conda-test.html) rewrites them at runtime.
 channels = [
-    "file:///REPLACE_WITH_REPO_ROOT/output",
+    "file:///Users/jezdez/Code/git/conda-express/output",
     "https://repo.prefix.dev/emscripten-forge-4x",
     "conda-forge",
 ]
@@ -14,4 +14,6 @@ platforms = ["emscripten-wasm32"]
 
 [dependencies]
 python = ">=3.12"
-conda-browser = "==26.1.1"
+pyjs = ">=4.0.2"
+conda = "==26.1.1"
+conda-emscripten = "==0.1.0"

@@ -1,0 +1,81 @@
+diff --git a/conda/common/io.py b/conda/common/io.py
+index 6b8f3b3e3..a1c2e7f4d 100644
+--- a/conda/common/io.py
++++ b/conda/common/io.py
+@@ -394,7 +394,7 @@ class time_recorder(ContextDecorator):  # pragma: no cover
+ 
+ # use this for debugging, because ProcessPoolExecutor isn't pdb/ipdb friendly
+ class DummyExecutor(Executor):
+-    def __init__(self):
++    def __init__(self, *args, **kwargs):
+         self._shutdown = False
+         self._shutdownLock = Lock()
+ 
+@@ -423,7 +423,13 @@ class DummyExecutor(Executor):
+             self._shutdown = True
+ 
+ 
+-class ThreadLimitedThreadPoolExecutor(ThreadPoolExecutor):
++if sys.platform == "emscripten":
++    # Emscripten has no threading support; alias to DummyExecutor so all
++    # callers that pick ThreadLimitedThreadPoolExecutor get synchronous
++    # execution automatically.
++    ThreadLimitedThreadPoolExecutor = DummyExecutor
++else:
++  class ThreadLimitedThreadPoolExecutor(ThreadPoolExecutor):
+     def __init__(self, max_workers=10):
+         super().__init__(max_workers)
+ 
+diff --git a/conda/notices/fetch.py b/conda/notices/fetch.py
+index 7ea3bb9ee..b5f946c2a 100644
+--- a/conda/notices/fetch.py
++++ b/conda/notices/fetch.py
+@@ -5,7 +5,13 @@
+ from __future__ import annotations
+ 
+ import logging
+-from concurrent.futures import ThreadPoolExecutor
++import sys
++
++if sys.platform == "emscripten":
++    from ..common.io import DummyExecutor as ThreadPoolExecutor
++else:
++    from concurrent.futures import ThreadPoolExecutor
++
+ from typing import TYPE_CHECKING
+ 
+ import requests
+diff --git a/conda/core/package_cache_data.py b/conda/core/package_cache_data.py
+index 0ccab9c39..ae55e7d57 100644
+--- a/conda/core/package_cache_data.py
++++ b/conda/core/package_cache_data.py
+@@ -6,7 +6,13 @@ from __future__ import annotations
+ 
+ import os
+ from collections import defaultdict
+-from concurrent.futures import CancelledError, ThreadPoolExecutor, as_completed
++from concurrent.futures import CancelledError, as_completed
++import sys
++
++if sys.platform == "emscripten":
++    from ..common.io import DummyExecutor as ThreadPoolExecutor
++else:
++    from concurrent.futures import ThreadPoolExecutor
+ from errno import EACCES, ENOENT, EPERM, EROFS
+ from functools import partial
+ from itertools import chain
+diff --git a/conda/plugins/reporter_backends/console.py b/conda/plugins/reporter_backends/console.py
+index 39b6d3b3b..f80a7e5f1 100644
+--- a/conda/plugins/reporter_backends/console.py
++++ b/conda/plugins/reporter_backends/console.py
+@@ -249,7 +249,7 @@ class ConsoleReporterRenderer(ReporterRendererBase):
+ 
+     def spinner(self, message: str, fail_message: str = "failed\n") -> SpinnerBase:
+         """
+         Determines whether to return a Spinner or QuietSpinner
+         """
+-        if context.quiet:
++        if context.quiet or sys.platform == "emscripten":
+             return QuietSpinner(message, fail_message)
+         else:
+             return Spinner(message, fail_message)
