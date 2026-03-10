@@ -1,6 +1,7 @@
 mod bootstrap;
 mod error;
 mod extract;
+mod solve;
 
 use std::str::FromStr;
 
@@ -9,7 +10,7 @@ use rattler_lock::LockFile;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use error::CxWebError;
+use error::CxWasmError;
 
 #[cfg(cx_embedded_lockfile)]
 const EMBEDDED_LOCKFILE: &str = include_str!(concat!(env!("OUT_DIR"), "/embedded_lockfile.txt"));
@@ -51,8 +52,15 @@ export interface BootstrapResult {
 export interface PackagePlanEntry {
     name: string;
     version: string;
+    build: string;
+    build_number: number;
+    subdir: string;
     url: string;
+    channel: string;
+    fn_name: string;
     size: number | null;
+    sha256: string | null;
+    md5: string | null;
 }
 
 export interface BootstrapPlan {
@@ -82,17 +90,17 @@ export type OnProgressCallback = (current: number, total: number, packageName: s
 "#;
 
 fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
-    serde_wasm_bindgen::to_value(value).map_err(|e| CxWebError::SerializeFailed(e.to_string()).into())
+    serde_wasm_bindgen::to_value(value).map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
 }
 
 fn parse_platform(platform_str: &str) -> Result<Platform, JsValue> {
     Platform::from_str(platform_str)
-        .map_err(|_| CxWebError::PlatformUnknown(platform_str.to_string()).into())
+        .map_err(|_| CxWasmError::PlatformUnknown(platform_str.to_string()).into())
 }
 
 fn parse_lockfile(lockfile_content: &str) -> Result<LockFile, JsValue> {
     let reader = std::io::Cursor::new(lockfile_content.as_bytes());
-    LockFile::from_reader(reader).map_err(|e| CxWebError::LockfileParse(e.to_string()).into())
+    LockFile::from_reader(reader).map_err(|e| CxWasmError::LockfileParse(e.to_string()).into())
 }
 
 /// Return a JS array of all platform strings found in a lockfile.
@@ -101,7 +109,7 @@ pub fn get_platforms(lockfile_content: &str) -> Result<JsValue, JsValue> {
     let lockfile = parse_lockfile(lockfile_content)?;
     let env = lockfile
         .default_environment()
-        .ok_or::<JsValue>(CxWebError::NoDefaultEnvironment.into())?;
+        .ok_or::<JsValue>(CxWasmError::NoDefaultEnvironment.into())?;
 
     let platforms: Vec<String> = env.platforms().map(|p| p.as_str().to_string()).collect();
     to_js(&platforms)
@@ -139,8 +147,8 @@ pub fn get_package_urls(
 
 #[wasm_bindgen]
 pub fn cx_init() -> String {
-    web_sys::console::log_1(&"cx-web initialized".into());
-    format!("cx-web v{}", env!("CARGO_PKG_VERSION"))
+    web_sys::console::log_1(&"cx-wasm initialized".into());
+    format!("cx-wasm v{}", env!("CARGO_PKG_VERSION"))
 }
 
 /// Returns the embedded lockfile content, or `undefined` if none was baked in at build time.
@@ -178,9 +186,9 @@ pub async fn cx_bootstrap_embedded(
     on_file: js_sys::Function,
 ) -> Result<JsValue, JsValue> {
     let lockfile = cx_embedded_lockfile()
-        .ok_or_else(|| CxWebError::NotEmbedded("lockfile".into()))?;
+        .ok_or_else(|| CxWasmError::NotEmbedded("lockfile".into()))?;
     let platform = cx_embedded_platform()
-        .ok_or_else(|| CxWebError::NotEmbedded("platform".into()))?;
+        .ok_or_else(|| CxWasmError::NotEmbedded("platform".into()))?;
 
     let result = bootstrap::bootstrap_streaming_impl(
         &lockfile,
@@ -193,14 +201,14 @@ pub async fn cx_bootstrap_embedded(
 }
 
 /// Fetch bytes from a URL using the browser Fetch API with a 5-minute timeout.
-pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWebError> {
+pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     use js_sys::{ArrayBuffer, Uint8Array};
     use wasm_bindgen::JsCast;
     use wasm_bindgen_futures::JsFuture;
     use web_sys::{AbortController, Request, RequestInit, RequestMode, Response};
 
     let controller = AbortController::new()
-        .map_err(|e| CxWebError::FetchFailed(format!("AbortController error: {e:?}")))?;
+        .map_err(|e| CxWasmError::FetchFailed(format!("AbortController error: {e:?}")))?;
     let signal = controller.signal();
 
     let opts = RequestInit::new();
@@ -209,9 +217,9 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWebError> {
     opts.set_signal(Some(&signal));
 
     let request = Request::new_with_str_and_init(url, &opts)
-        .map_err(|e| CxWebError::FetchFailed(format!("request error: {e:?}")))?;
+        .map_err(|e| CxWasmError::FetchFailed(format!("request error: {e:?}")))?;
 
-    let window = web_sys::window().ok_or(CxWebError::FetchFailed("no global window".into()))?;
+    let window = web_sys::window().ok_or(CxWasmError::FetchFailed("no global window".into()))?;
 
     // into_js_value() leaks the Closure (calls forget() internally).
     // Acceptable here: one small alloc per fetch, freed when page unloads.
@@ -225,29 +233,29 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWebError> {
             .unchecked_into(),
             300_000, // 5-minute timeout for large packages
         )
-        .map_err(|e| CxWebError::FetchFailed(format!("setTimeout error: {e:?}")))?;
+        .map_err(|e| CxWasmError::FetchFailed(format!("setTimeout error: {e:?}")))?;
 
     let result = async {
         let resp_val = JsFuture::from(window.fetch_with_request(&request))
             .await
-            .map_err(|e| CxWebError::FetchFailed(format!("fetch error (timeout or CORS?): {e:?}")))?;
+            .map_err(|e| CxWasmError::FetchFailed(format!("fetch error (timeout or CORS?): {e:?}")))?;
         let resp: Response = resp_val
             .dyn_into()
-            .map_err(|_| CxWebError::FetchFailed("response cast failed".into()))?;
+            .map_err(|_| CxWasmError::FetchFailed("response cast failed".into()))?;
 
         if !resp.ok() {
-            return Err(CxWebError::FetchFailed(format!("HTTP {}", resp.status())));
+            return Err(CxWasmError::FetchFailed(format!("HTTP {}", resp.status())));
         }
 
         let buf_promise = resp
             .array_buffer()
-            .map_err(|e| CxWebError::FetchFailed(format!("array_buffer error: {e:?}")))?;
+            .map_err(|e| CxWasmError::FetchFailed(format!("array_buffer error: {e:?}")))?;
         let buf_val = JsFuture::from(buf_promise)
             .await
-            .map_err(|e| CxWebError::FetchFailed(format!("buffer read error: {e:?}")))?;
+            .map_err(|e| CxWasmError::FetchFailed(format!("buffer read error: {e:?}")))?;
         let buf: ArrayBuffer = buf_val
             .dyn_into()
-            .map_err(|_| CxWebError::FetchFailed("buffer cast failed".into()))?;
+            .map_err(|_| CxWasmError::FetchFailed("buffer cast failed".into()))?;
         let array = Uint8Array::new(&buf);
 
         Ok(array.to_vec())
@@ -267,7 +275,7 @@ pub async fn download_and_list_package(url: String) -> Result<JsValue, JsValue> 
 
 async fn download_and_list_impl(
     url: &str,
-) -> Result<extract::CondaPackageContents, CxWebError> {
+) -> Result<extract::CondaPackageContents, CxWasmError> {
     web_sys::console::log_1(&format!("Downloading {url}...").into());
 
     let bytes = fetch_bytes(url).await?;
@@ -279,7 +287,7 @@ async fn download_and_list_impl(
     } else if url.ends_with(".tar.bz2") {
         extract::extract_tar_bz2(&bytes)?
     } else {
-        return Err(CxWebError::UnknownPackageFormat(url.to_string()));
+        return Err(CxWasmError::UnknownPackageFormat(url.to_string()));
     };
 
     web_sys::console::log_1(
@@ -345,12 +353,12 @@ pub async fn download_and_extract_package_streaming(
 ) -> Result<JsValue, JsValue> {
     let bytes = fetch_bytes(&url).await?;
 
-    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWebError> {
+    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWasmError> {
         let js_path = JsValue::from(path);
         let js_bytes = js_sys::Uint8Array::from(data);
         on_file
             .call2(&JsValue::NULL, &js_path, &js_bytes)
-            .map_err(|e| CxWebError::CallbackFailed(format!("{e:?}")))?;
+            .map_err(|e| CxWasmError::CallbackFailed(format!("{e:?}")))?;
         Ok(())
     };
 
@@ -359,7 +367,39 @@ pub async fn download_and_extract_package_streaming(
     } else if url.ends_with(".tar.bz2") {
         extract::extract_tar_bz2_streaming(&bytes, &mut file_cb)?
     } else {
-        return Err(CxWebError::UnknownPackageFormat(url.to_string()).into());
+        return Err(CxWasmError::UnknownPackageFormat(url.to_string()).into());
+    };
+
+    to_js(&stats)
+}
+
+/// Extract a `.conda` or `.tar.bz2` package from raw bytes (already in memory).
+///
+/// This is the synchronous counterpart to `download_and_extract_package_streaming`:
+/// it skips the download step and works directly on bytes read from the filesystem.
+///
+/// `on_file` callback signature: `(path: string, data: Uint8Array) => void`
+#[wasm_bindgen]
+pub fn cx_extract_package(
+    bytes: &[u8],
+    filename: &str,
+    on_file: js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWasmError> {
+        let js_path = JsValue::from(path);
+        let js_bytes = js_sys::Uint8Array::from(data);
+        on_file
+            .call2(&JsValue::NULL, &js_path, &js_bytes)
+            .map_err(|e| CxWasmError::CallbackFailed(format!("{e:?}")))?;
+        Ok(())
+    };
+
+    let stats = if filename.ends_with(".conda") {
+        extract::extract_conda_streaming(bytes, &mut file_cb)?
+    } else if filename.ends_with(".tar.bz2") {
+        extract::extract_tar_bz2_streaming(bytes, &mut file_cb)?
+    } else {
+        return Err(CxWasmError::UnknownPackageFormat(filename.to_string()).into());
     };
 
     to_js(&stats)
@@ -377,8 +417,15 @@ struct BootstrapPlan {
 struct PackagePlanEntry {
     name: String,
     version: String,
+    build: String,
+    build_number: u64,
+    subdir: String,
     url: String,
+    channel: String,
+    fn_name: String,
     size: Option<u64>,
+    sha256: Option<String>,
+    md5: Option<String>,
 }
 
 /// Get a summary of what bootstrap would do: package count, names, total download size.
@@ -392,11 +439,27 @@ pub fn cx_bootstrap_plan(
 
     let packages: Vec<PackagePlanEntry> = records
         .iter()
-        .map(|r| PackagePlanEntry {
-            name: r.package_record.name.as_normalized().to_string(),
-            version: r.package_record.version.to_string(),
-            url: r.url.to_string(),
-            size: r.package_record.size,
+        .map(|r| {
+            let url_str = r.url.to_string();
+            let fn_name = url_str
+                .rsplit('/')
+                .next()
+                .unwrap_or("unknown")
+                .to_string();
+            let channel = r.channel.clone().unwrap_or_default();
+            PackagePlanEntry {
+                name: r.package_record.name.as_normalized().to_string(),
+                version: r.package_record.version.to_string(),
+                build: r.package_record.build.clone(),
+                build_number: r.package_record.build_number,
+                subdir: r.package_record.subdir.clone(),
+                url: url_str,
+                channel,
+                fn_name,
+                size: r.package_record.size,
+                sha256: r.package_record.sha256.map(|h| format!("{h:x}")),
+                md5: r.package_record.md5.map(|h| format!("{h:x}")),
+            }
         })
         .collect();
 

@@ -6,7 +6,7 @@ use rattler_lock::LockFile;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
-use crate::error::CxWebError;
+use crate::error::CxWasmError;
 use crate::extract;
 
 #[derive(Debug, Serialize)]
@@ -43,17 +43,17 @@ pub struct StreamingBootstrapResult {
 pub(crate) fn get_records(
     lockfile_content: &str,
     platform: Platform,
-) -> Result<Vec<RepoDataRecord>, CxWebError> {
+) -> Result<Vec<RepoDataRecord>, CxWasmError> {
     let reader = Cursor::new(lockfile_content.as_bytes());
     let lockfile =
-        LockFile::from_reader(reader).map_err(|e| CxWebError::LockfileParse(e.to_string()))?;
+        LockFile::from_reader(reader).map_err(|e| CxWasmError::LockfileParse(e.to_string()))?;
     let env = lockfile
         .default_environment()
-        .ok_or(CxWebError::NoDefaultEnvironment)?;
+        .ok_or(CxWasmError::NoDefaultEnvironment)?;
 
     env.conda_repodata_records(platform)
-        .map_err(|e| CxWebError::LockfileParse(e.to_string()))?
-        .ok_or_else(|| CxWebError::NoRecordsForPlatform(platform.as_str().to_string()))
+        .map_err(|e| CxWasmError::LockfileParse(e.to_string()))?
+        .ok_or_else(|| CxWasmError::NoRecordsForPlatform(platform.as_str().to_string()))
 }
 
 /// Bootstrap a conda environment from a lockfile: download and extract all packages.
@@ -64,9 +64,9 @@ pub async fn bootstrap_impl(
     lockfile_content: &str,
     platform_str: &str,
     progress: Option<&js_sys::Function>,
-) -> Result<BootstrapResult, CxWebError> {
+) -> Result<BootstrapResult, CxWasmError> {
     let platform = Platform::from_str(platform_str)
-        .map_err(|_| CxWebError::PlatformUnknown(platform_str.to_string()))?;
+        .map_err(|_| CxWasmError::PlatformUnknown(platform_str.to_string()))?;
 
     let records = get_records(lockfile_content, platform)?;
     let total = records.len();
@@ -151,9 +151,9 @@ pub async fn bootstrap_streaming_impl(
     platform_str: &str,
     on_progress: Option<&js_sys::Function>,
     on_file: &js_sys::Function,
-) -> Result<StreamingBootstrapResult, CxWebError> {
+) -> Result<StreamingBootstrapResult, CxWasmError> {
     let platform = Platform::from_str(platform_str)
-        .map_err(|_| CxWebError::PlatformUnknown(platform_str.to_string()))?;
+        .map_err(|_| CxWasmError::PlatformUnknown(platform_str.to_string()))?;
 
     let records = get_records(lockfile_content, platform)?;
     let total = records.len();
@@ -234,7 +234,7 @@ async fn download_and_extract_package_streaming(
     name: &str,
     url: &str,
     on_file: &js_sys::Function,
-) -> Result<extract::ExtractStats, CxWebError> {
+) -> Result<extract::ExtractStats, CxWasmError> {
     web_sys::console::log_1(&format!("  Downloading {name} from {url}").into());
     let bytes = crate::fetch_bytes(url).await?;
     web_sys::console::log_1(
@@ -242,12 +242,12 @@ async fn download_and_extract_package_streaming(
     );
 
     let js_name = JsValue::from(name);
-    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWebError> {
+    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWasmError> {
         let js_path = JsValue::from(path);
         let js_bytes = js_sys::Uint8Array::from(data);
         on_file
             .call3(&JsValue::NULL, &js_name, &js_path, &js_bytes)
-            .map_err(|e| CxWebError::CallbackFailed(format!("{e:?}")))?;
+            .map_err(|e| CxWasmError::CallbackFailed(format!("{e:?}")))?;
         Ok(())
     };
 
@@ -256,14 +256,14 @@ async fn download_and_extract_package_streaming(
     } else if url.ends_with(".tar.bz2") {
         extract::extract_tar_bz2_streaming(&bytes, &mut file_cb)
     } else {
-        Err(CxWebError::UnknownPackageFormat(url.to_string()))
+        Err(CxWasmError::UnknownPackageFormat(url.to_string()))
     }
 }
 
 async fn download_and_extract_package(
     name: &str,
     url: &str,
-) -> Result<extract::CondaPackageContents, CxWebError> {
+) -> Result<extract::CondaPackageContents, CxWasmError> {
     web_sys::console::log_1(&format!("  Downloading {name} from {url}").into());
     let bytes = crate::fetch_bytes(url).await?;
     web_sys::console::log_1(
@@ -275,7 +275,7 @@ async fn download_and_extract_package(
     } else if url.ends_with(".tar.bz2") {
         extract::extract_tar_bz2(&bytes)
     } else {
-        Err(CxWebError::UnknownPackageFormat(url.to_string()))
+        Err(CxWasmError::UnknownPackageFormat(url.to_string()))
     };
 
     if let Ok(ref contents) = result {

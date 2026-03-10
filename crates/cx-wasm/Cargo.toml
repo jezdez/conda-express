@@ -1,8 +1,8 @@
 [package]
-name = "cx-web"
+name = "cx-wasm"
 version = "0.1.0"
 edition = "2024"
-description = "Browser-based conda environment bootstrapper — WASM module powered by rattler"
+description = "Unified WASM module for conda in the browser: bootstrap, solve, and extract"
 license = "BSD-3-Clause"
 repository = "https://github.com/jezdez/conda-express"
 
@@ -12,8 +12,10 @@ crate-type = ["cdylib", "rlib"]
 [dependencies]
 rattler_conda_types = { version = "0.43", default-features = false }
 rattler_lock = { version = "0.26", default-features = false }
+rattler_solve = { version = "4.2", default-features = false, features = ["resolvo"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+url = "2"
 wasm-bindgen = "0.2"
 wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
