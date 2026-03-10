@@ -194,20 +194,33 @@
         // ─── Main ──────────────────────────────────────────────────────
         let pyjsMod = null;
 
-        async function runPyAndDisplay(code) {
-            const out = document.getElementById('python-output');
-            while (out.firstChild) out.removeChild(out.firstChild);
-            log(out, '>>> ' + code.trim().split('\n')[0] + (code.includes('\n') ? ' ...' : ''), 'info');
+        async function runPyTo(code, outputEl, {clear = true} = {}) {
+            if (clear) while (outputEl.firstChild) outputEl.removeChild(outputEl.firstChild);
+            log(outputEl, '>>> ' + code.trim().split('\n')[0] + (code.includes('\n') ? ' ...' : ''), 'info');
+
+            const origPrint = pyjsMod.print;
+            const origError = pyjsMod.error;
+            pyjsMod.print = (text) => log(outputEl, text, 'info');
+            pyjsMod.error = (text) => log(outputEl, text, 'warn');
+
             try {
                 const result = await runPython(pyjsMod, code);
                 if (result !== undefined && result !== null) {
                     const str = (typeof result === 'object' && result.toString) ? result.toString() : String(result);
-                    log(out, str, 'ok');
+                    log(outputEl, str, 'ok');
                     if (typeof result === 'object' && result.delete) result.delete();
                 }
             } catch (e) {
-                log(out, formatPyError(e), 'err');
+                log(outputEl, formatPyError(e), 'err');
+                throw e;
+            } finally {
+                pyjsMod.print = origPrint;
+                pyjsMod.error = origError;
             }
+        }
+
+        async function runPyAndDisplay(code) {
+            await runPyTo(code, document.getElementById('python-output'));
         }
 
         async function main() {
@@ -344,12 +357,10 @@ except SystemExit:
                 badge('badge-install', 'running', 'solving');
                 log(out, 'Running conda install ' + pkg + ' ...', 'info');
                 try {
-                    await runPyAndDisplay(`
-import sys, os, logging, time
-print("[debug] Starting instrumented conda install...")
+                    await runPyTo(`
+import sys, time
 
-logging.basicConfig(level=logging.DEBUG, stream=sys.stdout, format='[%(name)s] %(message)s', force=True)
-
+# ThreadPoolExecutor -> DummyExecutor (emscripten is single-threaded)
 import concurrent.futures
 from conda.common.io import DummyExecutor
 concurrent.futures.ThreadPoolExecutor = DummyExecutor
@@ -357,52 +368,14 @@ for mod_name in list(sys.modules.keys()):
     mod = sys.modules.get(mod_name)
     if mod and hasattr(mod, 'ThreadPoolExecutor'):
         if mod.__name__ != 'concurrent.futures':
-            old = getattr(mod, 'ThreadPoolExecutor')
-            if old is not DummyExecutor:
+            if getattr(mod, 'ThreadPoolExecutor', None) is not DummyExecutor:
                 setattr(mod, 'ThreadPoolExecutor', DummyExecutor)
-print("[debug] ThreadPoolExecutor patched everywhere")
 
-import conda_emscripten.solver as _wsolver
-_orig_fetch_repodata = _wsolver._fetch_repodata
-
-def _traced_fetch_repodata(channel_url, subdir):
-    import js
-    url = f"{channel_url.rstrip('/')}/{subdir}/repodata.json"
-    print(f"[debug] _fetch_repodata: fetching {url} ...")
-    t0 = time.time()
-    try:
-        text = str(js.sync_fetch_text(url))
-        dt = time.time() - t0
-        print(f"[debug] _fetch_repodata: got {len(text)} chars in {dt:.1f}s from {url}")
-        return text
-    except Exception as exc:
-        dt = time.time() - t0
-        print(f"[debug] _fetch_repodata: FAILED after {dt:.1f}s for {url}: {exc}")
-        raise
-
-_wsolver._fetch_repodata = _traced_fetch_repodata
-
-_orig_solve = _wsolver.WasmSolver.solve_final_state
-def _traced_solve(self, **kw):
-    print(f"[debug] solve_final_state: ENTER  channels={[str(c) for c in self.channels]}  subdirs={list(self.subdirs)}  specs_to_add={[str(s) for s in self.specs_to_add]}")
-    t0 = time.time()
-    try:
-        result = _orig_solve(self, **kw)
-        print(f"[debug] solve_final_state: DONE in {time.time()-t0:.1f}s, {len(result)} records")
-        return result
-    except Exception as exc:
-        print(f"[debug] solve_final_state: FAILED after {time.time()-t0:.1f}s: {exc}")
-        raise
-_wsolver.WasmSolver.solve_final_state = _traced_solve
-
-print("[debug] Solver instrumented.")
-
+# Capture stderr to stdout so we can see errors
 import io
 _real_stderr = sys.stderr
-_captured_stderr = io.StringIO()
 class TeeStderr:
     def write(self, text):
-        _captured_stderr.write(text)
         if text.strip():
             print(f"[stderr] {text.rstrip()}")
         return len(text)
@@ -410,59 +383,23 @@ class TeeStderr:
         pass
 sys.stderr = TeeStderr()
 
-from conda.base.context import context
-print(f"[debug] context.solver = {context.solver}")
-print(f"[debug] CONDA_SOLVER env = {os.environ.get('CONDA_SOLVER', 'unset')}")
-print(f"[debug] context.subdir = {context.subdir}")
+pkg = "${pkg}"
+print(f"conda install {pkg}")
+print()
 
-import importlib.metadata
+t0 = time.time()
+sys.argv = ['conda', 'install', '-y', pkg]
+from conda.cli.main import main
 try:
-    eps = importlib.metadata.entry_points()
-    conda_eps = eps.select(group="conda") if hasattr(eps, 'select') else eps.get("conda", [])
-    for ep in conda_eps:
-        print(f"[debug] entry_point: {ep.name} = {ep.value}")
-except Exception as exc:
-    print(f"[debug] entry_points error: {exc}")
+    main()
+except SystemExit as e:
+    if e.code and e.code != 0:
+        print(f"conda exited with code {e.code}")
 
-import glob as _g
-for d in _g.glob("/site-packages/conda_emscripten*"):
-    print(f"[debug] found: {d}")
-for d in _g.glob("/lib/python*/site-packages/conda_emscripten*"):
-    print(f"[debug] found: {d}")
-
-try:
-    pm = context.plugin_manager
-    solvers = pm.get_solvers()
-    print(f"[debug] get_solvers() type={type(solvers)} value={solvers}")
-except Exception as exc:
-    print(f"[debug] get_solvers error: {exc}")
-
-print("[debug] === Direct solver test ===")
-try:
-    from conda.models.match_spec import MatchSpec
-    from conda.models.channel import Channel
-    from conda_emscripten.solver import WasmSolver
-
-    channels = [Channel("https://repo.prefix.dev/emscripten-forge-4x")]
-    solver = WasmSolver(
-        prefix="/",
-        channels=channels,
-        subdirs=("emscripten-wasm32", "noarch"),
-        specs_to_add=[MatchSpec("zlib")],
-    )
-    print("[debug] WasmSolver created, calling solve_final_state...")
-    result = solver.solve_final_state()
-    print(f"[debug] Direct solve result: {len(result)} records")
-    for rec in result:
-        print(f"  {rec.name} {rec.version} {rec.build}")
-except Exception as exc:
-    import traceback
-    print(f"[debug] Direct solve FAILED: {exc}")
-    traceback.print_exc()
-
+elapsed = time.time() - t0
+print(f"\\nCompleted in {elapsed:.1f}s")
 sys.stderr = _real_stderr
-print("[debug] === Direct solver test done ===")
-`);
+`, out, {clear: false});
                     log(out, 'conda install completed', 'ok');
                     badge('badge-install', 'ok', 'done');
                 } catch (e) {

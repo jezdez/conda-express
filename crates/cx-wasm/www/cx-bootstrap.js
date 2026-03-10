@@ -109,7 +109,13 @@ export async function bootstrapConda({
     pyjsPrint,
     pyjsError,
 }) {
-    const log = (msg, level = 'info') => onLog?.(msg, level);
+    const log = (msg, level = 'info') => {
+        const prefix = '[cx-bootstrap]';
+        if (level === 'error') console.error(prefix, msg);
+        else if (level === 'warn') console.warn(prefix, msg);
+        else console.log(prefix, msg);
+        onLog?.(msg, level);
+    };
 
     // ── Step 1: Load cx-wasm WASM module ───────────────────────────────────
     log('Loading cx-wasm module...');
@@ -156,24 +162,27 @@ export async function bootstrapConda({
     const pkgIndexData = new Map();
 
     const onFile = (pkgName, path, bytes) => {
-        if (path === 'info/index.json') {
-            try {
-                pkgIndexData.set(pkgName, JSON.parse(new TextDecoder().decode(bytes)));
-            } catch (_) { /* ignore */ }
+        try {
+            if (path === 'info/index.json') {
+                try {
+                    pkgIndexData.set(pkgName, JSON.parse(new TextDecoder().decode(bytes)));
+                } catch (_) { /* ignore */ }
+            }
+            if (path.startsWith('info/')) return;
+
+            fileCount++;
+            totalBytes += bytes.length;
+            const dest = prefix + '/' + path;
+            ensureDir(FS, dest.substring(0, dest.lastIndexOf('/')));
+            FS.writeFile(dest, bytes);
+
+            if (path.endsWith('.so')) {
+                sharedLibs.push(prefix + '/' + path);
+            }
+        } catch (e) {
+            console.error('[cx-bootstrap] onFile error:', pkgName, path, e);
+            throw e;
         }
-        if (path.startsWith('info/')) return;
-
-        fileCount++;
-        totalBytes += bytes.length;
-        const dest = prefix + '/' + path;
-        ensureDir(FS, dest.substring(0, dest.lastIndexOf('/')));
-        FS.writeFile(dest, bytes);
-
-        if (path.endsWith('.so')) {
-            sharedLibs.push(prefix + '/' + path);
-        }
-
-        onProgress?.(fileCount, plan.package_count, pkgName);
     };
 
     const streamProgress = (current, total, name) => {
@@ -219,10 +228,20 @@ export async function bootstrapConda({
     // ── Step 6: Initialize Python interpreter ──────────────────────────────
     log('Initializing Python interpreter...');
     const pyPrefix = prefix || '/';
-    await pyjsModule.init_phase_1(pyPrefix, pythonVersion, true);
-    log('Python interpreter started (init_phase_1)', 'ok');
-    pyjsModule.init_phase_2(pyPrefix, pythonVersion, true);
-    log('pyjs bridge ready (init_phase_2)', 'ok');
+    try {
+        await pyjsModule.init_phase_1(pyPrefix, pythonVersion, true);
+        log('Python interpreter started (init_phase_1)', 'ok');
+    } catch (e) {
+        log('init_phase_1 failed: ' + e, 'error');
+        throw e;
+    }
+    try {
+        pyjsModule.init_phase_2(pyPrefix, pythonVersion, true);
+        log('pyjs bridge ready (init_phase_2)', 'ok');
+    } catch (e) {
+        log('init_phase_2 failed: ' + e, 'error');
+        throw e;
+    }
 
     // ── Step 7: Load shared libraries ──────────────────────────────────────
     if (sharedLibs.length > 0) {
@@ -238,8 +257,10 @@ export async function bootstrapConda({
     }
 
     // ── Step 8: Configure conda environment ────────────────────────────────
-    const channelsYaml = channels.map(c => `  - ${c}`).join('\\n');
-    pyjsModule['exec'](`
+    log('Configuring conda environment...');
+    try {
+        const channelsYaml = channels.map(c => `  - ${c}`).join('\\n');
+        pyjsModule['exec'](`
 import sys, os, glob
 
 PREFIX = "${pyPrefix}"
@@ -270,7 +291,11 @@ os.makedirs(os.path.dirname(history), exist_ok=True)
 with open(history, "w") as f:
     f.write("==> conda-express bootstrap <==\\n")
 `);
-    log('Python environment configured', 'ok');
+        log('Python environment configured', 'ok');
+    } catch (e) {
+        log('Python environment config failed: ' + formatPyError(e), 'error');
+        throw e;
+    }
 
     // ── Step 9: Patch urllib3 Emscripten fetch backend for pyjs ────────────
     try {
