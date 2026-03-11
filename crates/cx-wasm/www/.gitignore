@@ -1,5 +1,15 @@
-*
-!.gitignore
-!index.html
-!conda-test.html
-!cx-bootstrap.js
+# wasm-pack build output
+cx_wasm.js
+cx_wasm.d.ts
+cx_wasm_bg.wasm
+cx_wasm_bg.wasm.d.ts
+package.json
+
+# pyjs runtime (copied during build)
+pyjs_runtime_browser.js
+pyjs_runtime_browser.wasm
+
+# Generated lockfiles and conda packages
+*.lock
+*.conda
+packages/

@@ -10,7 +10,7 @@ environments:
     packages:
       emscripten-wasm32:
       - conda: https://conda.anaconda.org/conda-forge/noarch/boltons-25.0.0-pyhd8ed1ab_0.conda
-      - conda: https://repo.prefix.dev/emscripten-forge-4x/emscripten-wasm32/brotli-python-1.2.0-py313ha26e73d_1.tar.bz2
+      - conda: https://repo.prefix.dev/emscripten-forge-4x/emscripten-wasm32/brotli-python-1.2.0-py313ha26e73d_2.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/noarch/certifi-2026.2.25-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/charset-normalizer-3.4.5-pyhd8ed1ab_0.conda
       - conda: https://repo.prefix.dev/emscripten-forge-4x/noarch/emscripten-abi-4.0.9-h267e887_8.tar.bz2
@@ -42,16 +42,16 @@ packages:
   license_family: BSD
   size: 302296
   timestamp: 1749686302834
-- conda: https://repo.prefix.dev/emscripten-forge-4x/emscripten-wasm32/brotli-python-1.2.0-py313ha26e73d_1.tar.bz2
-  sha256: 6bdad840282fe4190784067fe80fb2a202154b170ee5fc43d96ea43ba28677f4
-  md5: 69a296b6d4b427f1e0b983556fc20f4d
+- conda: https://repo.prefix.dev/emscripten-forge-4x/emscripten-wasm32/brotli-python-1.2.0-py313ha26e73d_2.tar.bz2
+  sha256: a95f7fa26ab49341cf8124c8fc0b63d59684ef18a7921701f8065e9a15e59485
+  md5: 453a69143b7b2cc9925786fdf0245c57
   depends:
   - python
   - emscripten-abi >=4,<5.0a0
   - python_abi 3.13.* *_cp313
   license: MIT
-  size: 318364
-  timestamp: 1770890828427
+  size: 322484
+  timestamp: 1773241604805
 - conda: https://conda.anaconda.org/conda-forge/noarch/certifi-2026.2.25-pyhd8ed1ab_0.conda
   sha256: a6b118fd1ed6099dc4fc03f9c492b88882a780fadaef4ed4f93dc70757713656
   md5: 765c4d97e877cdbbb88ff33152b86125
@@ -71,8 +71,8 @@ packages:
   timestamp: 1772816516728
 - conda: /Users/jezdez/Code/git/conda-express/output/noarch/conda-26.1.1-pyh4616a5c_0.conda
   subdir: noarch
-  sha256: 98f40bd3d2f706c5ae0020d6621ace3d5d45767710e9e0220150b81a5e8b8178
-  md5: 907300dc10f9c21ebd82328bb1ae8e0b
+  sha256: c8c19eb1e86de3ded1c9ca4c659396f98578bb88ebc2445efe7daeec595e742d
+  md5: 9db521d4ff6a37ba30f2a1f06332e1f0
   depends:
   - python >=3.12
   - boltons >=23.0
@@ -87,19 +87,19 @@ packages:
   - python
   channel: file:///Users/jezdez/Code/git/conda-express/output
   license: BSD-3-Clause
-  size: 553201
-  timestamp: 1773164016099
+  size: 553458
+  timestamp: 1773271129679
 - conda: /Users/jezdez/Code/git/conda-express/output/noarch/conda-emscripten-0.1.0-pyh4616a5c_0.conda
   subdir: noarch
-  sha256: 52f31129572b41769de9fe418dc92ad1691b286df0b080dc3233faf09b4400a0
-  md5: 4aa967bddafd66f6c4a18b92ba6514bd
+  sha256: 870a362d5bf8e5b723f60a129a29070426c5a588c049615848b86f6de3c60e72
+  md5: 334b2e05fc87f3915636ab8f180fb835
   depends:
   - python >=3.12
   - python
   channel: file:///Users/jezdez/Code/git/conda-express/output
   license: BSD-3-Clause
-  size: 11427
-  timestamp: 1773164055034
+  size: 12228
+  timestamp: 1773272343290
 - conda: https://repo.prefix.dev/emscripten-forge-4x/noarch/emscripten-abi-4.0.9-h267e887_8.tar.bz2
   sha256: 98cfd70341371eccfd6e186e3be1b18b2ac1cb859ecb9efb9a96303885a6bb2a
   md5: 744cafd9d23d91fc2943a29fdbb4c6a6
@@ -108,15 +108,15 @@ packages:
   timestamp: 1771238604544
 - conda: /Users/jezdez/Code/git/conda-express/output/noarch/frozendict-2.4.6-pyh4616a5c_0.conda
   subdir: noarch
-  sha256: 5a7f87cb0c281da57ee4b68cd6d9bd24505dcb82f3e61ff69d3063645bb8dc67
-  md5: ab8bb4dc3571afb31c9f752f453c7e5d
+  sha256: f7919e4969519576025ae5d2779d6c8893480531b652f6d4db47fae992e901e6
+  md5: 26c950b708082a81d0fc1764b72929cb
   depends:
   - python >=3.8
   - python
   channel: file:///Users/jezdez/Code/git/conda-express/output
   license: LGPL-3.0-only
-  size: 18689
-  timestamp: 1773011057275
+  size: 18694
+  timestamp: 1773271090001
 - conda: https://conda.anaconda.org/conda-forge/noarch/idna-3.11-pyhd8ed1ab_0.conda
   sha256: ae89d0299ada2a3162c2614a9d26557a92aa6a77120ce142f8e0109bbf0342b0
   md5: 53abe63df7e10a6ba605dc5f9f961d36

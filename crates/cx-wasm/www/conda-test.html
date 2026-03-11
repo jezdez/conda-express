@@ -44,12 +44,12 @@
 </head>
 <body>
     <h1>conda-in-browser <small>end-to-end test</small></h1>
-    <p class="subtitle">Bootstrap a conda environment into the browser, then run <code>conda info</code>, <code>conda list</code>, and <code>conda install</code> via pyjs + emscripten-forge.</p>
+    <p class="subtitle">Bootstrap a conda environment into the browser via a Web Worker, then run <code>conda info</code>, <code>conda list</code>, and <code>conda install</code>.</p>
 
     <div class="phase" id="phase-load">
         <div class="phase-header">
             <span class="badge badge-pending" id="badge-load">pending</span>
-            Phase 1: Load WASM modules + pyjs runtime
+            Phase 1: Load WASM modules + pyjs runtime (Worker)
         </div>
         <div class="log-wrap"><button class="copy-btn" onclick="copyLog('log-load')">copy</button><div class="log" id="log-load"></div></div>
     </div>
@@ -58,9 +58,13 @@
         <div class="phase-header">
             <span class="badge badge-pending" id="badge-bootstrap">pending</span>
             Phase 2: Bootstrap conda environment
+            <span class="badge badge-pending" id="badge-cache" style="margin-left:auto"></span>
         </div>
         <div class="progress"><div class="progress-bar" id="bootstrap-progress"></div></div>
         <div class="stats" id="bootstrap-stats"></div>
+        <div class="controls" id="cache-controls" style="display:none">
+            <button id="btn-clear-cache">Clear cache &amp; reload</button>
+        </div>
         <div class="log-wrap"><button class="copy-btn" onclick="copyLog('log-bootstrap')">copy</button><div class="log" id="log-bootstrap" style="display:none;"></div></div>
     </div>
 
@@ -92,70 +96,17 @@
 
     <script>
         function copyLog(id) {
-            const el = document.getElementById(id);
-            const text = el.textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                const btn = el.parentElement.querySelector('.copy-btn');
+            var el = document.getElementById(id);
+            var text = el.textContent;
+            navigator.clipboard.writeText(text).then(function () {
+                var btn = el.parentElement.querySelector('.copy-btn');
                 btn.textContent = 'copied!';
-                setTimeout(() => { btn.textContent = 'copy'; }, 1500);
+                setTimeout(function () { btn.textContent = 'copy'; }, 1500);
             });
         }
     </script>
-    <!-- Synchronous XHR helpers must be on window before pyjs loads -->
-    <script src="pyjs_runtime_browser.js"></script>
-    <script>
-        window.sync_fetch_text = function(url) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, false);
-            xhr.send();
-            if (xhr.status >= 200 && xhr.status < 300) {
-                return xhr.responseText;
-            }
-            throw new Error('HTTP ' + xhr.status + ' for ' + url);
-        };
-        window.sync_fetch_binary = function(url) {
-            var xhr = new XMLHttpRequest();
-            xhr.open('GET', url, false);
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
-            xhr.send();
-            if (xhr.status >= 200 && xhr.status < 300) {
-                var text = xhr.responseText;
-                var bytes = new Uint8Array(text.length);
-                for (var i = 0; i < text.length; i++) {
-                    bytes[i] = text.charCodeAt(i) & 0xff;
-                }
-                return bytes;
-            }
-            throw new Error('HTTP ' + xhr.status + ' for ' + url);
-        };
-        window.sync_http_request = function(method, url, headersJson, body) {
-            var xhr = new XMLHttpRequest();
-            xhr.open(method, url, false);
-            xhr.overrideMimeType('text/plain; charset=x-user-defined');
-            if (headersJson) {
-                var headers = JSON.parse(headersJson);
-                for (var k in headers) {
-                    if (k.toLowerCase() !== 'user-agent') {
-                        xhr.setRequestHeader(k, headers[k]);
-                    }
-                }
-            }
-            xhr.send(body || null);
-            var respHeaders = xhr.getAllResponseHeaders();
-            var respText = xhr.responseText || '';
-            var respBytes = new Uint8Array(respText.length);
-            for (var i = 0; i < respText.length; i++) {
-                respBytes[i] = respText.charCodeAt(i) & 0xff;
-            }
-            return JSON.stringify({
-                status: xhr.status,
-                headers: respHeaders,
-                body_length: respBytes.length
-            }) + '\n' + xhr.responseText;
-        };
-    </script>
     <script type="module">
-        import { bootstrapConda, runPython, formatPyError } from './cx-bootstrap.js';
+        import { createCondaWorker } from './cx-bootstrap.js';
 
         // ─── UI helpers ────────────────────────────────────────────────
         function log(el, msg, cls) {
@@ -172,12 +123,6 @@
             el.textContent = text || state;
         }
 
-        function formatSize(bytes) {
-            if (bytes < 1024) return bytes + ' B';
-            if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-            return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-        }
-
         function setStats(el, items) {
             while (el.firstChild) el.removeChild(el.firstChild);
             for (const [label, value] of items) {
@@ -192,37 +137,6 @@
         }
 
         // ─── Main ──────────────────────────────────────────────────────
-        let pyjsMod = null;
-
-        async function runPyTo(code, outputEl, {clear = true} = {}) {
-            if (clear) while (outputEl.firstChild) outputEl.removeChild(outputEl.firstChild);
-            log(outputEl, '>>> ' + code.trim().split('\n')[0] + (code.includes('\n') ? ' ...' : ''), 'info');
-
-            const origPrint = pyjsMod.print;
-            const origError = pyjsMod.error;
-            pyjsMod.print = (text) => log(outputEl, text, 'info');
-            pyjsMod.error = (text) => log(outputEl, text, 'warn');
-
-            try {
-                const result = await runPython(pyjsMod, code);
-                if (result !== undefined && result !== null) {
-                    const str = (typeof result === 'object' && result.toString) ? result.toString() : String(result);
-                    log(outputEl, str, 'ok');
-                    if (typeof result === 'object' && result.delete) result.delete();
-                }
-            } catch (e) {
-                log(outputEl, formatPyError(e), 'err');
-                throw e;
-            } finally {
-                pyjsMod.print = origPrint;
-                pyjsMod.error = origError;
-            }
-        }
-
-        async function runPyAndDisplay(code) {
-            await runPyTo(code, document.getElementById('python-output'));
-        }
-
         async function main() {
             const logLoad = document.getElementById('log-load');
             const logBootstrap = document.getElementById('log-bootstrap');
@@ -233,43 +147,56 @@
             badge('badge-load', 'running', 'loading');
             logBootstrap.style.display = 'block';
 
-            let pkgCount = 0;
-            let totalBytes = 0;
+            let bootstrapDone = false;
             const t0 = performance.now();
 
             try {
-                const { pyjsModule, result, plan } = await bootstrapConda({
-                    lockfileUrl: '/conda-emscripten.lock',
-                    pyjsPrint: (text) => log(pyOut, text, 'info'),
-                    pyjsError: (text) => log(pyOut, text, 'warn'),
+                const conda = await createCondaWorker({
                     onLog: (msg, level) => {
                         const cls = level === 'ok' ? 'ok' : level === 'warn' ? 'warn' : level === 'error' ? 'err' : 'info';
-                        // Route load-phase messages to load log, rest to bootstrap log
-                        const target = !pyjsMod && (msg.includes('cx-wasm') || msg.includes('pyjs')) ? logLoad : logBootstrap;
+                        const target = !bootstrapDone && (msg.includes('cx-wasm') || msg.includes('pyjs')) ? logLoad : logBootstrap;
                         log(target, msg, cls);
                     },
                     onProgress: (current, total, name) => {
                         const pct = total > 0 ? Math.round((current / total) * 100) : 0;
                         bar.style.width = pct + '%';
-                        if (typeof name === 'string' && name !== 'done') {
-                            pkgCount = current;
-                        }
-                        setStats(statsEl, [
-                            ['Packages', current + '/' + total],
-                        ]);
+                        setStats(statsEl, [['Packages', current + '/' + total]]);
                     },
+                    onPrint: (text) => log(pyOut, text, 'info'),
+                    onError: (text) => log(pyOut, text, 'warn'),
                 });
 
-                pyjsMod = pyjsModule;
+                const forceRefresh = new URLSearchParams(window.location.search).has('nocache');
+                const result = await conda.bootstrap({
+                    lockfileUrl: '/conda-emscripten.lock',
+                    forceRefresh,
+                });
+                bootstrapDone = true;
+
                 const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
 
                 badge('badge-load', 'ok', 'done');
                 bar.style.width = '100%';
                 bar.classList.add('done');
+
+                const sourceLabel = result.fromCache ? 'cached' : 'fresh';
                 setStats(statsEl, [
                     ['Packages', result.packages_installed + '/' + result.total_packages],
                     ['Time', elapsed + 's'],
+                    ['Source', sourceLabel],
                 ]);
+
+                badge('badge-cache', result.fromCache ? 'ok' : 'warn', result.fromCache ? 'cached' : 'fresh');
+                document.getElementById('cache-controls').style.display = '';
+                document.getElementById('btn-clear-cache').addEventListener('click', async () => {
+                    try {
+                        await conda.clearCache();
+                        log(logBootstrap, 'Cache cleared. Reloading...', 'info');
+                        setTimeout(() => window.location.reload(), 500);
+                    } catch (e) {
+                        log(logBootstrap, 'Failed to clear cache: ' + e, 'err');
+                    }
+                });
 
                 if (result.errors.length > 0) {
                     badge('badge-bootstrap', 'warn', 'partial');
@@ -280,7 +207,9 @@
                 // Run conda info as initial test
                 badge('badge-conda', 'running', 'setting up');
                 try {
-                    pyjsMod['exec'](`
+                    conda.handlers.onPrint = (text) => log(pyOut, text, 'info');
+                    conda.handlers.onError = (text) => log(pyOut, text, 'warn');
+                    await conda.runPythonSync(`
 import sys
 print("\\n--- conda info ---")
 sys.argv = ['conda', 'info']
@@ -293,28 +222,49 @@ except SystemExit:
                     log(pyOut, 'conda info completed', 'ok');
                     badge('badge-conda', 'ok', 'done');
                 } catch (e) {
-                    log(pyOut, 'conda info error: ' + formatPyError(e), 'warn');
+                    log(pyOut, 'conda info error: ' + e, 'warn');
                     badge('badge-conda', 'warn', 'partial');
                 }
 
-                enableButtons();
+                enableButtons(conda);
             } catch (e) {
                 const elapsed = ((performance.now() - t0) / 1000).toFixed(1);
-                log(logBootstrap, 'Bootstrap failed after ' + elapsed + 's: ' + formatPyError(e), 'err');
+                log(logBootstrap, 'Bootstrap failed after ' + elapsed + 's: ' + e, 'err');
                 badge('badge-load', 'fail', 'failed');
                 badge('badge-bootstrap', 'fail', 'failed');
                 bar.classList.add('fail');
             }
         }
 
-        function enableButtons() {
+        function enableButtons(conda) {
+            const pyOut = document.getElementById('python-output');
+
+            async function runPyTo(code, outputEl, {clear = true} = {}) {
+                if (clear) while (outputEl.firstChild) outputEl.removeChild(outputEl.firstChild);
+                log(outputEl, '>>> ' + code.trim().split('\n')[0] + (code.includes('\n') ? ' ...' : ''), 'info');
+
+                const prevPrint = conda.handlers.onPrint;
+                const prevError = conda.handlers.onError;
+                conda.handlers.onPrint = (text) => log(outputEl, text, 'info');
+                conda.handlers.onError = (text) => log(outputEl, text, 'warn');
+                try {
+                    await conda.runPythonSync(code);
+                } catch (e) {
+                    log(outputEl, String(e), 'err');
+                    throw e;
+                } finally {
+                    conda.handlers.onPrint = prevPrint;
+                    conda.handlers.onError = prevError;
+                }
+            }
+
             document.getElementById('btn-info').disabled = false;
             document.getElementById('btn-list').disabled = false;
             document.getElementById('btn-custom').disabled = false;
             document.getElementById('btn-install').disabled = false;
 
-            document.getElementById('btn-info').addEventListener('click', async () => {
-                await runPyAndDisplay(`
+            document.getElementById('btn-info').addEventListener('click', () => {
+                runPyTo(`
 import sys
 sys.argv = ['conda', 'info']
 from conda.cli.main import main
@@ -322,11 +272,11 @@ try:
     main()
 except SystemExit:
     pass
-`);
+`, pyOut);
             });
 
-            document.getElementById('btn-list').addEventListener('click', async () => {
-                await runPyAndDisplay(`
+            document.getElementById('btn-list').addEventListener('click', () => {
+                runPyTo(`
 import sys
 sys.argv = ['conda', 'list']
 from conda.cli.main import main
@@ -334,33 +284,32 @@ try:
     main()
 except SystemExit:
     pass
-`);
+`, pyOut);
             });
 
-            document.getElementById('btn-custom').addEventListener('click', async () => {
+            document.getElementById('btn-custom').addEventListener('click', () => {
                 const code = document.getElementById('custom-cmd').value;
-                if (code.trim()) await runPyAndDisplay(code);
+                if (code.trim()) runPyTo(code, pyOut);
             });
 
-            document.getElementById('custom-cmd').addEventListener('keydown', async (e) => {
+            document.getElementById('custom-cmd').addEventListener('keydown', (e) => {
                 if (e.key === 'Enter') {
                     const code = e.target.value;
-                    if (code.trim()) await runPyAndDisplay(code);
+                    if (code.trim()) runPyTo(code, pyOut);
                 }
             });
 
-            document.getElementById('btn-install').addEventListener('click', async () => {
+            document.getElementById('btn-install').addEventListener('click', () => {
                 const pkg = document.getElementById('install-pkg').value.trim();
                 if (!pkg) return;
                 const out = document.getElementById('install-output');
                 while (out.firstChild) out.removeChild(out.firstChild);
                 badge('badge-install', 'running', 'solving');
                 log(out, 'Running conda install ' + pkg + ' ...', 'info');
-                try {
-                    await runPyTo(`
+
+                runPyTo(`
 import sys, time
 
-# ThreadPoolExecutor -> DummyExecutor (emscripten is single-threaded)
 import concurrent.futures
 from conda.common.io import DummyExecutor
 concurrent.futures.ThreadPoolExecutor = DummyExecutor
@@ -371,7 +320,6 @@ for mod_name in list(sys.modules.keys()):
             if getattr(mod, 'ThreadPoolExecutor', None) is not DummyExecutor:
                 setattr(mod, 'ThreadPoolExecutor', DummyExecutor)
 
-# Capture stderr to stdout so we can see errors
 import io
 _real_stderr = sys.stderr
 class TeeStderr:
@@ -387,8 +335,18 @@ pkg = "${pkg}"
 print(f"conda install {pkg}")
 print()
 
+import logging
+logging.basicConfig(level=logging.DEBUG, format="[%(name)s] %(message)s", force=True)
+
+print("[debug] Checking js bridge...")
+import js
+print(f"[debug] js.sync_fetch_text: {type(getattr(js, 'sync_fetch_text', None))}")
+print(f"[debug] js.cx_solve: {type(getattr(js, 'cx_solve', None))}")
+print(f"[debug] js.cx_extract_package: {type(getattr(js, 'cx_extract_package', None))}")
+
 t0 = time.time()
 sys.argv = ['conda', 'install', '-y', pkg]
+print("[debug] Calling conda.cli.main.main()...")
 from conda.cli.main import main
 try:
     main()
@@ -399,19 +357,17 @@ except SystemExit as e:
 elapsed = time.time() - t0
 print(f"\\nCompleted in {elapsed:.1f}s")
 sys.stderr = _real_stderr
-`, out, {clear: false});
+`, out, {clear: false}).then(() => {
                     log(out, 'conda install completed', 'ok');
                     badge('badge-install', 'ok', 'done');
-                } catch (e) {
-                    log(out, 'conda install failed: ' + formatPyError(e), 'err');
+                }).catch((e) => {
+                    log(out, 'conda install failed: ' + e, 'err');
                     badge('badge-install', 'fail', 'failed');
-                }
+                });
             });
 
-            document.getElementById('install-pkg').addEventListener('keydown', async (e) => {
-                if (e.key === 'Enter') {
-                    document.getElementById('btn-install').click();
-                }
+            document.getElementById('install-pkg').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') document.getElementById('btn-install').click();
             });
         }
 

@@ -1,0 +1,10 @@
+--- a/conda/core/solve.py
++++ b/conda/core/solve.py
+@@ -1226,7 +1226,9 @@
+     def _notify_conda_outdated(self, link_precs):
+-        if not context.notify_outdated_conda or context.quiet:
++        import sys
++        if sys.platform == "emscripten" or not context.notify_outdated_conda or context.quiet:
+             return
+         current_conda_prefix_rec = PrefixData(context.conda_prefix).get("conda", None)
+         if current_conda_prefix_rec:

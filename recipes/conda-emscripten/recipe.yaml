@@ -16,6 +16,8 @@ source:
     - patches/004-linking-memfs.patch
     - patches/005-emscripten-os-compat.patch
     - patches/006-no-threading-emscripten.patch
+    - patches/007-emscripten-lockf-noop.patch
+    - patches/008-emscripten-skip-outdated-check.patch
 
 build:
   noarch: python

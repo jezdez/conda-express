@@ -38,19 +38,59 @@ def _get_js_bridge():
         )
 
 
-def _fetch_repodata(channel_url: str, subdir: str) -> str:
-    """Fetch repodata.json for a channel/subdir combination.
+def _fetch_repodata(
+    channel_url: str,
+    subdir: str,
+    seed_names: list[str] | None = None,
+) -> str:
+    """Fetch repodata for a channel/subdir, preferring smaller formats.
 
-    Uses synchronous XMLHttpRequest via the ``js.sync_fetch_text`` helper
-    exposed by conda-test.html.  Without Asyncify, urllib3/requests cannot
-    perform synchronous HTTP on the browser main thread, so we bypass them.
+    Tries in order:
+    1. Sharded repodata (CEP-16) via JS helper — fetches only the shards
+       for ``seed_names`` and their transitive dependencies.
+    2. current_repodata.json (latest versions only, much smaller)
+    3. repodata.json (full, can be 50-100+ MB for conda-forge)
+
+    Uses synchronous XMLHttpRequest via the ``js.sync_fetch_text`` helper.
     """
     import js
 
     base = channel_url.rstrip("/")
-    url = f"{base}/{subdir}/repodata.json"
 
-    log.info("Fetching repodata from %s", url)
+    # Try sharded repodata via JS helper (CEP-16)
+    if seed_names and hasattr(js, "fetch_sharded_repodata"):
+        try:
+            import json as _json
+            seed_json = _json.dumps(seed_names)
+            raw = js.fetch_sharded_repodata(base, subdir, seed_json)
+            if raw is None:
+                log.debug("Sharded repodata returned None for %s/%s", base, subdir)
+            else:
+                result = str(raw)
+                if result and result not in ("null", "undefined", "None"):
+                    log.info(
+                        "Fetched sharded repodata for %s/%s (%d seed packages, %d chars)",
+                        base, subdir, len(seed_names), len(result),
+                    )
+                    return result
+                log.debug("Sharded repodata empty/null for %s/%s: %r", base, subdir, result[:100])
+        except Exception as e:
+            log.warning("Sharded repodata failed for %s/%s: %s", base, subdir, e)
+
+    # Try current_repodata.json first (only latest versions, much smaller)
+    current_url = f"{base}/{subdir}/current_repodata.json"
+    try:
+        log.info("Fetching current_repodata from %s", current_url)
+        result = str(js.sync_fetch_text(current_url))
+        if result:
+            log.info("Got current_repodata for %s/%s (%d chars)", base, subdir, len(result))
+            return result
+    except Exception:
+        log.debug("current_repodata.json not available for %s/%s, trying full repodata", base, subdir)
+
+    # Fall back to full repodata.json
+    url = f"{base}/{subdir}/repodata.json"
+    log.info("Fetching full repodata from %s", url)
     return str(js.sync_fetch_text(url))
 
 
@@ -266,6 +306,14 @@ class WasmSolver(Solver):
             if name not in remove_names:
                 solve_specs.append(name)
 
+        for i, entry in enumerate(repodata_entries):
+            rd = entry["repodata"]
+            log.info(
+                "repodata_entries[%d] %s/%s: type=%s len=%d first100=%r",
+                i, entry["channel"], entry["subdir"],
+                type(rd).__name__, len(rd), rd[:100],
+            )
+
         solve_request_json = json.dumps({
             "repodata": repodata_entries,
             "specs": solve_specs,
@@ -273,6 +321,7 @@ class WasmSolver(Solver):
             "virtual_packages": virtual_packages,
             "platform": platform,
         })
+        log.info("solve_request_json length: %d", len(solve_request_json))
         solve_request = js.JSON.parse(solve_request_json)
 
         log.info(
@@ -308,13 +357,19 @@ class WasmSolver(Solver):
         return IndexedSet(PrefixGraph(records).graph)
 
     def _fetch_all_repodata(self) -> list[dict]:
-        """Fetch repodata.json for all channel/subdir combinations."""
+        """Fetch repodata for all channel/subdir combinations.
+
+        Collects seed package names from specs_to_add and installed packages
+        so the sharded repodata fetcher (CEP-16) can do targeted fetching
+        instead of downloading the full monolithic repodata.json.
+        """
+        seed_names = self._collect_seed_names()
         entries = []
         for channel in self.channels:
             channel_url = self._channel_to_url(channel)
             for subdir in self.subdirs:
                 try:
-                    repodata_json = _fetch_repodata(channel_url, subdir)
+                    repodata_json = _fetch_repodata(channel_url, subdir, seed_names)
                     entries.append(
                         {
                             "channel": channel_url,
@@ -330,6 +385,28 @@ class WasmSolver(Solver):
                         e,
                     )
         return entries
+
+    def _collect_seed_names(self) -> list[str]:
+        """Collect package names to seed sharded repodata fetching.
+
+        Includes: specs being added, specs being removed, and all currently
+        installed package names (since the solver needs to re-resolve them).
+        """
+        from conda.core.prefix_data import PrefixData
+
+        names: set[str] = set()
+        for s in self.specs_to_add:
+            if s.name:
+                names.add(s.name)
+        for s in self.specs_to_remove:
+            if s.name:
+                names.add(s.name)
+
+        prefix_data = PrefixData(self.prefix)
+        for rec in prefix_data.iter_records():
+            names.add(rec.name)
+
+        return sorted(names)
 
     @staticmethod
     def _channel_to_url(channel: Channel) -> str:

@@ -1,6 +1,7 @@
 mod bootstrap;
 mod error;
 mod extract;
+mod sharded;
 mod solve;
 
 use std::str::FromStr;
@@ -200,7 +201,21 @@ pub async fn cx_bootstrap_embedded(
     to_js(&result)
 }
 
+// Global fetch/setTimeout/clearTimeout bindings that work in both Window and Worker contexts.
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_name = fetch)]
+    fn global_fetch(input: &web_sys::Request) -> js_sys::Promise;
+
+    #[wasm_bindgen(js_name = setTimeout)]
+    fn global_set_timeout(handler: &js_sys::Function, timeout: i32) -> i32;
+
+    #[wasm_bindgen(js_name = clearTimeout)]
+    fn global_clear_timeout(id: i32);
+}
+
 /// Fetch bytes from a URL using the browser Fetch API with a 5-minute timeout.
+/// Works in both Window (main thread) and Worker contexts.
 pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     use js_sys::{ArrayBuffer, Uint8Array};
     use wasm_bindgen::JsCast;
@@ -219,24 +234,18 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     let request = Request::new_with_str_and_init(url, &opts)
         .map_err(|e| CxWasmError::FetchFailed(format!("request error: {e:?}")))?;
 
-    let window = web_sys::window().ok_or(CxWasmError::FetchFailed("no global window".into()))?;
-
-    // into_js_value() leaks the Closure (calls forget() internally).
-    // Acceptable here: one small alloc per fetch, freed when page unloads.
-    let timeout_id = window
-        .set_timeout_with_callback_and_timeout_and_arguments_0(
-            &wasm_bindgen::closure::Closure::<dyn Fn()>::new({
-                let controller = controller.clone();
-                move || controller.abort()
-            })
-            .into_js_value()
-            .unchecked_into(),
-            300_000, // 5-minute timeout for large packages
-        )
-        .map_err(|e| CxWasmError::FetchFailed(format!("setTimeout error: {e:?}")))?;
+    let timeout_id = global_set_timeout(
+        &wasm_bindgen::closure::Closure::<dyn Fn()>::new({
+            let controller = controller.clone();
+            move || controller.abort()
+        })
+        .into_js_value()
+        .unchecked_into(),
+        300_000, // 5-minute timeout for large packages
+    );
 
     let result = async {
-        let resp_val = JsFuture::from(window.fetch_with_request(&request))
+        let resp_val = JsFuture::from(global_fetch(&request))
             .await
             .map_err(|e| CxWasmError::FetchFailed(format!("fetch error (timeout or CORS?): {e:?}")))?;
         let resp: Response = resp_val
@@ -262,7 +271,7 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     }
     .await;
 
-    window.clear_timeout_with_handle(timeout_id);
+    global_clear_timeout(timeout_id);
     result
 }
 
