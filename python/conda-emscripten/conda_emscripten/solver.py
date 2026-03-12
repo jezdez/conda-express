@@ -63,19 +63,20 @@ def _fetch_repodata(
             import json as _json
             seed_json = _json.dumps(seed_names)
             raw = js.fetch_sharded_repodata(base, subdir, seed_json)
-            if raw is None:
-                log.debug("Sharded repodata returned None for %s/%s", base, subdir)
-            else:
-                result = str(raw)
-                if result and result not in ("null", "undefined", "None"):
-                    log.info(
-                        "Fetched sharded repodata for %s/%s (%d seed packages, %d chars)",
-                        base, subdir, len(seed_names), len(result),
-                    )
-                    return result
-                log.debug("Sharded repodata empty/null for %s/%s: %r", base, subdir, result[:100])
+            result = str(raw) if raw is not None else None
+            if result and result not in ("null", "undefined", "None"):
+                log.info(
+                    "Sharded repodata for %s/%s: %d seeds, %d chars",
+                    base, subdir, len(seed_names), len(result),
+                )
+                return result
+            log.info("Sharded repodata returned empty for %s/%s", base, subdir)
         except Exception as e:
-            log.warning("Sharded repodata failed for %s/%s: %s", base, subdir, e)
+            err_msg = str(e)
+            if "shard_index_fetch_failed" in err_msg:
+                log.info("No sharded repodata for %s/%s (no shard index)", base, subdir)
+            else:
+                log.warning("Sharded repodata failed for %s/%s: %s", base, subdir, err_msg)
 
     # Try current_repodata.json first (only latest versions, much smaller)
     current_url = f"{base}/{subdir}/current_repodata.json"

@@ -266,22 +266,19 @@ self.sync_http_request = function (method, url, headersJson, body) {
             var indexBytes;
             try {
                 indexBytes = self.sync_fetch_binary(indexUrl);
-                console.log('[cx-sharded] Fetched shard index from ' + indexUrl + ' (' + indexBytes.length + ' bytes)');
             } catch (e) {
-                console.warn('[cx-sharded] Failed to fetch shard index from ' + indexUrl + ': ' + e);
-                return null;
+                throw new Error('shard_index_fetch_failed: ' + indexUrl + ' => ' + e);
             }
 
             var index;
             try {
-                index = cx_decode_shard_index(indexBytes);
+                var indexJson = cx_decode_shard_index(indexBytes);
+                index = JSON.parse(indexJson);
             } catch (e) {
-                console.warn('[cx-sharded] Failed to decode shard index:', e);
-                return null;
+                throw new Error('shard_index_decode_failed: ' + indexUrl + ' (' + indexBytes.length + ' bytes) => ' + e);
             }
 
-            // Resolve shard base URL (can be relative to the index URL)
-            var shardsBaseUrl = index.shards_base_url || './shards/';
+            var shardsBaseUrl = index.shards_base_url || '';
             if (shardsBaseUrl.indexOf('://') === -1) {
                 var indexBase = indexUrl.substring(0, indexUrl.lastIndexOf('/') + 1);
                 shardsBaseUrl = indexBase + shardsBaseUrl.replace(/^\.\//, '');
@@ -291,22 +288,22 @@ self.sync_http_request = function (method, url, headersJson, body) {
             }
 
             var shardMap = index.shards;
+            var shardCount = Object.keys(shardMap).length;
             var fetchedNames = {};
             var allRepodataFragments = [];
             var fetched = 0;
+            var failedShards = [];
             var MAX_SHARDS = 2000;
 
-            // Seed: start with the requested package names
             var seeds = [];
             try { seeds = JSON.parse(seedNamesJson || '[]'); } catch (e) { seeds = []; }
 
-            // If no seeds provided, we can't do targeted fetching
             if (seeds.length === 0) {
-                console.warn('[cx-sharded] No seed package names provided, cannot do targeted fetch');
-                return null;
+                throw new Error('no_seeds: no seed package names provided');
             }
 
             var toFetch = seeds.slice();
+            var skipped = 0;
 
             while (toFetch.length > 0 && fetched < MAX_SHARDS) {
                 var nextRound = [];
@@ -316,7 +313,7 @@ self.sync_http_request = function (method, url, headersJson, body) {
                     fetchedNames[name] = true;
 
                     var hash = shardMap[name];
-                    if (!hash) continue;
+                    if (!hash) { skipped++; continue; }
 
                     var shardUrl = shardsBaseUrl + hash + '.msgpack.zst';
                     try {
@@ -325,7 +322,6 @@ self.sync_http_request = function (method, url, headersJson, body) {
                         allRepodataFragments.push(fragment);
                         fetched++;
 
-                        // Extract dep names from decoded JSON (avoids re-decompressing)
                         var parsed = JSON.parse(fragment);
                         var allPkgs = Object.values(parsed.packages || {})
                             .concat(Object.values(parsed['packages.conda'] || {}));
@@ -339,15 +335,19 @@ self.sync_http_request = function (method, url, headersJson, body) {
                             }
                         }
                     } catch (e) {
-                        console.warn('[cx-sharded] Failed to fetch shard for ' + name + ':', e);
+                        failedShards.push(name + ': ' + e);
                     }
                 }
                 toFetch = nextRound;
             }
 
-            if (allRepodataFragments.length === 0) return null;
+            if (allRepodataFragments.length === 0) {
+                throw new Error('no_shards_fetched: index has ' + shardCount + ' packages, ' +
+                    seeds.length + ' seeds, ' + skipped + ' not in index, ' +
+                    failedShards.length + ' failed' +
+                    (failedShards.length > 0 ? ' [' + failedShards.slice(0, 3).join('; ') + ']' : ''));
+            }
 
-            // Merge all shard fragments into a single repodata JSON
             var merged = { packages: {}, 'packages.conda': {} };
             for (var f = 0; f < allRepodataFragments.length; f++) {
                 var frag = JSON.parse(allRepodataFragments[f]);
@@ -365,19 +365,21 @@ self.sync_http_request = function (method, url, headersJson, body) {
                 }
             }
 
-            var totalPkgs = Object.keys(merged.packages).length + Object.keys(merged['packages.conda']).length;
-            console.log('[cx-sharded] ' + base + '/' + subdir + ': ' + fetched + ' shards, ' + totalPkgs + ' package records');
-
-            var jsonResult = JSON.stringify(merged);
-            console.log('[cx-sharded] ' + base + '/' + subdir + ' result length=' + jsonResult.length + ' first100=' + jsonResult.substring(0, 100));
-            return jsonResult;
+            return JSON.stringify({
+                info: { subdir: subdir },
+                packages: merged.packages,
+                'packages.conda': merged['packages.conda']
+            });
         };
 
         // Step 2: Create pyjs module
         log('Initializing pyjs runtime...');
         pyjsModule = await createModule({
             print: function (text) { emit('print', { text: text }); },
-            error: function (text) { emit('error', { text: text }); },
+            error: function (text) {
+                if (text === 'seek') return;
+                emit('error', { text: text });
+            },
         });
         FS = pyjsModule.FS;
         log('pyjs Module created (MEMFS ready)', 'ok');

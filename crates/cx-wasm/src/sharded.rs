@@ -7,47 +7,56 @@
 use std::collections::BTreeMap;
 use std::io::Read;
 
-use rattler_conda_types::{PackageRecord, Shard, ShardedRepodata};
-use serde::Serialize;
+use rattler_conda_types::{PackageRecord, Shard};
+use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use crate::error::CxWasmError;
 
-/// Decoded shard index returned to JavaScript.
-#[derive(Serialize)]
-struct ShardIndex {
-    base_url: String,
-    shards_base_url: String,
-    /// package name → SHA-256 hex string
-    shards: BTreeMap<String, String>,
+/// Raw shard index deserialized from msgpack.
+///
+/// We avoid rattler's `ShardedRepodata` type because its `serde_with` +
+/// `ahash::HashMap` + `SerializableHash` chain silently produces an empty
+/// map in wasm32 builds.  Using `serde_bytes::ByteBuf` directly handles
+/// msgpack binary values without any custom serde adapters.
+#[derive(Deserialize)]
+struct RawShardedRepodata {
+    info: RawShardedSubdirInfo,
+    shards: BTreeMap<String, serde_bytes::ByteBuf>,
 }
 
-/// Decode a zstd+msgpack shard index into JSON.
+#[derive(Deserialize)]
+struct RawShardedSubdirInfo {
+    base_url: String,
+    shards_base_url: String,
+}
+
+/// Decode a zstd+msgpack shard index into a JSON string.
 ///
 /// Input: raw bytes of `repodata_shards.msgpack.zst`
-/// Returns a JS object: `{ base_url, shards_base_url, shards: {name: hex_hash} }`
+/// Returns a JSON string: `{ "base_url": "...", "shards_base_url": "...", "shards": {"name": "hex_hash", ...} }`
 #[wasm_bindgen]
-pub fn cx_decode_shard_index(compressed: &[u8]) -> Result<JsValue, JsValue> {
+pub fn cx_decode_shard_index(compressed: &[u8]) -> Result<String, JsValue> {
     let decompressed = decompress_zstd(compressed)?;
-    let index: ShardedRepodata = rmp_serde::from_slice(&decompressed)
+    let index: RawShardedRepodata = rmp_serde::from_slice(&decompressed)
         .map_err(|e| CxWasmError::RepodataParse(format!("msgpack decode shard index: {e}")))?;
 
     let shards: BTreeMap<String, String> = index
         .shards
         .into_iter()
         .map(|(name, hash)| {
-            let hex: String = hash.as_slice().iter().map(|b| format!("{b:02x}")).collect();
+            let hex: String = hash.iter().map(|b| format!("{b:02x}")).collect();
             (name, hex)
         })
         .collect();
 
-    let result = ShardIndex {
-        base_url: index.info.base_url,
-        shards_base_url: index.info.shards_base_url,
-        shards,
-    };
+    let result = serde_json::json!({
+        "base_url": index.info.base_url,
+        "shards_base_url": index.info.shards_base_url,
+        "shards": shards,
+    });
 
-    serde_wasm_bindgen::to_value(&result)
+    serde_json::to_string(&result)
         .map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
 }
 
