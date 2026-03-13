@@ -1,0 +1,7 @@
+node_modules/
+lib/
+jupyterlite_cx/labextension/
+tsconfig.tsbuildinfo
+*.egg-info/
+dist/
+build/

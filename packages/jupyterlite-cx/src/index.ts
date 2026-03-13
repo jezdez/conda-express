@@ -1,11 +1,11 @@
 /**
  * JupyterLite extension that bootstraps a conda environment via cx-wasm.
  *
- * On activation, this plugin:
- * 1. Loads the cx-wasm WASM module
- * 2. Streams all packages from the embedded lockfile to Emscripten MEMFS
- * 3. Writes conda config (.condarc, .cx.json) so conda works at runtime
- * 4. Reports progress to the console (UI progress can be wired separately)
+ * In JupyterLite (xeus-python) the kernel runs in its own WebWorker; packages
+ * are pre-installed at build time by jupyterlite-xeus from environment.yml.
+ * This plugin handles the remaining setup:
+ *   • In classic JupyterLab / JupyterLab Desktop: streams packages to MEMFS.
+ *   • In JupyterLite: conda packages are pre-installed; the plugin logs status.
  */
 
 import { JupyterFrontEnd, JupyterFrontEndPlugin } from '@jupyterlab/application';
@@ -19,63 +19,80 @@ const PLUGIN_ID = '@conda-express/jupyterlite-cx:bootstrap';
 const PREFIX = '/prefix';
 
 /**
- * Get the Emscripten FS object from the global scope.
- * In JupyterLite/xeus-python, Module.FS is available globally.
+ * Return the Emscripten FS from the global scope, if available.
+ * Works in classic JupyterLab Desktop / embedded WASM setups, but returns
+ * null when running as a JupyterLab extension in the main thread of
+ * JupyterLite (the kernel FS lives in a separate WebWorker there).
  */
 function getEmscriptenFS(): EmscriptenFS | null {
-  const g = globalThis as any;
-  return g.Module?.FS ?? null;
+  const g = globalThis as Record<string, any>;
+  return g['Module']?.['FS'] ?? null;
 }
 
 /**
- * Dynamically import the cx-wasm module.
- * The cx-wasm package must be available at runtime (bundled or served).
+ * Dynamically import the cx-wasm module from its runtime location.
+ * The .wasm file must be co-located with the extension's static assets.
  */
-async function loadCxWasm(): Promise<any> {
+async function loadCxWasm(): Promise<Record<string, any>> {
   const mod = await import(/* webpackIgnore: true */ '../cx_wasm.js');
-  await mod.default();
-  return mod;
+  await (mod as any)['default']();
+  return mod as Record<string, any>;
 }
 
 const plugin: JupyterFrontEndPlugin<void> = {
   id: PLUGIN_ID,
   autoStart: true,
   activate: async (app: JupyterFrontEnd) => {
-    console.log(`[cx] ${PLUGIN_ID} activating...`);
+    console.log(`[cx] ${PLUGIN_ID} activating…`);
 
     const fs = getEmscriptenFS();
+
     if (!fs) {
-      console.warn('[cx] Emscripten FS not available — skipping bootstrap');
+      // In JupyterLite the kernel FS is inside the xeus-python WebWorker.
+      // Packages are pre-installed by jupyterlite-xeus at build time using
+      // the environment.yml alongside the JupyterLite configuration.
+      const isLite = (globalThis as Record<string, any>)['jupyterapp']
+        ?.name?.includes('lite');
+      if (isLite) {
+        console.log(
+          '[cx] Running in JupyterLite — conda packages were pre-installed ' +
+            'at build time via jupyterlite-xeus environment.yml. ' +
+            'Runtime conda install requires the cx-worker bridge (future work).'
+        );
+      } else {
+        console.warn(
+          '[cx] Emscripten FS not found — cx-wasm bootstrap skipped. ' +
+            'Module.FS must be available in globalThis for MEMFS bootstrap.'
+        );
+      }
       return;
     }
 
     try {
       const cx = await loadCxWasm();
-      const version = cx.cx_init();
+      const version: string = cx['cx_init']();
       console.log(`[cx] loaded ${version}`);
 
-      const embeddedLockfile = cx.cx_embedded_lockfile();
-      const embeddedPlatform = cx.cx_embedded_platform();
+      const embeddedLockfile: string | null = cx['cx_embedded_lockfile']();
+      const embeddedPlatform: string | null = cx['cx_embedded_platform']();
 
       if (!embeddedLockfile || !embeddedPlatform) {
         console.warn(
-          '[cx] no embedded lockfile/platform — build cx-wasm with CX_LOCKFILE and CX_PLATFORM'
+          '[cx] No embedded lockfile/platform — build cx-wasm with ' +
+            'CX_LOCKFILE and CX_PLATFORM env vars set.'
         );
         return;
       }
 
-      console.log(`[cx] bootstrapping ${embeddedPlatform} environment to ${PREFIX}...`);
+      console.log(`[cx] bootstrapping ${embeddedPlatform} → ${PREFIX}`);
 
       const onProgress = (current: number, total: number, name: string) => {
-        console.log(`[cx] ${current + 1}/${total}: ${name}`);
+        console.log(`[cx]  ${current + 1}/${total} ${name}`);
       };
 
-      const onFile = createMemfsWriter({
-        prefix: PREFIX,
-        fs,
-      });
+      const onFile = createMemfsWriter({ prefix: PREFIX, fs });
 
-      const result = await cx.cx_bootstrap_streaming(
+      const result = await cx['cx_bootstrap_streaming'](
         embeddedLockfile,
         embeddedPlatform,
         onProgress,
@@ -86,18 +103,19 @@ const plugin: JupyterFrontEndPlugin<void> = {
       writeCxMarker({
         prefix: PREFIX,
         fs,
-        totalPackages: result.packages_installed,
-        totalFiles: result.total_files,
-        totalSize: result.total_size,
+        totalPackages: result['packages_installed'],
+        totalFiles: result['total_files'],
+        totalSize: result['total_size'],
       });
 
       console.log(
-        `[cx] bootstrap complete: ${result.packages_installed} packages, ` +
-          `${result.total_files} files, ${(result.total_size / 1024 / 1024).toFixed(1)} MB`
+        `[cx] bootstrap complete: ${result['packages_installed']} packages, ` +
+          `${result['total_files']} files, ` +
+          `${(result['total_size'] / 1024 / 1024).toFixed(1)} MB`
       );
 
-      if (result.errors.length > 0) {
-        console.warn(`[cx] ${result.errors.length} errors:`, result.errors);
+      if (result['errors']?.length > 0) {
+        console.warn(`[cx] ${result['errors'].length} errors:`, result['errors']);
       }
     } catch (err) {
       console.error('[cx] bootstrap failed:', err);

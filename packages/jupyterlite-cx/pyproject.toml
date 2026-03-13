@@ -1,0 +1,61 @@
+[build-system]
+requires = ["hatchling>=1.5.0", "jupyterlab>=4.0.0,<5", "hatch-jupyter-builder>=0.5"]
+build-backend = "hatchling.build"
+
+[project]
+name = "jupyterlite-cx"
+version = "0.1.0"
+description = "JupyterLite extension that bootstraps a conda environment via cx-wasm"
+readme = "README.md"
+license = { file = "../../LICENSE" }
+requires-python = ">=3.9"
+keywords = ["jupyter", "jupyterlab", "jupyterlite", "conda", "wasm"]
+classifiers = [
+  "Framework :: Jupyter",
+  "Framework :: Jupyter :: JupyterLab",
+  "Framework :: Jupyter :: JupyterLab :: 4",
+  "Framework :: Jupyter :: JupyterLab :: Extensions",
+  "Framework :: Jupyter :: JupyterLab :: Extensions :: Prebuilt",
+  "License :: OSI Approved :: BSD License",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+]
+dependencies = ["jupyterlab>=4.0.0,<5"]
+
+[project.urls]
+Homepage = "https://github.com/conda/conda-express"
+Repository = "https://github.com/conda/conda-express"
+
+[tool.hatch.version]
+source = "nodejs"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel.shared-data]
+"jupyterlite_cx/labextension" = "share/jupyter/labextensions/@conda-express/jupyterlite-cx"
+"install.json" = "share/jupyter/labextensions/@conda-express/jupyterlite-cx/install.json"
+
+[tool.hatch.build.targets.sdist]
+artifacts = ["jupyterlite_cx/labextension"]
+exclude = [".yarn", "node_modules"]
+
+[tool.hatch.build.hooks.jupyter-builder]
+dependencies = ["hatch-jupyter-builder>=0.5"]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = [
+  "jupyterlite_cx/labextension/static/style.js",
+  "jupyterlite_cx/labextension/package.json",
+]
+skip-if-exists = ["jupyterlite_cx/labextension/static/style.js"]
+install-pre-commit-hook = false
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+build_cmd = "build:prod"
+npm = ["jlpm"]
+
+[tool.hatch.build.hooks.jupyter-builder.editable-build-kwargs]
+build_cmd = "build"
+npm = ["jlpm"]
+source_dir = "src"
+build_dir = "jupyterlite_cx/labextension"
