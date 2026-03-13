@@ -1,6 +1,8 @@
 /target
 /.pixi
 /docs/_build
+__pycache__/
+*.py[cod]
 crates/cx-wasm/target/
 crates/cx-wasm/pkg/
 crates/cx-wasm/www/cx_wasm*
