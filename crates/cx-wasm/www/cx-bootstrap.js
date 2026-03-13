@@ -31,7 +31,7 @@ import * as Comlink from './vendor/comlink.mjs';
  * @returns {Promise<CondaWorkerHandle>}
  */
 export async function createCondaWorker({ onLog, onProgress, onPrint, onError } = {}) {
-    const workerUrl = new URL('./cx-worker.js', import.meta.url);
+    const workerUrl = new URL('./cx-worker.js?v=' + Date.now(), import.meta.url);
     const worker = new Worker(workerUrl);
 
     // Mutable handlers — callers can reassign to redirect output

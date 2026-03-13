@@ -106,7 +106,7 @@
         }
     </script>
     <script type="module">
-        import { createCondaWorker } from './cx-bootstrap.js';
+        const { createCondaWorker } = await import('./cx-bootstrap.js?v=' + Date.now());
 
         // ─── UI helpers ────────────────────────────────────────────────
         function log(el, msg, cls) {
@@ -341,8 +341,8 @@ logging.basicConfig(level=logging.DEBUG, format="[%(name)s] %(message)s", force=
 print("[debug] Checking js bridge...")
 import js
 print(f"[debug] js.sync_fetch_text: {type(getattr(js, 'sync_fetch_text', None))}")
-print(f"[debug] js.cx_solve: {type(getattr(js, 'cx_solve', None))}")
 print(f"[debug] js.cx_extract_package: {type(getattr(js, 'cx_extract_package', None))}")
+print(f"[debug] js.fetch_and_solve: {type(getattr(js, 'fetch_and_solve', None))}")
 
 t0 = time.time()
 sys.argv = ['conda', 'install', '-y', pkg]

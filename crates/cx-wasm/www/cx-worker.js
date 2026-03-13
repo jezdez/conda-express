@@ -27,48 +27,23 @@ self.sync_fetch_text = function (url) {
 self.sync_fetch_binary = function (url) {
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, false);
-    xhr.overrideMimeType('text/plain; charset=x-user-defined');
+    xhr.responseType = 'arraybuffer';
     xhr.send();
     if (xhr.status >= 200 && xhr.status < 300) {
-        var text = xhr.responseText;
-        var bytes = new Uint8Array(text.length);
-        for (var i = 0; i < text.length; i++) bytes[i] = text.charCodeAt(i) & 0xff;
-        return bytes;
+        return new Uint8Array(xhr.response);
     }
     throw new Error('HTTP ' + xhr.status + ' for ' + url);
-};
-
-self.sync_http_request = function (method, url, headersJson, body) {
-    var xhr = new XMLHttpRequest();
-    xhr.open(method, url, false);
-    xhr.overrideMimeType('text/plain; charset=x-user-defined');
-    if (headersJson) {
-        var headers = JSON.parse(headersJson);
-        for (var k in headers) {
-            if (k.toLowerCase() !== 'user-agent') xhr.setRequestHeader(k, headers[k]);
-        }
-    }
-    xhr.send(body || null);
-    var respHeaders = xhr.getAllResponseHeaders();
-    var respText = xhr.responseText || '';
-    var respBytes = new Uint8Array(respText.length);
-    for (var i = 0; i < respText.length; i++) respBytes[i] = respText.charCodeAt(i) & 0xff;
-    return JSON.stringify({
-        status: xhr.status,
-        headers: respHeaders,
-        body_length: respBytes.length,
-    }) + '\n' + xhr.responseText;
 };
 
 // ─── Async init: load ES modules and expose Comlink API ──────────────────────
 
 (async () => {
+    var _bustCache = '?v=' + Date.now();
     const Comlink = await import('./vendor/comlink.mjs');
     const {
         default: init, cx_init, cx_bootstrap_streaming, cx_bootstrap_plan,
-        cx_extract_package, cx_solve_init, cx_solve,
-        cx_decode_shard_index, cx_decode_shard, cx_shard_dep_names
-    } = await import('./cx_wasm.js');
+        cx_extract_package, cx_solve_init, cx_fetch_and_solve
+    } = await import('./cx_wasm.js' + _bustCache);
 
     // ── Worker state ─────────────────────────────────────────────────────
 
@@ -172,13 +147,6 @@ self.sync_http_request = function (method, url, headersJson, body) {
         });
     }
 
-    function rewriteLockfileUrls(text, basePkgUrl) {
-        return text.replace(
-            /- conda: (?:file:\/\/)?\/[^\n]+\/([^\s\/]+\.(?:conda|tar\.bz2))/g,
-            '- conda: ' + basePkgUrl.replace(/\/+$/, '') + '/$1'
-        );
-    }
-
     // ── Helpers ──────────────────────────────────────────────────────────
 
     function ensureDir(fs, path) {
@@ -247,135 +215,34 @@ self.sync_http_request = function (method, url, headersJson, body) {
         log('cx-wasm loaded: ' + cxVersion + ' / ' + solveVersion, 'ok');
 
         self.cx_extract_package = cx_extract_package;
-        self.cx_solve = cx_solve;
 
-        // CEP-16 sharded repodata fetcher.
-        // Uses sync XHR for HTTP + Rust WASM for binary decoding (zstd+msgpack).
-        // Iteratively crawls transitive dependencies starting from seed package names.
-        //
-        // Arguments:
-        //   channelUrl - channel base URL (e.g. "https://conda.anaconda.org/conda-forge")
-        //   subdir     - subdir string (e.g. "noarch", "emscripten-wasm32")
-        //   seedNamesJson - JSON array of package names to start fetching from
-        //
-        // Returns: repodata JSON string, or null if channel doesn't support sharded repodata.
-        self.fetch_sharded_repodata = function (channelUrl, subdir, seedNamesJson) {
-            var base = channelUrl.replace(/\/+$/, '');
-            var indexUrl = base + '/' + subdir + '/repodata_shards.msgpack.zst';
-
-            var indexBytes;
-            try {
-                indexBytes = self.sync_fetch_binary(indexUrl);
-            } catch (e) {
-                throw new Error('shard_index_fetch_failed: ' + indexUrl + ' => ' + e);
+        // Combined fetch + solve: fetches repodata for all channels/subdirs,
+        // decodes directly into solver records (no JSON roundtrip), and solves.
+        // Accepts a JSON string, a plain JS object, or a pyjs dict proxy.
+        // pyjs dict proxies use getattr for property access which breaks
+        // serde_wasm_bindgen, so they are converted via Python's json.dumps
+        // (registered as self._cx_json_dumps during bootstrap).
+        self.fetch_and_solve = function (request) {
+            var jsRequest;
+            if (typeof request === 'string') {
+                jsRequest = JSON.parse(request);
+            } else if (self._cx_json_dumps && typeof request === 'object' && request !== null) {
+                var jsonStr = String(self._cx_json_dumps(request));
+                jsRequest = JSON.parse(jsonStr);
+            } else {
+                jsRequest = request;
             }
-
-            var index;
-            try {
-                var indexJson = cx_decode_shard_index(indexBytes);
-                index = JSON.parse(indexJson);
-            } catch (e) {
-                throw new Error('shard_index_decode_failed: ' + indexUrl + ' (' + indexBytes.length + ' bytes) => ' + e);
-            }
-
-            var shardsBaseUrl = index.shards_base_url || '';
-            if (shardsBaseUrl.indexOf('://') === -1) {
-                var indexBase = indexUrl.substring(0, indexUrl.lastIndexOf('/') + 1);
-                shardsBaseUrl = indexBase + shardsBaseUrl.replace(/^\.\//, '');
-            }
-            if (shardsBaseUrl.charAt(shardsBaseUrl.length - 1) !== '/') {
-                shardsBaseUrl += '/';
-            }
-
-            var shardMap = index.shards;
-            var shardCount = Object.keys(shardMap).length;
-            var fetchedNames = {};
-            var allRepodataFragments = [];
-            var fetched = 0;
-            var failedShards = [];
-            var MAX_SHARDS = 2000;
-
-            var seeds = [];
-            try { seeds = JSON.parse(seedNamesJson || '[]'); } catch (e) { seeds = []; }
-
-            if (seeds.length === 0) {
-                throw new Error('no_seeds: no seed package names provided');
-            }
-
-            var toFetch = seeds.slice();
-            var skipped = 0;
-
-            while (toFetch.length > 0 && fetched < MAX_SHARDS) {
-                var nextRound = [];
-                for (var i = 0; i < toFetch.length && fetched < MAX_SHARDS; i++) {
-                    var name = toFetch[i];
-                    if (fetchedNames[name]) continue;
-                    fetchedNames[name] = true;
-
-                    var hash = shardMap[name];
-                    if (!hash) { skipped++; continue; }
-
-                    var shardUrl = shardsBaseUrl + hash + '.msgpack.zst';
-                    try {
-                        var shardBytes = self.sync_fetch_binary(shardUrl);
-                        var fragment = cx_decode_shard(shardBytes);
-                        allRepodataFragments.push(fragment);
-                        fetched++;
-
-                        var parsed = JSON.parse(fragment);
-                        var allPkgs = Object.values(parsed.packages || {})
-                            .concat(Object.values(parsed['packages.conda'] || {}));
-                        for (var p = 0; p < allPkgs.length; p++) {
-                            var deps = allPkgs[p].depends || [];
-                            for (var d = 0; d < deps.length; d++) {
-                                var depName = deps[d].split(' ')[0];
-                                if (!fetchedNames[depName] && shardMap[depName]) {
-                                    nextRound.push(depName);
-                                }
-                            }
-                        }
-                    } catch (e) {
-                        failedShards.push(name + ': ' + e);
-                    }
-                }
-                toFetch = nextRound;
-            }
-
-            if (allRepodataFragments.length === 0) {
-                throw new Error('no_shards_fetched: index has ' + shardCount + ' packages, ' +
-                    seeds.length + ' seeds, ' + skipped + ' not in index, ' +
-                    failedShards.length + ' failed' +
-                    (failedShards.length > 0 ? ' [' + failedShards.slice(0, 3).join('; ') + ']' : ''));
-            }
-
-            var merged = { packages: {}, 'packages.conda': {} };
-            for (var f = 0; f < allRepodataFragments.length; f++) {
-                var frag = JSON.parse(allRepodataFragments[f]);
-                if (frag.packages) {
-                    var keys = Object.keys(frag.packages);
-                    for (var k = 0; k < keys.length; k++) {
-                        merged.packages[keys[k]] = frag.packages[keys[k]];
-                    }
-                }
-                if (frag['packages.conda']) {
-                    var ckeys = Object.keys(frag['packages.conda']);
-                    for (var ck = 0; ck < ckeys.length; ck++) {
-                        merged['packages.conda'][ckeys[ck]] = frag['packages.conda'][ckeys[ck]];
-                    }
-                }
-            }
-
-            return JSON.stringify({
-                info: { subdir: subdir },
-                packages: merged.packages,
-                'packages.conda': merged['packages.conda']
-            });
+            return cx_fetch_and_solve(
+                jsRequest, self.sync_fetch_binary, self.sync_fetch_text);
         };
 
         // Step 2: Create pyjs module
         log('Initializing pyjs runtime...');
         pyjsModule = await createModule({
-            print: function (text) { emit('print', { text: text }); },
+            print: function (text) {
+                if (text === 'seek') return;
+                emit('print', { text: text });
+            },
             error: function (text) {
                 if (text === 'seek') return;
                 emit('error', { text: text });
@@ -402,6 +269,14 @@ self.sync_http_request = function (method, url, headersJson, body) {
         var lockfileHash = null;
         var cachedPackages = null;
         _fromCache = false;
+
+        if (forceRefresh) {
+            try {
+                var tmpDB = await openCacheDB();
+                await clearBootstrapCacheDB(tmpDB);
+                log('Cleared IndexedDB bootstrap cache (forceRefresh)');
+            } catch (_) {}
+        }
 
         if (useCache && !forceRefresh) {
             try {
@@ -630,23 +505,37 @@ self.sync_http_request = function (method, url, headersJson, body) {
             throw e;
         }
 
-        // Step 9: Patch urllib3 Emscripten fetch backend for pyjs
+        // Step 8.5: Register json.dumps helper for pyjs dict → JS object conversion.
+        // When Python passes a dict to JS, pyjs wraps it as a Proxy that uses
+        // getattr for property access, which breaks serde_wasm_bindgen.  This
+        // helper lets the JS wrapper convert dicts to JSON strings via Python.
+        try {
+            pyjsModule['exec'](
+                'import json, js\n' +
+                'js._cx_json_dumps = json.dumps\n'
+            );
+        } catch (e) {
+            log('json.dumps helper registration failed: ' + formatPyError(e), 'warn');
+        }
+
+        // Step 9: Patch urllib3 Emscripten fetch backend for pyjs.
+        // Uses sync XHR with responseType='arraybuffer' (supported in Workers)
+        // to avoid slow character-by-character text→bytes conversion.
         try {
             pyjsModule['exec'](
                 'import js\n' +
-                'import json\n' +
                 'from email.parser import Parser\n' +
                 '\n' +
                 '_HEADERS_TO_IGNORE = ("user-agent",)\n' +
                 '\n' +
                 'def _pyjs_send_request(request):\n' +
+                '    import pyjs\n' +
                 '    from urllib3.contrib.emscripten.response import EmscriptenResponse\n' +
                 '\n' +
                 '    headers_dict = {\n' +
                 '        k: v for k, v in request.headers.items()\n' +
                 '        if k.lower() not in _HEADERS_TO_IGNORE\n' +
                 '    }\n' +
-                '    headers_json = json.dumps(headers_dict) if headers_dict else None\n' +
                 '\n' +
                 '    body = request.body\n' +
                 '    if isinstance(body, bytes):\n' +
@@ -654,7 +543,7 @@ self.sync_http_request = function (method, url, headersJson, body) {
                 '\n' +
                 '    xhr_obj = js.XMLHttpRequest.new()\n' +
                 '    xhr_obj.open(request.method, request.url, False)\n' +
-                '    xhr_obj.overrideMimeType("text/plain; charset=x-user-defined")\n' +
+                '    xhr_obj.responseType = "arraybuffer"\n' +
                 '    for k, v in headers_dict.items():\n' +
                 '        xhr_obj.setRequestHeader(k, v)\n' +
                 '    xhr_obj.send(body)\n' +
@@ -662,8 +551,7 @@ self.sync_http_request = function (method, url, headersJson, body) {
                 '    status = int(str(xhr_obj.status))\n' +
                 '    raw_headers = str(xhr_obj.getAllResponseHeaders())\n' +
                 '    resp_headers = dict(Parser().parsestr(raw_headers))\n' +
-                '    resp_text = str(xhr_obj.responseText) if xhr_obj.responseText else ""\n' +
-                '    resp_body = bytes(ord(c) & 0xFF for c in resp_text)\n' +
+                '    resp_body = bytes(pyjs.to_py(js.Uint8Array.new(xhr_obj.response)))\n' +
                 '\n' +
                 '    return EmscriptenResponse(\n' +
                 '        status_code=status,\n' +

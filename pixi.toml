@@ -24,14 +24,14 @@ lint = { depends-on = ["fmt-check", "clippy"] }
 python = ">=3.12"
 
 [feature.web.tasks]
-wasm-build = { cmd = "wasm-pack build --target web --release", cwd = "crates/cx-wasm" }
-wasm-build-dev = { cmd = "wasm-pack build --target web --dev", cwd = "crates/cx-wasm" }
+wasm-build = { cmd = "PATH=\"$HOME/.cargo/bin:$PATH\" wasm-pack build --target web --release", cwd = "crates/cx-wasm" }
+wasm-build-dev = { cmd = "PATH=\"$HOME/.cargo/bin:$PATH\" wasm-pack build --target web --dev", cwd = "crates/cx-wasm" }
 wasm-copy = { cmd = "cp pkg/cx_wasm.js www/cx_wasm.js && cp pkg/cx_wasm_bg.wasm www/cx_wasm_bg.wasm", cwd = "crates/cx-wasm", depends-on = ["wasm-build"] }
 wasm-copy-dev = { cmd = "cp pkg/cx_wasm.js www/cx_wasm.js && cp pkg/cx_wasm_bg.wasm www/cx_wasm_bg.wasm", cwd = "crates/cx-wasm", depends-on = ["wasm-build-dev"] }
-wasm-serve = { cmd = "python -m http.server 8080 --directory www", cwd = "crates/cx-wasm", depends-on = ["wasm-copy"] }
-wasm-serve-dev = { cmd = "python -m http.server 8080 --directory www", cwd = "crates/cx-wasm", depends-on = ["wasm-copy-dev"] }
+wasm-serve = { cmd = "python www/serve.py 8080 --directory www", cwd = "crates/cx-wasm", depends-on = ["wasm-copy"] }
+wasm-serve-dev = { cmd = "python www/serve.py 8080 --directory www", cwd = "crates/cx-wasm", depends-on = ["wasm-copy-dev"] }
 wasm-conda-test-prep = { cmd = "cp ../../recipes/conda-emscripten/lockfile-env/pixi.lock www/conda-emscripten.lock && mkdir -p www/packages && cp ../../output/noarch/conda-*.conda ../../output/noarch/frozendict-*.conda ../../output/noarch/conda-emscripten-*.conda www/packages/ 2>/dev/null; true", cwd = "crates/cx-wasm", depends-on = ["wasm-copy-dev"] }
-wasm-conda-test = { cmd = "echo 'Open http://localhost:8080/conda-test.html' && python -m http.server 8080 --directory www", cwd = "crates/cx-wasm", depends-on = ["wasm-conda-test-prep"] }
+wasm-conda-test = { cmd = "echo 'Open http://localhost:8080/conda-test.html' && python www/serve.py 8080 --directory www", cwd = "crates/cx-wasm", depends-on = ["wasm-conda-test-prep"] }
 wasm-clean = { cmd = "cargo clean && rm -rf pkg www/cx_wasm.js www/cx_wasm_bg.wasm", cwd = "crates/cx-wasm" }
 
 [feature.docs.dependencies]
