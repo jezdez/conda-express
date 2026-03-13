@@ -1,4 +1,4 @@
-name: Docs
+name: Docs & Demo
 
 on:
   push:
@@ -11,12 +11,20 @@ on:
       - "scripts/**"
       - "pixi.toml"
       - "pixi.lock"
+      - "lite/**"
+      - "crates/cx-wasm/**"
+      - "python/conda-emscripten/**"
+      - "recipes/**"
   pull_request:
     paths:
       - ".github/workflows/docs.yml"
       - "docs/**"
       - "DESIGN.md"
       - "scripts/**"
+      - "lite/**"
+      - "crates/cx-wasm/**"
+      - "python/conda-emscripten/**"
+      - "recipes/**"
   workflow_dispatch:
 
 concurrency:
@@ -35,15 +43,51 @@ jobs:
           environments: docs
       - name: Build docs
         run: pixi run -e docs docs
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          path: "docs/_build/dirhtml"
+          name: docs
+          path: docs/_build/dirhtml
+
+  demo:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+
+      - uses: prefix-dev/setup-pixi@82d477f15f3a381dbcc8adc1206ce643fe110fb7 # v0.9.3
+        with:
+          environments: default web recipes lite
+
+      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2.7.8
+        with:
+          key: cx-wasm
+
+      - name: Install wasm-pack
+        run: pixi run cargo install wasm-pack
+
+      - name: Build cx-wasm (WASM)
+        run: pixi run -e web wasm-build
+
+      - name: Build conda recipes
+        run: |
+          pixi run -e recipes build-conda-emscripten
+          pixi run -e recipes build-frozendict-noarch
+          pixi run -e recipes build-conda-emscripten-plugin
+          pixi run -e recipes build-cx-wasm-kernel
+
+      - name: Build JupyterLite site
+        run: pixi run -e lite lite-build-local
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: demo
+          path: lite/_output
 
   pages:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
-    needs: [docs]
+    needs: [docs, demo]
 
     permissions:
       contents: read
@@ -54,6 +98,20 @@ jobs:
       name: github-pages
 
     steps:
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: docs
+          path: _site
+
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: demo
+          path: _site/demo
+
+      - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: _site
+
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

@@ -156,6 +156,12 @@ Build-time and runtime settings.
 Design decisions and internals.
 :::
 
+:::{grid-item-card} {octicon}`globe` Live demo
+:link: https://jezdez.github.io/conda-express/demo/lab/index.html
+
+Try conda in the browser — `%cx install` in a JupyterLite notebook.
+:::
+
 ::::::
 
 ```{toctree}
