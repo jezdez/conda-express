@@ -169,7 +169,7 @@ class WasmSolver(Solver):
     Designed for browser/Emscripten environments where the cx-wasm WASM
     module provides dependency resolution via resolvo.
 
-    Selected with CONDA_SOLVER=wasm.
+    Selected with CONDA_SOLVER=emscripten.
     """
 
     _uses_ssc = False
