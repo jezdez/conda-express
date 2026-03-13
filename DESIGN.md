@@ -6,7 +6,11 @@ conda-express (cx) is a lightweight, single-binary bootstrapper for conda, writt
 
 Inspired by uv's single-binary distribution model, cx aims to be the fastest way to get a working conda installation.
 
+The project also includes **cx-wasm**, a WebAssembly build of the same rattler-based solver and extractor, enabling `conda install` to run entirely client-side in the browser via JupyterLite.
+
 ## Current status
+
+### cx CLI bootstrapper
 
 **Working PoC** — all core functionality is implemented and tested on macOS ARM64.
 
@@ -36,18 +40,41 @@ Inspired by uv's single-binary distribution model, cx aims to be the fastest way
 | Homebrew formula (same-repo tap) | Done |
 | Self-update (via conda-self plugin) | Not started |
 
-### Numbers (macOS ARM64, debug/release)
+### cx-wasm (browser)
+
+**Working end-to-end** — `%cx install zlib` runs in a JupyterLite notebook, solving via resolvo, downloading from emscripten-forge/conda-forge, extracting via WASM, and installing to MEMFS.
+
+| Feature | Status |
+|---|---|
+| cx-wasm crate (solver + extractor compiled to WASM) | Done |
+| Sharded repodata fetch in Rust (sync XHR callbacks) | Done |
+| Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
+| Streaming package extraction (`.conda` + `.tar.bz2`) | Done |
+| conda-emscripten plugin (solver, extractor, virtual packages) | Done |
+| `%cx` IPython magic with auto-init | Done |
+| cx-wasm-kernel conda package (WASM bridge for xeus-python) | Done |
+| JupyterLite demo site with `lite/build.py` | Done |
+| GitHub Pages deployment (docs + demo) | Done |
+| Web Worker architecture (Comlink RPC, IndexedDB caching) | Done |
+| Submit packages to emscripten-forge | Not started |
+| npm package for standalone browser embedding | Not started |
+
+### Numbers (macOS ARM64)
 
 | Metric | Value |
 |---|---|
 | Release binary size | ~17 MB |
 | Installed packages (base) | 86 |
 | Excluded packages (libmamba tree) | 27 |
-| Bootstrap time (embedded lockfile) | ~3–5 s |
-| Bootstrap time (live solve) | ~7–8 s |
+| Bootstrap time (embedded lockfile) | ~3-5 s |
+| Bootstrap time (live solve) | ~7-8 s |
 | Lockfile size | ~1050 lines (rattler-lock v6) |
 
+---
+
 ## Architecture
+
+### cx CLI
 
 ```
 pixi.toml              [tool.cx]: packages, channels, excludes
@@ -115,13 +142,47 @@ When cx receives a command it doesn't own (anything other than `bootstrap`, `sta
 
 After bootstrap, cx writes a `conda-meta/frozen` marker file per [CEP 22](https://conda.org/learn/ceps/cep-0022/). This protects the base prefix from accidental modification — users should create named environments for their work. Updating the base installation is handled by `conda self update` (via conda-self), which internally overrides the frozen check.
 
+### cx-wasm (browser)
+
+cx-wasm compiles the same rattler-based solver and conda package extractor to `wasm32-unknown-unknown` via `wasm-pack`. In the browser, it runs inside a Web Worker (or a xeus-python kernel worker) and communicates with Python via pyjs.
+
+```
+User types: %cx install zlib
+       |
+       v
+  magic.py              IPython %cx magic (auto-injects --yes)
+       |
+       v
+  plugin.py             conda pre_command hook (patches + bridge init)
+       |
+       v
+      solver.py             CxWasmSolver (CONDA_SOLVER=cx-wasm)
+       |                  builds request JSON, calls js.fetch_and_solve()
+       v
+  cx_wasm_bridge         Loads cx-wasm WASM via blob URLs, registers
+       |                  js.fetch_and_solve + js.cx_extract_package
+       v
+  cx-wasm (Rust/WASM)   gateway.rs: fetch repodata via sync XHR callbacks
+       |                  solve.rs: resolvo solver
+       |                  extract.rs: streaming .conda/.tar.bz2 extraction
+       v
+  extractor.py           Calls js.cx_extract_package, writes to MEMFS
+       |
+       v
+  Package installed, importable in the same kernel session
+```
+
+The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC and IndexedDB for caching the bootstrap filesystem snapshot (~50 MB). JupyterLite integration uses the same WASM module but loaded through the xeus-python kernel worker, with the `cx_wasm_bridge` Python package handling blob URL initialization.
+
+---
+
 ## File structure
 
 ```
 conda-express/
   Cargo.toml            Rust project manifest (crate: conda-express, binary: cx)
   pyproject.toml        maturin config for PyPI wheel builds
-  pixi.toml             Dev environment + [tool.cx] package config + docs deps
+  pixi.toml             Dev environment + [tool.cx] config + feature envs
   action.yml            Composite GitHub Action for building custom cx binaries
   Formula/cx.rb         Homebrew formula (same-repo tap)
   pixi.lock             Locked dev dependencies
@@ -133,24 +194,70 @@ conda-express/
   README.md             User-facing documentation
   DESIGN.md             This file
   PLAN.md               Feasibility analysis and implementation plan
-  src/
+
+  src/                  cx CLI (Rust)
     main.rs             Entry point, command dispatch, disabled commands
     cli.rs              CLI definitions (clap)
     config.rs           Embedded config, prefix metadata, .condarc, CEP 22 frozen
     install.rs          Package installation (lockfile + live-solve paths)
     exec.rs             Process replacement (exec into installed conda)
-  python/
+    commands.rs         Bootstrap, status, uninstall implementations
+    exclude.rs          Post-solve package exclusion algorithm
+
+  crates/cx-wasm/       cx-wasm WASM crate
+    Cargo.toml          Workspace member (rattler, wasm-bindgen, web-sys)
+    build.rs            Embeds lockfile + platform at compile time
+    src/
+      lib.rs            WASM entry points (bootstrap, extract, solve)
+      error.rs          CxWasmError enum
+      extract.rs        .conda and .tar.bz2 streaming extraction
+      bootstrap.rs      Full bootstrap loop with progress callbacks
+      solve.rs          resolvo-based solver with virtual package merging
+      gateway.rs        Combined fetch + solve (sync XHR callbacks)
+      sharded.rs        Sharded repodata fetch and decode
+    www/                Browser demo and Web Worker
+      cx-worker.js      Web Worker (WASM init, pyjs, bootstrap, conda ops)
+      cx-bootstrap.js   Comlink client (thin proxy to Worker)
+      conda-test.html   End-to-end browser test UI
+      vendor/           Vendored Comlink v4
+
+  conda-emscripten/     conda plugin for Emscripten environments
+    pyproject.toml      Registered as conda-emscripten = conda_emscripten.plugin
+    conda_emscripten/
+      __init__.py       tqdm warning filters, urllib3 log level
+      plugin.py         conda @hookimpl hooks (solver, extractor, vpkgs, pre-command)
+      solver.py         CxWasmSolver (CONDA_SOLVER=cx-wasm)
+      extractor.py      WASM-based package extraction via pyjs
+      patches.py        urllib3 sync XHR patch + conda MEMFS stubs
+      magic.py          %cx IPython magic with auto-init
+
+  recipes/              conda package build recipes
+    conda-emscripten/   Patched conda for emscripten (6+ patches)
+    conda-emscripten-plugin/  conda-emscripten plugin package
+    cx-wasm-kernel/     WASM files + Python bridge for xeus-python
+      cx_wasm_bridge/   Loads cx-wasm via blob URLs, registers JS bridge
+    frozendict-noarch/  frozendict 2.4.6 as noarch
+
+  lite/                 JupyterLite demo site
+    build.py            Builds site; --with-local adds cx-wasm-kernel
+    environment.yml     Base environment (public channels only)
+    jupyter_lite_config.json
+    files/notebooks/    Demo notebooks
+
+  python/               PyPI wrapper
     conda_express/
       __init__.py       Exposes find_cx_bin()
       __main__.py       python -m conda_express -> exec cx
       _find_cx.py       Locate cx binary in sysconfig paths
       py.typed          PEP 561 type marker
+
   scripts/
     get-cx.sh           Installer script for macOS/Linux
     get-cx.ps1          Installer script for Windows (PowerShell)
-  docs/
-    conf.py             Sphinx config (conda-sphinx-theme, MyST)
-    index.md            Homepage with install tabs, grid cards
+
+  docs/                 Sphinx documentation (conda-sphinx-theme)
+    conf.py             Sphinx config
+    index.md            Homepage with install tabs, live demo link
     quickstart.md       Installation and first steps
     features.md         Feature descriptions
     configuration.md    Build-time and runtime config reference
@@ -162,12 +269,12 @@ conda-express/
       cli.md            CLI reference
       github-action.md  Composite action and reusable workflow reference
       installer.md      Installer script reference
-  .github/
-    workflows/
-      ci.yml            CI: build, test, lint on all platforms (canary artifacts)
-      release.yml       Build binaries + wheels, publish to GitHub Releases, PyPI, and crates.io
-      build.yml      Reusable workflow for building custom cx binaries (workflow_call)
-      docs.yml          Build and deploy Sphinx docs to GitHub Pages
+
+  .github/workflows/
+    ci.yml              CI: build, test, lint on all platforms (canary artifacts)
+    release.yml         Publish to GitHub Releases, PyPI, crates.io
+    build.yml           Reusable workflow for custom cx binaries (workflow_call)
+    docs.yml            Build docs + JupyterLite demo, deploy to GitHub Pages
 ```
 
 ## Development environment
@@ -292,7 +399,7 @@ All workflows use `pixi` for toolchain management:
 - **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately.
 - **`release.yml`** — triggers on tag push (`v*`). Orchestrates the full release pipeline: builds native binaries, builds maturin platform wheels and sdist, creates a GitHub Release with binary assets, publishes wheels to PyPI via trusted publishing (OIDC), and publishes the crate to crates.io via trusted publishing (`rust-lang/crates-io-auth-action`). All steps run as separate jobs with dependency ordering.
 - **`build.yml`** — reusable workflow (`workflow_call`) for building custom cx binaries. Accepts `packages`, `channels`, `exclude`, and `ref` inputs. Builds all 5 platforms using the composite action and uploads binary artifacts with checksums.
-- **`docs.yml`** — triggers on push to `main` (docs paths), PRs, and manual dispatch. Builds Sphinx documentation and deploys to GitHub Pages.
+- **`docs.yml`** — triggers on push to `main` and PRs (docs, lite, cx-wasm, conda-emscripten, recipes paths). Builds Sphinx documentation and JupyterLite demo (cx-wasm WASM build + conda recipes + `lite/build.py`). Deploys docs to GitHub Pages root and demo to `/demo/` subdirectory.
 
 ### Composite action (`action.yml`)
 

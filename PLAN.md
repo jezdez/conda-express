@@ -1,6 +1,8 @@
 # conda-express (cx): Feasibility Analysis and Implementation Plan
 
 > For architecture, current features, and file structure see [DESIGN.md](DESIGN.md).
+>
+> For the browser/WASM work (cx-wasm, conda-emscripten, JupyterLite), see the [cx-wasm section](#6-cx-wasm-conda-in-the-browser) below.
 
 ## 1. Publishing cx to PyPI via maturin (like uv)
 
@@ -169,7 +171,57 @@ cx bootstrap --force
 
 ---
 
-## 6. Key Risks and Open Questions
+## 6. cx-wasm: conda in the Browser
+
+cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, enabling `conda install` to run entirely client-side. Combined with the `conda-emscripten` plugin and a JupyterLite deployment, users can run `%cx install numpy` in a browser notebook with no server.
+
+### Architecture
+
+1. **cx-wasm crate** (`crates/cx-wasm/`) — Rust crate compiled to `wasm32-unknown-unknown` via `wasm-pack`. Exports `cx_fetch_and_solve` (combined repodata fetch + resolvo solve using sync XHR callbacks) and `cx_extract_package` (streaming `.conda`/`.tar.bz2` extraction).
+
+2. **conda-emscripten plugin** (`conda-emscripten/`) — Python conda plugin providing:
+   - `CxWasmSolver` (`CONDA_SOLVER=cx-wasm`) — delegates to `js.fetch_and_solve`
+   - WASM-based package extractor — calls `js.cx_extract_package`
+   - Virtual packages (`__unix`, `__emscripten`)
+   - `%cx` IPython magic with auto-initialization
+   - Runtime patches for urllib3 (sync XHR) and conda internals (MEMFS stubs)
+
+3. **cx-wasm-kernel** (`recipes/cx-wasm-kernel/`) — conda package that places the WASM files and `cx_wasm_bridge` Python module into a xeus-python kernel prefix. The bridge loads WASM via blob URLs and registers JS bridge functions on the global scope.
+
+4. **JupyterLite demo** (`lite/`) — builds a static JupyterLite site with xeus-python + the above packages. `lite/build.py --with-local` includes locally-built packages; `lite/build.py` uses public channels only.
+
+5. **Web Worker demo** (`crates/cx-wasm/www/`) — standalone browser demo using Comlink for RPC, IndexedDB for caching (~50 MB bootstrap cache), and pyjs for Python execution.
+
+### Status
+
+| Feature | Status |
+|---|---|
+| cx-wasm crate (solver + extractor to WASM) | Done |
+| Sharded repodata fetch in Rust (sync XHR callbacks) | Done |
+| Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
+| Streaming package extraction | Done |
+| conda-emscripten plugin (solver, extractor, vpkgs, magic) | Done |
+| cx-wasm-kernel conda package | Done |
+| JupyterLite demo site | Done |
+| GitHub Pages deployment (docs + `/demo/`) | Done |
+| Web Worker architecture (Comlink, IndexedDB) | Done |
+| Submit packages to emscripten-forge | Not started |
+| npm package (`@conda-express/web`) | Not started (deprioritized) |
+
+### Pending: emscripten-forge publishing
+
+| Package | Type | Notes |
+|---|---|---|
+| `conda` | noarch | Patched 26.1.1 with emscripten patches |
+| `conda-emscripten` | noarch | Solver + extractor + vpkgs + magic plugin |
+| `cx-wasm-kernel` | noarch | WASM files + Python bridge |
+| `frozendict` | noarch | 2.4.6 pure Python (may already exist on emscripten-forge) |
+
+Once published, `lite/environment.yml` can add these as dependencies, eliminating the need for `--with-local` builds and simplifying the GitHub Pages CI.
+
+---
+
+## 7. Key Risks and Open Questions
 
 - ~~**First-run time**: Solving + downloading + installing from conda-forge takes ~30-60 seconds on a fast network.~~ **Solved**: Compile-time lockfile reduces bootstrap to ~3–5 s (no solve needed at runtime).
 - **Requires network on first run**: No offline-first option without additional work (could pre-populate a package cache in the binary, but adds size).
@@ -177,7 +229,7 @@ cx bootstrap --force
 - **conda-self hook design**: Needs buy-in from conda-self maintainers. The hook API design should be discussed as a proposal before implementation.
 - ~~**Cross-compilation**: Building Rust binaries for 5 platforms.~~ **Solved**: Native compilation on each platform using GitHub ARM runners + pixi for toolchain management.
 - **PyPI wheel size**: cx platform wheels are ~17 MB each (comparable to uv's ~20 MB). PyPI has a default upload limit of 100 MB per file, so this is well within bounds.
-- **maturin + pixi interaction**: The build currently uses pixi for the Rust toolchain. maturin wheel builds may need to happen outside pixi, or pixi can invoke maturin. Needs testing.
+- ~~**maturin + pixi interaction**: The build currently uses pixi for the Rust toolchain. maturin wheel builds may need to happen outside pixi, or pixi can invoke maturin. Needs testing.~~ **Solved**: maturin builds run outside pixi in the release workflow; pixi manages the Rust toolchain for local development only.
 
 ### Deprioritized risks (upstream conda, not blocking cx)
 
@@ -203,8 +255,12 @@ All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for th
 | `cx uninstall` subcommand | Done |
 | Homebrew formula (same-repo tap) | Done |
 | Installer scripts (get-cx.sh, get-cx.ps1) | Done |
+| cx-wasm crate (browser solver + extractor) | Done |
+| conda-emscripten plugin | Done |
+| JupyterLite demo + GitHub Pages deployment | Done |
 | Include conda-tasks in default package set | Blocked (needs conda-forge feedstock) |
 | Include conda-workspaces in default package set | Blocked (needs conda-forge feedstock for conda-workspaces; conda-lockfiles already on conda-forge) |
+| Submit cx-wasm packages to emscripten-forge | Not started |
 | Homebrew-core submission | Not started (needs adoption first) |
 | conda-forge feedstock for cx | Not started |
 | conda-self pluggable updater backend | Not started |

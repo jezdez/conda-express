@@ -163,13 +163,13 @@ def _solution_to_records(solution) -> list[PackageRecord]:
     return records
 
 
-class WasmSolver(Solver):
+class CxWasmSolver(Solver):
     """Conda solver implementation that delegates to cx-wasm WASM module.
 
     Designed for browser/Emscripten environments where the cx-wasm WASM
     module provides dependency resolution via resolvo.
 
-    Selected with CONDA_SOLVER=emscripten.
+    Selected with CONDA_SOLVER=cx-wasm.
     """
 
     _uses_ssc = False
@@ -252,7 +252,7 @@ class WasmSolver(Solver):
 
         # --- Early exit: nothing to do ---
         if not self.specs_to_add and not self.specs_to_remove:
-            log.info("WasmSolver: no specs to add or remove, returning current state")
+            log.info("CxWasmSolver: no specs to add or remove, returning current state")
             self.neutered_specs = ()
             return IndexedSet(PrefixGraph(installed.values()).graph)
 
@@ -261,7 +261,7 @@ class WasmSolver(Solver):
 
         specs = list(self.specs_to_add)
         log.info(
-            "WasmSolver: solving with %d specs to add, %d to remove",
+            "CxWasmSolver: solving with %d specs to add, %d to remove",
             len(self.specs_to_add),
             len(self.specs_to_remove),
         )
@@ -292,7 +292,7 @@ class WasmSolver(Solver):
         }
 
         log.info(
-            "WasmSolver: calling fetch_and_solve with %d channels, %d specs, %d seeds",
+            "CxWasmSolver: calling fetch_and_solve with %d channels, %d specs, %d seeds",
             len(channels),
             len(solve_specs),
             len(seed_names),
@@ -301,7 +301,7 @@ class WasmSolver(Solver):
         solution = json.loads(js.JSON.stringify(solution))
 
         solved_records = _solution_to_records(solution)
-        log.info("WasmSolver: solution has %d packages", len(solved_records))
+        log.info("CxWasmSolver: solution has %d packages", len(solved_records))
 
         # Preserve installed records for unchanged packages so conda
         # doesn't see a channel change and try to reinstall them.
