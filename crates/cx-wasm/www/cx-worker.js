@@ -51,6 +51,7 @@ self.sync_fetch_binary = function (url) {
     let FS = null;
     let _ready = false;
     let _fromCache = false;
+    let _condaVersion = null;
 
     // ── Side-channel event emitter ───────────────────────────────────────
 
@@ -598,13 +599,13 @@ self.sync_fetch_binary = function (url) {
             log('Emscripten conda patches warning: ' + formatPyError(e), 'warn');
         }
 
-        // Step 11: Verify conda import
+        // Step 11: Verify conda import and capture version
         try {
-            pyjsModule['exec'](
-                'import conda\n' +
-                'print(f"conda version: {conda.__version__}")\n'
+            var condaVerJs = await pyjsModule['async_exec_' + 'eval'](
+                'import conda; conda.__version__'
             );
-            log('conda imported successfully', 'ok');
+            _condaVersion = String(condaVerJs);
+            log('conda ' + _condaVersion + ' imported successfully', 'ok');
         } catch (e) {
             log('import conda failed: ' + formatPyError(e), 'warn');
         }
@@ -648,7 +649,7 @@ self.sync_fetch_binary = function (url) {
         },
 
         getState: function () {
-            return { ready: _ready, fromCache: _fromCache };
+            return { ready: _ready, fromCache: _fromCache, condaVersion: _condaVersion };
         },
     });
 

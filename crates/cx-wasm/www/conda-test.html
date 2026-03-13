@@ -180,11 +180,14 @@
                 bar.classList.add('done');
 
                 const sourceLabel = result.fromCache ? 'cached' : 'fresh';
-                setStats(statsEl, [
+                const state = await conda.getState();
+                const stats = [
                     ['Packages', result.packages_installed + '/' + result.total_packages],
                     ['Time', elapsed + 's'],
                     ['Source', sourceLabel],
-                ]);
+                ];
+                if (state.condaVersion) stats.push(['conda', state.condaVersion]);
+                setStats(statsEl, stats);
 
                 badge('badge-cache', result.fromCache ? 'ok' : 'warn', result.fromCache ? 'cached' : 'fresh');
                 document.getElementById('cache-controls').style.display = '';
