@@ -184,9 +184,7 @@ pub(crate) fn solve_with_records(
         .solve(solver_task)
         .map_err(|e| CxWasmError::SolveFailed(format!("{e}")))?;
 
-    web_sys::console::log_1(
-        &format!("cx-wasm: solved — {} packages", solved.records.len()).into(),
-    );
+    web_sys::console::log_1(&format!("cx-wasm: solved — {} packages", solved.records.len()).into());
 
     Ok(convert_solution(solved.records))
 }
@@ -201,8 +199,10 @@ pub(crate) fn merge_virtual_packages(
     match user_vpkgs {
         Some(vpkgs) if !vpkgs.is_empty() => {
             let mut merged = parse_virtual_packages(vpkgs)?;
-            let names: std::collections::HashSet<String> =
-                merged.iter().map(|v| v.name.as_normalized().to_string()).collect();
+            let names: std::collections::HashSet<String> = merged
+                .iter()
+                .map(|v| v.name.as_normalized().to_string())
+                .collect();
             for vp in defaults {
                 if !names.contains(vp.name.as_normalized()) {
                     merged.push(vp);
@@ -253,9 +253,11 @@ mod tests {
 
     #[test]
     fn test_parse_specs() {
-        let spec =
-            MatchSpec::from_str("numpy >=1.24", rattler_conda_types::ParseStrictness::Lenient)
-                .unwrap();
+        let spec = MatchSpec::from_str(
+            "numpy >=1.24",
+            rattler_conda_types::ParseStrictness::Lenient,
+        )
+        .unwrap();
         assert!(spec.name.is_some());
         assert!(format!("{}", spec).contains("numpy"));
     }
@@ -264,8 +266,10 @@ mod tests {
     fn test_default_virtual_packages() {
         let vpkgs = default_virtual_packages("emscripten-wasm32");
         assert!(vpkgs.len() >= 2);
-        assert!(vpkgs
-            .iter()
-            .any(|v| v.name.as_normalized() == "__emscripten"));
+        assert!(
+            vpkgs
+                .iter()
+                .any(|v| v.name.as_normalized() == "__emscripten")
+        );
     }
 }

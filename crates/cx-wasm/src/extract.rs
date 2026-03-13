@@ -28,8 +28,8 @@ where
         .entries()
         .map_err(|e| CxWasmError::ExtractFailed(format!("tar entries error: {e}")))?
     {
-        let mut entry =
-            entry_result.map_err(|e| CxWasmError::ExtractFailed(format!("tar entry error: {e}")))?;
+        let mut entry = entry_result
+            .map_err(|e| CxWasmError::ExtractFailed(format!("tar entry error: {e}")))?;
         let path = entry
             .path()
             .map_err(|e| CxWasmError::ExtractFailed(format!("tar path error: {e}")))?

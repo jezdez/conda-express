@@ -33,16 +33,18 @@ fn main() {
                 )
             });
             println!("cargo:rustc-cfg=cx_embedded_lockfile");
-            eprintln!("cx-web: embedding lockfile from {}", lockfile_path.display());
+            eprintln!(
+                "cx-web: embedding lockfile from {}",
+                lockfile_path.display()
+            );
         }
     }
 
     if let Ok(platform) = std::env::var("CX_PLATFORM") {
         if !platform.is_empty() {
             let dest = out_path.join("embedded_platform.txt");
-            std::fs::write(&dest, &platform).unwrap_or_else(|e| {
-                panic!("cx-web: failed to write embedded platform: {e}")
-            });
+            std::fs::write(&dest, &platform)
+                .unwrap_or_else(|e| panic!("cx-web: failed to write embedded platform: {e}"));
             println!("cargo:rustc-cfg=cx_embedded_platform");
             eprintln!("cx-web: embedding platform '{platform}'");
         }

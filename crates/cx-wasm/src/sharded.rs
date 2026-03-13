@@ -161,11 +161,13 @@ pub(crate) fn fetch_repodata_records(
                 let msg = e.to_string();
                 if msg.contains("fetch failed") {
                     web_sys::console::log_1(
-                        &format!("cx-wasm: no shard index for {base}/{subdir}, trying fallback").into(),
+                        &format!("cx-wasm: no shard index for {base}/{subdir}, trying fallback")
+                            .into(),
                     );
                 } else {
                     web_sys::console::warn_1(
-                        &format!("cx-wasm: sharded repodata failed for {base}/{subdir}: {msg}").into(),
+                        &format!("cx-wasm: sharded repodata failed for {base}/{subdir}: {msg}")
+                            .into(),
                     );
                 }
             }
@@ -188,7 +190,11 @@ fn parse_repodata_text(
     })?;
 
     let mut records = Vec::new();
-    for (identifier, pkg) in repo.packages.into_iter().chain(repo.conda_packages.into_iter()) {
+    for (identifier, pkg) in repo
+        .packages
+        .into_iter()
+        .chain(repo.conda_packages.into_iter())
+    {
         let url = url::Url::parse(&format!("{base_url}{identifier}")).map_err(|e| {
             CxWasmError::RepodataParse(format!("invalid URL for {identifier}: {e}"))
         })?;
@@ -241,8 +247,9 @@ fn fetch_sharded_records(
             let shard_url = format!("{_shards_base}{hash}.msgpack.zst");
             if let Ok(shard_bytes) = call_fetch_binary(fetch_binary, &shard_url) {
                 let decompressed = decompress_zstd(&shard_bytes)?;
-                let shard: Shard = rmp_serde::from_slice(&decompressed)
-                    .map_err(|e| CxWasmError::RepodataParse(format!("msgpack decode shard for {name}: {e}")))?;
+                let shard: Shard = rmp_serde::from_slice(&decompressed).map_err(|e| {
+                    CxWasmError::RepodataParse(format!("msgpack decode shard for {name}: {e}"))
+                })?;
 
                 let dep_names = shard_dep_names(&shard);
 

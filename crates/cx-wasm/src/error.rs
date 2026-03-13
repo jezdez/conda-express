@@ -31,7 +31,10 @@ impl fmt::Display for CxWasmError {
         match self {
             Self::LockfileParse(e) => write!(f, "failed to parse lockfile: {e}"),
             Self::PlatformUnknown(p) => write!(f, "unknown platform: {p}"),
-            Self::NotEmbedded(what) => write!(f, "no embedded {what} (build without CX_LOCKFILE_PATH / CX_PLATFORM)"),
+            Self::NotEmbedded(what) => write!(
+                f,
+                "no embedded {what} (build without CX_LOCKFILE_PATH / CX_PLATFORM)"
+            ),
             Self::NoDefaultEnvironment => write!(f, "no default environment in lockfile"),
             Self::NoRecordsForPlatform(p) => write!(f, "no records for platform {p}"),
             Self::FetchFailed(e) => write!(f, "fetch failed: {e}"),

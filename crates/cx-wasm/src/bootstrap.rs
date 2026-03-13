@@ -133,7 +133,11 @@ async fn download_and_extract_package_streaming(
     web_sys::console::log_1(&format!("  Downloading {name} from {url}").into());
     let bytes = crate::fetch_bytes(url).await?;
     web_sys::console::log_1(
-        &format!("  Downloaded {name}: {} KB, extracting...", bytes.len() / 1024).into(),
+        &format!(
+            "  Downloaded {name}: {} KB, extracting...",
+            bytes.len() / 1024
+        )
+        .into(),
     );
 
     let js_name = JsValue::from(name);

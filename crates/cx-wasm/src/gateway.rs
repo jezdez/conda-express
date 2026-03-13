@@ -187,10 +187,7 @@ pub fn cx_fetch_and_solve(
     let locked_packages = parse_installed(&req.installed)?;
 
     let platform_str = req.platform.as_deref().unwrap_or("emscripten-wasm32");
-    let virtual_packages = merge_virtual_packages(
-        req.virtual_packages.as_deref(),
-        platform_str,
-    )?;
+    let virtual_packages = merge_virtual_packages(req.virtual_packages.as_deref(), platform_str)?;
 
     let channel_priority = parse_channel_priority(req.channel_priority.as_deref());
     let strategy = parse_strategy(req.strategy.as_deref());
@@ -216,20 +213,25 @@ fn solve_to_js(solution: &SolveSolution) -> Result<JsValue, JsValue> {
 fn parse_installed(
     records: &[InstalledRecord],
 ) -> Result<Vec<rattler_conda_types::RepoDataRecord>, CxWasmError> {
-    use std::str::FromStr;
     use rattler_conda_types::{PackageName, Version};
+    use std::str::FromStr;
 
     records
         .iter()
         .map(|r| {
             let subdir = r.subdir.as_deref().unwrap_or("noarch");
-            let fn_name = r.fn_name.clone().unwrap_or_else(|| {
-                format!("{}-{}-{}.conda", r.name, r.version, r.build)
-            });
-            let channel = r.channel.as_deref().unwrap_or("https://conda.anaconda.org/unknown");
-            let url_str = r.url.clone().unwrap_or_else(|| {
-                format!("{}/{}/{}", channel, subdir, fn_name)
-            });
+            let fn_name = r
+                .fn_name
+                .clone()
+                .unwrap_or_else(|| format!("{}-{}-{}.conda", r.name, r.version, r.build));
+            let channel = r
+                .channel
+                .as_deref()
+                .unwrap_or("https://conda.anaconda.org/unknown");
+            let url_str = r
+                .url
+                .clone()
+                .unwrap_or_else(|| format!("{}/{}/{}", channel, subdir, fn_name));
             let url = url::Url::parse(&url_str).map_err(|e| {
                 CxWasmError::PackageParse(format!("invalid URL for {}: {e}", r.name))
             })?;
@@ -237,15 +239,10 @@ fn parse_installed(
             let name = PackageName::from_str(&r.name).map_err(|e| {
                 CxWasmError::PackageParse(format!("package name '{}': {e}", r.name))
             })?;
-            let version = Version::from_str(&r.version).map_err(|e| {
-                CxWasmError::PackageParse(format!("version '{}': {e}", r.version))
-            })?;
+            let version = Version::from_str(&r.version)
+                .map_err(|e| CxWasmError::PackageParse(format!("version '{}': {e}", r.version)))?;
 
-            let mut pkg = rattler_conda_types::PackageRecord::new(
-                name,
-                version,
-                r.build.clone(),
-            );
+            let mut pkg = rattler_conda_types::PackageRecord::new(name, version, r.build.clone());
             pkg.build_number = r.build_number;
             pkg.subdir = subdir.to_string();
             pkg.depends = r.depends.clone();

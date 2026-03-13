@@ -62,7 +62,8 @@ export type OnProgressCallback = (current: number, total: number, packageName: s
 "#;
 
 fn to_js<T: Serialize>(value: &T) -> Result<JsValue, JsValue> {
-    serde_wasm_bindgen::to_value(value).map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
+    serde_wasm_bindgen::to_value(value)
+        .map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
 }
 
 fn parse_platform(platform_str: &str) -> Result<Platform, JsValue> {
@@ -146,9 +147,9 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     );
 
     let result = async {
-        let resp_val = JsFuture::from(global_fetch(&request))
-            .await
-            .map_err(|e| CxWasmError::FetchFailed(format!("fetch error (timeout or CORS?): {e:?}")))?;
+        let resp_val = JsFuture::from(global_fetch(&request)).await.map_err(|e| {
+            CxWasmError::FetchFailed(format!("fetch error (timeout or CORS?): {e:?}"))
+        })?;
         let resp: Response = resp_val
             .dyn_into()
             .map_err(|_| CxWasmError::FetchFailed("response cast failed".into()))?;
@@ -255,10 +256,7 @@ struct PackagePlanEntry {
 
 /// Get a summary of what bootstrap would do: package count, names, total download size.
 #[wasm_bindgen]
-pub fn cx_bootstrap_plan(
-    lockfile_content: &str,
-    platform_str: &str,
-) -> Result<JsValue, JsValue> {
+pub fn cx_bootstrap_plan(lockfile_content: &str, platform_str: &str) -> Result<JsValue, JsValue> {
     let platform = parse_platform(platform_str)?;
     let records = bootstrap::get_records(lockfile_content, platform)?;
 
@@ -266,11 +264,7 @@ pub fn cx_bootstrap_plan(
         .iter()
         .map(|r| {
             let url_str = r.url.to_string();
-            let fn_name = url_str
-                .rsplit('/')
-                .next()
-                .unwrap_or("unknown")
-                .to_string();
+            let fn_name = url_str.rsplit('/').next().unwrap_or("unknown").to_string();
             let channel = r.channel.clone().unwrap_or_default();
             PackagePlanEntry {
                 name: r.package_record.name.as_normalized().to_string(),
@@ -288,10 +282,7 @@ pub fn cx_bootstrap_plan(
         })
         .collect();
 
-    let total_size: u64 = records
-        .iter()
-        .filter_map(|r| r.package_record.size)
-        .sum();
+    let total_size: u64 = records.iter().filter_map(|r| r.package_record.size).sum();
 
     let plan = BootstrapPlan {
         platform: platform_str.to_string(),
