@@ -1,0 +1,10 @@
+{
+  "LiteBuildConfig": {
+    "output_dir": "_output",
+    "contents": ["files"],
+    "federated_extensions": []
+  },
+  "XeusAddon": {
+    "environment_file": "environment.yml"
+  }
+}

@@ -1,0 +1,3 @@
+# JupyterLite build output
+_output/
+.jupyterlite.doit.db
