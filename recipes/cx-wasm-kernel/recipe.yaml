@@ -1,0 +1,48 @@
+context:
+  version: "0.1.0"
+
+package:
+  name: cx-wasm-kernel
+  version: ${{ version }}
+
+# Source is the wasm-pack build output from crates/cx-wasm/pkg/.
+# Run `pixi run -e web wasm-build` (or wasm-build-dev) first.
+source:
+  path: ../../crates/cx-wasm/pkg
+  use_gitignore: false
+
+build:
+  noarch: python
+  number: 0
+  script:
+    # Assemble the Python package directory from the wasm-pack output and the
+    # recipe's Python bridge module.
+    - mkdir -p cx_wasm_bridge
+    - cp cx_wasm.js cx_wasm_bridge/
+    - cp cx_wasm_bg.wasm cx_wasm_bridge/
+    - cp $RECIPE_DIR/cx_wasm_bridge/__init__.py cx_wasm_bridge/
+    - cp $RECIPE_DIR/pyproject.toml .
+    - ${PYTHON} -m pip install . -vv --no-deps --no-build-isolation
+
+requirements:
+  host:
+    - python >=3.9
+    - pip
+    - setuptools >=64
+  run:
+    - python >=3.9
+
+tests:
+  - python:
+      imports:
+        - cx_wasm_bridge
+      pip_check: false
+
+about:
+  homepage: https://github.com/conda/conda-express
+  license: BSD-3-Clause
+  summary: >
+    cx-wasm kernel bridge: loads the cx-wasm WebAssembly module from MEMFS
+    inside a xeus-python kernel worker and registers the bridge functions
+    (fetch_and_solve, cx_extract_package) needed for runtime conda install
+    in JupyterLite.

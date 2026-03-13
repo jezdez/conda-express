@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cx-wasm-bridge"
+version = "0.1.0"
+description = "cx-wasm kernel bridge for JupyterLite / xeus-python"
+requires-python = ">=3.9"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["cx_wasm_bridge*"]
+
+[tool.setuptools.package-data]
+cx_wasm_bridge = ["*.js", "*.wasm"]
