@@ -9,6 +9,15 @@ from conda.plugins.types import CondaSolver, CondaVirtualPackage
 from .solver import WasmSolver
 
 
+def _emscripten_version() -> str | None:
+    """Return the Emscripten SDK version from the runtime, or None."""
+    info = getattr(sys, "_emscripten_info", None)
+    if info is None:
+        return None
+    major, minor, tiny = info.emscripten_version
+    return f"{major}.{minor}.{tiny}"
+
+
 @plugins.hookimpl
 def conda_solvers():
     yield CondaSolver(
@@ -41,6 +50,6 @@ def conda_virtual_packages():
     )
     yield CondaVirtualPackage(
         name="emscripten",
-        version="3.1.58",
+        version=_emscripten_version(),
         build=None,
     )

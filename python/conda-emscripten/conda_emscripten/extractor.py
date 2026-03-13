@@ -59,7 +59,7 @@ def extract_wasm(source_path, dest_dir):
         if parent:
             os.makedirs(parent, exist_ok=True)
         with open(full_path, "wb") as out:
-            out.write(bytes(data))
+            out.write(bytes(pyjs.to_py(data)))
         file_count += 1
 
     js_bytes = pyjs.to_js(archive_bytes)

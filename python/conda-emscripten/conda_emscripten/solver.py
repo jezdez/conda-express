@@ -9,7 +9,6 @@ from typing import TYPE_CHECKING
 
 from conda.auxlib import NULL
 from conda.base.context import context
-from conda.common.io import dashlist
 from conda.core.solve import Solver
 from conda.models.records import PackageRecord, PrefixRecord
 
@@ -38,70 +37,8 @@ def _get_js_bridge():
         )
 
 
-def _fetch_repodata(
-    channel_url: str,
-    subdir: str,
-    seed_names: list[str] | None = None,
-) -> str:
-    """Fetch repodata for a channel/subdir, preferring smaller formats.
-
-    Tries in order:
-    1. Sharded repodata (CEP-16) via JS helper — fetches only the shards
-       for ``seed_names`` and their transitive dependencies.
-    2. current_repodata.json (latest versions only, much smaller)
-    3. repodata.json (full, can be 50-100+ MB for conda-forge)
-
-    Uses synchronous XMLHttpRequest via the ``js.sync_fetch_text`` helper.
-    """
-    import js
-
-    base = channel_url.rstrip("/")
-
-    # Try sharded repodata via JS helper (CEP-16)
-    if seed_names and hasattr(js, "fetch_sharded_repodata"):
-        try:
-            import json as _json
-            seed_json = _json.dumps(seed_names)
-            raw = js.fetch_sharded_repodata(base, subdir, seed_json)
-            result = str(raw) if raw is not None else None
-            if result and result not in ("null", "undefined", "None"):
-                log.info(
-                    "Sharded repodata for %s/%s: %d seeds, %d chars",
-                    base, subdir, len(seed_names), len(result),
-                )
-                return result
-            log.info("Sharded repodata returned empty for %s/%s", base, subdir)
-        except Exception as e:
-            err_msg = str(e)
-            if "shard_index_fetch_failed" in err_msg:
-                log.info("No sharded repodata for %s/%s (no shard index)", base, subdir)
-            else:
-                log.warning("Sharded repodata failed for %s/%s: %s", base, subdir, err_msg)
-
-    # Try current_repodata.json first (only latest versions, much smaller)
-    current_url = f"{base}/{subdir}/current_repodata.json"
-    try:
-        log.info("Fetching current_repodata from %s", current_url)
-        result = str(js.sync_fetch_text(current_url))
-        if result:
-            log.info("Got current_repodata for %s/%s (%d chars)", base, subdir, len(result))
-            return result
-    except Exception:
-        log.debug("current_repodata.json not available for %s/%s, trying full repodata", base, subdir)
-
-    # Fall back to full repodata.json
-    url = f"{base}/{subdir}/repodata.json"
-    log.info("Fetching full repodata from %s", url)
-    return str(js.sync_fetch_text(url))
-
-
-def _records_to_json(records: Iterable[PrefixRecord]) -> str:
-    """Convert installed PrefixRecord objects to JSON for cx-wasm.
-
-    Rattler's RepoDataRecord requires:
-    - ``fn``: a valid archive identifier ending in ``.conda`` or ``.tar.bz2``
-    - ``url``: a syntactically valid URL
-    """
+def _records_to_dicts(records: Iterable[PrefixRecord]) -> list[dict]:
+    """Convert installed PrefixRecord objects to dicts for cx-wasm."""
     result = []
     for rec in records:
         fn = rec.fn or ""
@@ -136,7 +73,7 @@ def _records_to_json(records: Iterable[PrefixRecord]) -> str:
         if rec.sha256:
             entry["sha256"] = rec.sha256
         result.append(entry)
-    return json.dumps(result)
+    return result
 
 
 def _solution_record_to_package_record(r: dict) -> PackageRecord:
@@ -277,7 +214,7 @@ class WasmSolver(Solver):
             self.neutered_specs = ()
             return IndexedSet(PrefixGraph(installed.values()).graph)
 
-        # --- Main solve path ---
+        # --- Main solve path: combined fetch + solve in Rust WASM ---
         js = _get_js_bridge()
 
         specs = list(self.specs_to_add)
@@ -287,51 +224,38 @@ class WasmSolver(Solver):
             len(self.specs_to_remove),
         )
 
-        repodata_entries = self._fetch_all_repodata()
-        if not repodata_entries:
-            raise RuntimeError(
-                f"Could not fetch repodata from any channel/subdir combination.\n"
-                f"Channels: {dashlist(str(c) for c in self.channels)}\n"
-                f"Subdirs: {list(self.subdirs)}"
-            )
-
-        installed_json = _records_to_json(installed.values()) if installed else "[]"
-
+        seed_names = self._collect_seed_names()
+        installed_records = _records_to_dicts(installed.values()) if installed else []
         virtual_packages = self._collect_virtual_packages()
         platform = context.subdir or "emscripten-wasm32"
 
         remove_names = {s.name for s in self.specs_to_remove if s.name}
-
         solve_specs = [str(s) for s in specs]
         for name in installed:
             if name not in remove_names:
                 solve_specs.append(name)
 
-        for i, entry in enumerate(repodata_entries):
-            rd = entry["repodata"]
-            log.info(
-                "repodata_entries[%d] %s/%s: type=%s len=%d first100=%r",
-                i, entry["channel"], entry["subdir"],
-                type(rd).__name__, len(rd), rd[:100],
-            )
+        channels = [
+            {"url": self._channel_to_url(ch), "subdirs": list(self.subdirs)}
+            for ch in self.channels
+        ]
 
-        solve_request_json = json.dumps({
-            "repodata": repodata_entries,
+        request = {
+            "channels": channels,
             "specs": solve_specs,
-            "installed": installed_json,
+            "seed_names": seed_names,
+            "installed": installed_records,
             "virtual_packages": virtual_packages,
             "platform": platform,
-        })
-        log.info("solve_request_json length: %d", len(solve_request_json))
-        solve_request = js.JSON.parse(solve_request_json)
+        }
 
         log.info(
-            "WasmSolver: calling cx_solve with %d repodata sources, %d specs",
-            len(repodata_entries),
+            "WasmSolver: calling fetch_and_solve with %d channels, %d specs, %d seeds",
+            len(channels),
             len(solve_specs),
+            len(seed_names),
         )
-        solution = js.cx_solve(solve_request)
-
+        solution = js.fetch_and_solve(json.dumps(request))
         solution = json.loads(js.JSON.stringify(solution))
 
         solved_records = _solution_to_records(solution)
@@ -356,36 +280,6 @@ class WasmSolver(Solver):
         self.neutered_specs = ()
 
         return IndexedSet(PrefixGraph(records).graph)
-
-    def _fetch_all_repodata(self) -> list[dict]:
-        """Fetch repodata for all channel/subdir combinations.
-
-        Collects seed package names from specs_to_add and installed packages
-        so the sharded repodata fetcher (CEP-16) can do targeted fetching
-        instead of downloading the full monolithic repodata.json.
-        """
-        seed_names = self._collect_seed_names()
-        entries = []
-        for channel in self.channels:
-            channel_url = self._channel_to_url(channel)
-            for subdir in self.subdirs:
-                try:
-                    repodata_json = _fetch_repodata(channel_url, subdir, seed_names)
-                    entries.append(
-                        {
-                            "channel": channel_url,
-                            "subdir": subdir,
-                            "repodata": repodata_json,
-                        }
-                    )
-                except Exception as e:
-                    log.warning(
-                        "Failed to fetch repodata for %s/%s: %s",
-                        channel_url,
-                        subdir,
-                        e,
-                    )
-        return entries
 
     def _collect_seed_names(self) -> list[str]:
         """Collect package names to seed sharded repodata fetching.
