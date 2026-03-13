@@ -1,13 +1,13 @@
 mod bootstrap;
 mod error;
 mod extract;
+mod gateway;
 mod sharded;
 mod solve;
 
 use std::str::FromStr;
 
 use rattler_conda_types::Platform;
-use rattler_lock::LockFile;
 use serde::Serialize;
 use wasm_bindgen::prelude::*;
 
@@ -21,35 +21,6 @@ const EMBEDDED_PLATFORM: &str = include_str!(concat!(env!("OUT_DIR"), "/embedded
 
 #[wasm_bindgen(typescript_custom_section)]
 const TS_TYPES: &str = r#"
-export interface ExtractedFile {
-    path: string;
-    size: number;
-}
-
-export interface CondaPackageContents {
-    info_files: ExtractedFile[];
-    pkg_files: ExtractedFile[];
-    total_size: number;
-}
-
-export interface PackageResult {
-    name: string;
-    version: string;
-    url: string;
-    info_files: ExtractedFile[];
-    pkg_files: ExtractedFile[];
-    total_size: number;
-}
-
-export interface BootstrapResult {
-    platform: string;
-    packages: PackageResult[];
-    total_packages: number;
-    total_files: number;
-    total_size: number;
-    errors: string[];
-}
-
 export interface PackagePlanEntry {
     name: string;
     version: string;
@@ -99,53 +70,6 @@ fn parse_platform(platform_str: &str) -> Result<Platform, JsValue> {
         .map_err(|_| CxWasmError::PlatformUnknown(platform_str.to_string()).into())
 }
 
-fn parse_lockfile(lockfile_content: &str) -> Result<LockFile, JsValue> {
-    let reader = std::io::Cursor::new(lockfile_content.as_bytes());
-    LockFile::from_reader(reader).map_err(|e| CxWasmError::LockfileParse(e.to_string()).into())
-}
-
-/// Return a JS array of all platform strings found in a lockfile.
-#[wasm_bindgen]
-pub fn get_platforms(lockfile_content: &str) -> Result<JsValue, JsValue> {
-    let lockfile = parse_lockfile(lockfile_content)?;
-    let env = lockfile
-        .default_environment()
-        .ok_or::<JsValue>(CxWasmError::NoDefaultEnvironment.into())?;
-
-    let platforms: Vec<String> = env.platforms().map(|p| p.as_str().to_string()).collect();
-    to_js(&platforms)
-}
-
-/// Parse a lockfile and return package names as a JS array for the given platform.
-#[wasm_bindgen]
-pub fn get_package_names(
-    lockfile_content: &str,
-    platform_str: &str,
-) -> Result<JsValue, JsValue> {
-    let platform = parse_platform(platform_str)?;
-    let records = bootstrap::get_records(lockfile_content, platform)?;
-
-    let mut names: Vec<String> = records
-        .into_iter()
-        .map(|r| r.package_record.name.as_normalized().to_string())
-        .collect();
-    names.sort();
-    to_js(&names)
-}
-
-/// Parse a lockfile and return package download URLs as a JS array for the given platform.
-#[wasm_bindgen]
-pub fn get_package_urls(
-    lockfile_content: &str,
-    platform_str: &str,
-) -> Result<JsValue, JsValue> {
-    let platform = parse_platform(platform_str)?;
-    let records = bootstrap::get_records(lockfile_content, platform)?;
-
-    let urls: Vec<String> = records.into_iter().map(|r| r.url.to_string()).collect();
-    to_js(&urls)
-}
-
 #[wasm_bindgen]
 pub fn cx_init() -> String {
     web_sys::console::log_1(&"cx-wasm initialized".into());
@@ -176,29 +100,6 @@ pub fn cx_embedded_platform() -> Option<String> {
     {
         None
     }
-}
-
-/// Convenience: streaming bootstrap using the embedded lockfile and platform.
-///
-/// Fails if no lockfile or platform was embedded at build time.
-#[wasm_bindgen]
-pub async fn cx_bootstrap_embedded(
-    on_progress: Option<js_sys::Function>,
-    on_file: js_sys::Function,
-) -> Result<JsValue, JsValue> {
-    let lockfile = cx_embedded_lockfile()
-        .ok_or_else(|| CxWasmError::NotEmbedded("lockfile".into()))?;
-    let platform = cx_embedded_platform()
-        .ok_or_else(|| CxWasmError::NotEmbedded("platform".into()))?;
-
-    let result = bootstrap::bootstrap_streaming_impl(
-        &lockfile,
-        &platform,
-        on_progress.as_ref(),
-        &on_file,
-    )
-    .await?;
-    to_js(&result)
 }
 
 // Global fetch/setTimeout/clearTimeout bindings that work in both Window and Worker contexts.
@@ -275,58 +176,6 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     result
 }
 
-/// Download a .conda package from the given URL and return its extracted contents.
-#[wasm_bindgen]
-pub async fn download_and_list_package(url: String) -> Result<JsValue, JsValue> {
-    let contents = download_and_list_impl(&url).await?;
-    to_js(&contents)
-}
-
-async fn download_and_list_impl(
-    url: &str,
-) -> Result<extract::CondaPackageContents, CxWasmError> {
-    web_sys::console::log_1(&format!("Downloading {url}...").into());
-
-    let bytes = fetch_bytes(url).await?;
-    let size_kb = bytes.len() / 1024;
-    web_sys::console::log_1(&format!("Downloaded {size_kb} KB, extracting...").into());
-
-    let contents = if url.ends_with(".conda") {
-        extract::extract_conda(&bytes)?
-    } else if url.ends_with(".tar.bz2") {
-        extract::extract_tar_bz2(&bytes)?
-    } else {
-        return Err(CxWasmError::UnknownPackageFormat(url.to_string()));
-    };
-
-    web_sys::console::log_1(
-        &format!(
-            "Extracted {} info files + {} pkg files ({} KB total)",
-            contents.info_files.len(),
-            contents.pkg_files.len(),
-            contents.total_size / 1024
-        )
-        .into(),
-    );
-
-    Ok(contents)
-}
-
-/// Bootstrap all packages from a lockfile for the given platform.
-///
-/// Downloads and extracts every .conda package. Returns a JS object with the full file tree.
-/// `progress` is an optional JS callback: `progress(current, total, packageName)`.
-#[wasm_bindgen]
-pub async fn cx_bootstrap(
-    lockfile_content: String,
-    platform: String,
-    progress: Option<js_sys::Function>,
-) -> Result<JsValue, JsValue> {
-    let result =
-        bootstrap::bootstrap_impl(&lockfile_content, &platform, progress.as_ref()).await?;
-    to_js(&result)
-}
-
 /// Streaming bootstrap: download and extract all packages, calling `on_file` for each
 /// extracted file with `(packageName, path, bytes)`.
 ///
@@ -352,40 +201,7 @@ pub async fn cx_bootstrap_streaming(
     to_js(&result)
 }
 
-/// Download a single package and stream its extracted files to `on_file(path, bytes)`.
-///
-/// Returns extraction stats (file count, total size).
-#[wasm_bindgen]
-pub async fn download_and_extract_package_streaming(
-    url: String,
-    on_file: js_sys::Function,
-) -> Result<JsValue, JsValue> {
-    let bytes = fetch_bytes(&url).await?;
-
-    let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWasmError> {
-        let js_path = JsValue::from(path);
-        let js_bytes = js_sys::Uint8Array::from(data);
-        on_file
-            .call2(&JsValue::NULL, &js_path, &js_bytes)
-            .map_err(|e| CxWasmError::CallbackFailed(format!("{e:?}")))?;
-        Ok(())
-    };
-
-    let stats = if url.ends_with(".conda") {
-        extract::extract_conda_streaming(&bytes, &mut file_cb)?
-    } else if url.ends_with(".tar.bz2") {
-        extract::extract_tar_bz2_streaming(&bytes, &mut file_cb)?
-    } else {
-        return Err(CxWasmError::UnknownPackageFormat(url.to_string()).into());
-    };
-
-    to_js(&stats)
-}
-
 /// Extract a `.conda` or `.tar.bz2` package from raw bytes (already in memory).
-///
-/// This is the synchronous counterpart to `download_and_extract_package_streaming`:
-/// it skips the download step and works directly on bytes read from the filesystem.
 ///
 /// `on_file` callback signature: `(path: string, data: Uint8Array) => void`
 #[wasm_bindgen]
