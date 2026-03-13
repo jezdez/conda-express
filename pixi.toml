@@ -56,6 +56,9 @@ build-conda-emscripten = { cmd = "rattler-build build --recipe recipes/conda-ems
 build-frozendict-noarch = { cmd = "rattler-build build --recipe recipes/frozendict-noarch/recipe.yaml -c conda-forge" }
 build-conda-emscripten-plugin = { cmd = "rattler-build build --recipe recipes/conda-emscripten-plugin/recipe.yaml -c conda-forge" }
 build-conda-emscripten-lockfile = { cmd = "pixi install", cwd = "recipes/conda-emscripten/lockfile-env", depends-on = ["build-conda-emscripten", "build-frozendict-noarch", "build-conda-emscripten-plugin"] }
+# Build the cx-wasm kernel bridge conda package.
+# Requires wasm-pack output in crates/cx-wasm/pkg/ (run wasm-build[-dev] first).
+build-cx-wasm-kernel = { cmd = "rattler-build build --recipe recipes/cx-wasm-kernel/recipe.yaml -c conda-forge" }
 
 [feature.lite.dependencies]
 python = ">=3.12"
@@ -69,13 +72,15 @@ nodejs = ">=20"
 # Full labextension build (for distribution) requires: pip install hatch-jupyter-builder
 # then: cd packages/jupyterlite-cx && hatch build
 lite-build-ext = { cmd = "npm install && npx tsc --noEmit", cwd = "packages/jupyterlite-cx" }
-# Build the JupyterLite static site from lite/.
-# Conda packages are pre-installed by jupyterlite-xeus from environment.yml.
-lite-build = { cmd = "jupyter lite build --config jupyter_lite_config.json", cwd = "lite" }
-# Serve the built site — the output dir already has its own index.html
+# Build the JupyterLite static site (emscripten-forge packages only).
+lite-build = { cmd = "python build.py", cwd = "lite" }
+# Build with locally-compiled cx-wasm-kernel (enables runtime conda install).
+# Prerequisite: pixi run -e web wasm-build && pixi run -e recipes build-cx-wasm-kernel
+lite-build-local = { cmd = "python build.py --with-local", cwd = "lite" }
+# Serve the built site on http://localhost:8888/lab/index.html
 lite-serve = { cmd = "echo 'Open http://localhost:8888/lab/index.html' && python -m http.server 8888 --directory _output", cwd = "lite" }
-# Build + serve in one shot
-lite = { depends-on = ["lite-build", "lite-serve"] }
+# Build (with local packages) then serve — the full demo workflow
+lite-demo = { depends-on = ["lite-build-local", "lite-serve"] }
 # Remove the build output
 lite-clean = { cmd = "rm -rf _output .jupyterlite.doit.db", cwd = "lite" }
 
