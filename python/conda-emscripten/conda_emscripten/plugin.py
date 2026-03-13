@@ -1,16 +1,41 @@
-"""Conda plugin registration for Emscripten: solver, package extractor, virtual packages."""
+"""Conda plugin hooks for Emscripten: solver, extractor, virtual packages, %cx magic."""
+
+from __future__ import annotations
 
 import sys
 
 from conda import plugins
 from conda.base.context import context
-from conda.plugins.types import CondaSolver, CondaVirtualPackage
+from conda.plugins.types import CondaPreCommand, CondaSolver, CondaVirtualPackage
 
 from .solver import WasmSolver
 
+_pre_command_init_done = False
+
+
+def _on_pre_command(_command: str) -> None:
+    """Warm up the WASM bridge before the first conda command runs."""
+    global _pre_command_init_done
+
+    if sys.platform != "emscripten" or _pre_command_init_done:
+        return
+
+    from .magic import register
+    from .patches import patch_conda_internals, patch_urllib3
+
+    patch_urllib3()
+    patch_conda_internals()
+    register()
+
+    try:
+        import cx_wasm_bridge  # noqa: F401  — import triggers background load
+    except ImportError:
+        pass
+
+    _pre_command_init_done = True
+
 
 def _emscripten_version() -> str | None:
-    """Return the Emscripten SDK version from the runtime, or None."""
     info = getattr(sys, "_emscripten_info", None)
     if info is None:
         return None
@@ -20,10 +45,7 @@ def _emscripten_version() -> str | None:
 
 @plugins.hookimpl
 def conda_solvers():
-    yield CondaSolver(
-        name="emscripten",
-        backend=WasmSolver,
-    )
+    yield CondaSolver(name="emscripten", backend=WasmSolver)
 
 
 @plugins.hookimpl
@@ -39,17 +61,19 @@ def conda_package_extractors():
 
 
 @plugins.hookimpl
+def conda_pre_commands():
+    yield CondaPreCommand(
+        name="cx-wasm-bridge-preload",
+        action=_on_pre_command,
+        run_for={"install", "update", "create", "remove"},
+    )
+
+
+@plugins.hookimpl
 def conda_virtual_packages():
     if not context.subdir.startswith("emscripten-"):
         return
-
+    yield CondaVirtualPackage(name="unix", version=None, build=None)
     yield CondaVirtualPackage(
-        name="unix",
-        version=None,
-        build=None,
-    )
-    yield CondaVirtualPackage(
-        name="emscripten",
-        version=_emscripten_version(),
-        build=None,
+        name="emscripten", version=_emscripten_version(), build=None
     )

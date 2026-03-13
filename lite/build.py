@@ -48,7 +48,11 @@ dependencies:
   - numpy
   - matplotlib
   - ipywidgets
+  # cx-wasm WASM bridge (loads cx_wasm_bg.wasm into xeus-python kernel)
   - cx-wasm-kernel
+  # patched conda + solver plugin (enables conda install from kernel)
+  - conda
+  - conda-emscripten
 """
 
 
@@ -62,25 +66,30 @@ def main() -> None:
     args = parser.parse_args()
 
     output = ROOT / "output"
-    env_yml = HERE / "environment.yml"
 
     if args.with_local:
         if not output.exists():
             print(f"ERROR: {output} not found.")
-            print("Build the kernel package first:")
+            print("Build the local packages first:")
             print("  pixi run -e web wasm-build")
             print("  pixi run -e recipes build-cx-wasm-kernel")
+            print("  pixi run -e recipes build-conda-emscripten-plugin")
             sys.exit(1)
+        # Write to a gitignored file so environment.yml (the base) is never
+        # overwritten with machine-specific file:// paths.
+        env_yml = HERE / "_local_environment.yml"
         content = LOCAL_ENV_TEMPLATE.format(output=output)
-        print(f"[build.py] Using local channel: file://{output}")
+        env_yml.write_text(content)
+        print(f"[build.py] Wrote {env_yml} (local channel: file://{output})")
+        extra_args = [f"--XeusAddon.environment_file={env_yml}"]
     else:
-        content = BASE_ENV
-
-    env_yml.write_text(content)
-    print(f"[build.py] Wrote {env_yml}")
+        env_yml = HERE / "environment.yml"
+        env_yml.write_text(BASE_ENV)
+        print(f"[build.py] Wrote {env_yml}")
+        extra_args = []
 
     result = subprocess.run(
-        ["jupyter", "lite", "build", "--config", "jupyter_lite_config.json"],
+        ["jupyter", "lite", "build", "--config", "jupyter_lite_config.json", *extra_args],
         cwd=HERE,
     )
     sys.exit(result.returncode)

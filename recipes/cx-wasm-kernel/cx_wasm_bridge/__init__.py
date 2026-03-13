@@ -1,34 +1,55 @@
 """cx-wasm kernel bridge.
 
-Loads the cx-wasm WebAssembly module from this package's files (which land in
-the xeus-python kernel's Emscripten MEMFS at install time) and registers the
-bridge functions that conda-emscripten's solver and extractor expect on the
-JavaScript global scope (``import js`` in Python).
+Loads the cx-wasm WebAssembly module from MEMFS (where jupyterlite-xeus installs
+it) and registers the bridge functions on the JS global scope so that the
+conda-emscripten solver and extractor can call into Rust/WASM.
 
-Usage inside a JupyterLite notebook (xeus-python kernel)::
+Quick start::
 
-    import cx_wasm_bridge
-    await cx_wasm_bridge.setup()
+    import cx_wasm_bridge          # auto-schedules background WASM loading
+    await cx_wasm_bridge.setup()   # wait + register js.fetch_and_solve etc.
 
-After ``setup()`` succeeds, ``conda install`` works from the same kernel
-session via conda-emscripten's WasmSolver and wasm-extractor plugins.
+The ``%cx`` magic and emscripten compatibility patches live in the
+``conda-emscripten`` plugin package, not here.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
+import sys
 
 log = logging.getLogger(__name__)
 
-_cx = None  # cached ES-module proxy, set by _load_cx()
+_cx = None  # cached ES-module proxy after _load_cx()
+_setup_done = False  # True once js.fetch_and_solve etc. are registered
+
+_load_lock: asyncio.Lock | None = None
+_setup_lock: asyncio.Lock | None = None
 
 
-# ── Sync XHR helpers ──────────────────────────────────────────────────────────
+def _get_load_lock() -> asyncio.Lock:
+    global _load_lock
+    if _load_lock is None:
+        _load_lock = asyncio.Lock()
+    return _load_lock
+
+
+def _get_setup_lock() -> asyncio.Lock:
+    global _setup_lock
+    if _setup_lock is None:
+        _setup_lock = asyncio.Lock()
+    return _setup_lock
+
+
+def is_ready() -> bool:
+    """Return True if the bridge is set up and conda install will work."""
+    return _setup_done
 
 
 def _sync_fetch_binary(url: str):
-    """Synchronous XHR returning a JS Uint8Array (fetch_binary callback for Rust)."""
+    """Synchronous XHR → JS Uint8Array (fetch_binary callback for Rust)."""
     import js  # noqa: PLC0415
 
     xhr = js.XMLHttpRequest.new()
@@ -39,7 +60,7 @@ def _sync_fetch_binary(url: str):
 
 
 def _sync_fetch_text(url: str) -> str:
-    """Synchronous XHR returning a Python str (fetch_text callback for Rust)."""
+    """Synchronous XHR → Python str (fetch_text callback for Rust)."""
     import js  # noqa: PLC0415
 
     xhr = js.XMLHttpRequest.new()
@@ -48,173 +69,122 @@ def _sync_fetch_text(url: str) -> str:
     return str(xhr.responseText)
 
 
-# ── WASM module loader ────────────────────────────────────────────────────────
-
-
 async def _load_cx():
-    """Load cx-wasm from this package's MEMFS files using blob URLs.
+    """Load the cx-wasm ES module from MEMFS via blob URLs.
 
-    Steps:
-    1. Read cx_wasm_bg.wasm -> Blob -> blob URL  (so init() can fetch the bytes)
-    2. Read cx_wasm.js text -> Blob -> blob URL  (so dynamic import() works)
-    3. dynamic import(js_blob_url) via a helper function on js.*
-    4. await cx.default(wasm_blob_url) — pass WASM URL directly to bypass the
-       'new URL(cx_wasm_bg.wasm, import.meta.url)' resolution which would fail
-       when the module itself was loaded from a blob URL.
+    Concurrency-safe: a lock prevents duplicate loading if setup() is called
+    concurrently.  Blob URLs are revoked after initialisation to free memory.
     """
     global _cx
     if _cx is not None:
         return _cx
 
-    import js  # noqa: PLC0415
-    import pyjs  # noqa: PLC0415
+    async with _get_load_lock():
+        if _cx is not None:  # another coroutine finished while we waited
+            return _cx
 
-    pkg_dir = os.path.dirname(os.path.abspath(__file__))
-    wasm_path = os.path.join(pkg_dir, "cx_wasm_bg.wasm")
-    js_path = os.path.join(pkg_dir, "cx_wasm.js")
+        import js  # noqa: PLC0415
+        import pyjs  # noqa: PLC0415
 
-    log.info("cx-wasm-bridge: loading %s (%d bytes)", wasm_path, os.path.getsize(wasm_path))
+        pkg_dir = os.path.dirname(os.path.abspath(__file__))
+        wasm_path = os.path.join(pkg_dir, "cx_wasm_bg.wasm")
+        js_path = os.path.join(pkg_dir, "cx_wasm.js")
 
-    # 1. WASM blob URL
-    with open(wasm_path, "rb") as fh:
-        wasm_bytes = bytes(fh.read())
-    wasm_arr = pyjs.to_js(wasm_bytes)
-    wasm_blob = js.Blob.new([wasm_arr], pyjs.to_js({"type": "application/wasm"}))
-    wasm_url = str(js.URL.createObjectURL(wasm_blob))
+        for path in (wasm_path, js_path):
+            if not os.path.exists(path):
+                raise FileNotFoundError(
+                    f"cx-wasm file not found: {path}\n"
+                    "Is cx-wasm-kernel installed? "
+                    "Rebuild with: pixi run -e lite lite-build-local"
+                )
 
-    # 2. JS module blob URL
-    with open(js_path, encoding="utf-8") as fh:
-        js_src = fh.read()
-    js_blob = js.Blob.new([js_src], pyjs.to_js({"type": "text/javascript"}))
-    js_url = str(js.URL.createObjectURL(js_blob))
+        log.info("cx-wasm-bridge: loading WASM (%d bytes)", os.path.getsize(wasm_path))
 
-    # 3. Register a tiny helper on the JS global so we can trigger a dynamic
-    #    import() from Python without using pyjs.eval directly.
-    #    (pyjs.eval is intentionally not used here for security reasons.)
-    js._cx_dynamic_import = js.Function.new("url", "return import(url)")
-
-    # 4. Import the ES module and initialise with the WASM blob URL.
-    _cx = await js._cx_dynamic_import(js_url)
-    await _cx.default(wasm_url)
-
-    log.info("cx-wasm-bridge: cx-wasm loaded")
-    return _cx
-
-
-# ── Patch helpers ─────────────────────────────────────────────────────────────
-
-
-def _patch_urllib3() -> None:
-    """Replace urllib3's async emscripten backend with sync XHR via pyjs."""
-    from email.parser import Parser  # noqa: PLC0415
-
-    import js  # noqa: PLC0415
-    import pyjs  # noqa: PLC0415
-
-    _IGNORE = {"user-agent"}
-
-    def _pyjs_send_request(request):
-        from urllib3.contrib.emscripten.response import EmscriptenResponse  # noqa: PLC0415
-
-        headers = {k: v for k, v in request.headers.items() if k.lower() not in _IGNORE}
-        body = request.body
-        if isinstance(body, bytes):
-            body = body.decode("latin-1")
-
-        xhr = js.XMLHttpRequest.new()
-        xhr.open(request.method, request.url, False)
-        xhr.responseType = "arraybuffer"
-        for k, v in headers.items():
-            xhr.setRequestHeader(k, v)
-        xhr.send(body)
-
-        status = int(str(xhr.status))
-        raw_headers = str(xhr.getAllResponseHeaders())
-        resp_headers = dict(Parser().parsestr(raw_headers))
-        resp_body = bytes(pyjs.to_py(js.Uint8Array.new(xhr.response)))
-
-        return EmscriptenResponse(
-            status_code=status,
-            headers=resp_headers,
-            body=resp_body,
-            request=request,
+        with open(wasm_path, "rb") as fh:
+            wasm_bytes = fh.read()
+        wasm_blob = js.Blob.new(
+            [pyjs.to_js(bytes(wasm_bytes))],
+            pyjs.to_js({"type": "application/wasm"}),
         )
+        wasm_url = str(js.URL.createObjectURL(wasm_blob))
 
-    import urllib3.contrib.emscripten.connection as _ec  # noqa: PLC0415
-    import urllib3.contrib.emscripten.fetch as _ef  # noqa: PLC0415
+        with open(js_path, encoding="utf-8") as fh:
+            js_text = fh.read()
+        js_blob = js.Blob.new(
+            [js_text],
+            pyjs.to_js({"type": "text/javascript"}),
+        )
+        js_url = str(js.URL.createObjectURL(js_blob))
 
-    _ef.send_request = _pyjs_send_request
-    _ec.send_request = _pyjs_send_request
-    log.info("cx-wasm-bridge: urllib3 Emscripten backend patched (sync XHR)")
+        # Dynamic import via a tiny JS helper (avoids pyjs.eval for security).
+        js._cx_dynamic_import = js.Function.new("url", "return import(url)")
+        _cx = await js._cx_dynamic_import(js_url)
+        await _cx.default(wasm_url)
 
-
-def _patch_conda() -> None:
-    """Stub conda internals that break under Emscripten MEMFS."""
-    import sys  # noqa: PLC0415
-
-    if sys.platform != "emscripten":
-        return
-
-    import fcntl  # noqa: PLC0415
-
-    if not hasattr(fcntl, "lockf"):
-        fcntl.lockf = lambda fd, op, *a, **kw: None
-    if not hasattr(fcntl, "flock"):
-        fcntl.flock = lambda fd, op: None
-
-    from conda.core import solve as _solve  # noqa: PLC0415
-
-    _solve.Solver._notify_conda_outdated = lambda self, link_precs: None
-
-    from conda.gateways.repodata import RepodataCache  # noqa: PLC0415
-
-    _orig_save = RepodataCache.save
-
-    def _safe_save(self, raw_repodata):
-        try:
-            return _orig_save(self, raw_repodata)
-        except (AttributeError, OSError):
-            pass
-
-    RepodataCache.save = _safe_save
-    log.info("cx-wasm-bridge: conda Emscripten patches applied")
-
-
-# ── Public API ────────────────────────────────────────────────────────────────
+        js.URL.revokeObjectURL(wasm_url)
+        js.URL.revokeObjectURL(js_url)
+        log.info("cx-wasm-bridge: WASM module loaded")
+        return _cx
 
 
 async def setup() -> None:
-    """Load cx-wasm and register all bridge functions on the JS global scope.
+    """Load cx-wasm and register bridge functions on the JS global scope.
 
-    Must be awaited once per kernel session before running ``conda install``::
-
-        import cx_wasm_bridge
-        await cx_wasm_bridge.setup()
-
-    Registers on ``import js``:
-
-    * ``js.fetch_and_solve(request_json)``   — used by conda-emscripten WasmSolver
-    * ``js.cx_extract_package(bytes, fn, cb)``— used by wasm-extractor plugin
-    * ``js.sync_fetch_binary(url)``           — sync XHR → Uint8Array
-    * ``js.sync_fetch_text(url)``             — sync XHR → str
+    Idempotent and concurrency-safe.  Subsequent or concurrent calls wait for
+    the first to complete, then return immediately.
     """
-    import js  # noqa: PLC0415
-    import pyjs  # noqa: PLC0415
+    global _setup_done
+    if _setup_done:
+        return
 
-    cx = await _load_cx()
+    async with _get_setup_lock():
+        if _setup_done:
+            return
 
-    js_fetch_binary = pyjs.to_js(_sync_fetch_binary)
-    js_fetch_text = pyjs.to_js(_sync_fetch_text)
+        import js  # noqa: PLC0415
+        import pyjs  # noqa: PLC0415
 
-    def _fetch_and_solve(request_json):
-        return cx.cx_fetch_and_solve(request_json, js_fetch_binary, js_fetch_text)
+        cx = await _load_cx()
 
-    js.fetch_and_solve = pyjs.to_js(_fetch_and_solve)
-    js.cx_extract_package = cx.cx_extract_package
-    js.sync_fetch_binary = js_fetch_binary
-    js.sync_fetch_text = js_fetch_text
+        js_fetch_binary = pyjs.to_js(_sync_fetch_binary)
+        js_fetch_text = pyjs.to_js(_sync_fetch_text)
 
-    _patch_urllib3()
-    _patch_conda()
+        def _fetch_and_solve(request_json):
+            return cx.cx_fetch_and_solve(request_json, js_fetch_binary, js_fetch_text)
 
-    print("[cx-wasm-bridge] ready — fetch_and_solve and cx_extract_package registered")
+        js.fetch_and_solve = pyjs.to_js(_fetch_and_solve)
+        js.cx_extract_package = cx.cx_extract_package
+        js.sync_fetch_binary = js_fetch_binary
+        js.sync_fetch_text = js_fetch_text
+
+        _setup_done = True
+        log.info("cx-wasm-bridge: js.fetch_and_solve registered")
+
+
+async def _setup_background() -> None:
+    """Exception-safe wrapper for background use via asyncio.ensure_future.
+
+    pyjs cannot serialise Python exceptions back through the JS done-callback
+    (BindingError: Cannot pass non-string to std::string), so we absorb them.
+    """
+    try:
+        await setup()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("cx-wasm-bridge: background setup failed: %s", exc)
+
+
+def _schedule_auto_setup() -> None:
+    """Schedule setup() as a background task at import time (emscripten only).
+
+    If an event loop is running (xeus-python kernel), setup starts immediately.
+    By the time the user runs ``await setup()``, loading is likely complete.
+    """
+    if sys.platform != "emscripten":
+        return
+    try:
+        asyncio.ensure_future(_setup_background())
+    except RuntimeError:
+        pass  # no running event loop; user must call await setup() explicitly
+
+
+_schedule_auto_setup()

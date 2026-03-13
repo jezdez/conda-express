@@ -21,7 +21,13 @@ log = logging.getLogger(__name__)
 
 
 def _get_js_bridge():
-    """Get the cx-wasm bridge from the JS global scope via pyjs."""
+    """Get the cx-wasm bridge from the JS global scope via pyjs.
+
+    If *js.fetch_and_solve* is not yet registered, this function tries to
+    import ``cx_wasm_bridge`` (which auto-schedules async loading at import
+    time) and raises a clear, actionable error if the bridge is still not
+    ready.
+    """
     if sys.platform != "emscripten":
         raise RuntimeError(
             "conda-emscripten requires an Emscripten/pyjs environment. "
@@ -29,12 +35,46 @@ def _get_js_bridge():
         )
     try:
         import js
-        return js
     except ImportError:
         raise RuntimeError(
-            "Could not import 'js' module. "
-            "conda-emscripten requires pyjs JS bridge."
+            "Could not import 'js' module. conda-emscripten requires pyjs JS bridge."
         )
+
+    if not getattr(js, "fetch_and_solve", None):
+        # Try to import cx_wasm_bridge — importing it triggers the background
+        # auto-schedule, so if setup completed between the import and now,
+        # js.fetch_and_solve will be set after this block.
+        _bridge_installed = False
+        try:
+            import cx_wasm_bridge as _bridge  # noqa: F401
+
+            _bridge_installed = True
+        except ImportError:
+            pass
+
+        if not getattr(js, "fetch_and_solve", None):
+            if _bridge_installed:
+                hint = (
+                    "cx_wasm_bridge is installed but setup has not completed.\n"
+                    "  Run in a notebook cell before conda install:\n\n"
+                    "      import cx_wasm_bridge\n"
+                    "      await cx_wasm_bridge.setup()\n\n"
+                    "  Or just use the magic directly (it auto-setups):\n\n"
+                    "      %cx install <pkg>\n"
+                )
+            else:
+                hint = (
+                    "cx_wasm_bridge is not installed.\n"
+                    "  Either use the cx-worker.js web-worker context, or build and\n"
+                    "  install cx-wasm-kernel:\n\n"
+                    "      pixi run -e recipes build-cx-wasm-kernel\n"
+                    "      pixi run -e lite lite-build-local\n"
+                )
+            raise RuntimeError(
+                "conda-emscripten: js.fetch_and_solve is not registered.\n" + hint
+            )
+
+    return js
 
 
 def _records_to_dicts(records: Iterable[PrefixRecord]) -> list[dict]:
@@ -110,7 +150,9 @@ def _solution_record_to_package_record(r: dict) -> PackageRecord:
 
 def _solution_to_records(solution) -> list[PackageRecord]:
     """Convert cx-wasm solution (JS object or dict) to conda PackageRecords."""
-    sol_records = solution["records"] if isinstance(solution, dict) else solution.records
+    sol_records = (
+        solution["records"] if isinstance(solution, dict) else solution.records
+    )
     records = []
     for rec in sol_records:
         if isinstance(rec, dict):

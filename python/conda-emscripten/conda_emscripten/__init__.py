@@ -8,10 +8,15 @@ import warnings
 
 if sys.platform == "emscripten":
     # Emscripten can't start threads; silence tqdm's monitor warning.
-    warnings.filterwarnings("ignore", message="tqdm:disabling monitor", category=FutureWarning)
-    warnings.filterwarnings("ignore", message="tqdm:disabling monitor", category=UserWarning)
+    warnings.filterwarnings(
+        "ignore", message="tqdm:disabling monitor", category=FutureWarning
+    )
+    warnings.filterwarnings(
+        "ignore", message="tqdm:disabling monitor", category=UserWarning
+    )
     try:
         from tqdm import TqdmMonitorWarning
+
         warnings.filterwarnings("ignore", category=TqdmMonitorWarning)
     except ImportError:
         pass

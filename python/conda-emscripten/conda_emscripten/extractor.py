@@ -39,13 +39,13 @@ def extract_wasm(source_path, dest_dir):
     file_size = os.path.getsize(source_path)
     log.info(
         "wasm-extractor: extracting %s (%d bytes) -> %s",
-        filename, file_size, dest_dir,
+        filename,
+        file_size,
+        dest_dir,
     )
 
     if file_size == 0:
-        raise RuntimeError(
-            f"wasm-extractor: archive is empty (0 bytes): {source_path}"
-        )
+        raise RuntimeError(f"wasm-extractor: archive is empty (0 bytes): {source_path}")
 
     with open(source_path, "rb") as f:
         archive_bytes = f.read()
