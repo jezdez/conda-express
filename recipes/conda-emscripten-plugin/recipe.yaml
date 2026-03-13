@@ -6,7 +6,7 @@ package:
   version: ${{ version }}
 
 source:
-  path: ../../python/conda-emscripten
+  path: ../../conda-emscripten
 
 build:
   noarch: python
