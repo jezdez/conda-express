@@ -1,13 +1,16 @@
-/// Build script for cx-web: optionally embeds a lockfile and target platform
-/// into the WASM binary so JS consumers don't need to pass them at runtime.
+/// Build script for cx-web: optionally embeds a lockfile, target platform,
+/// and Emscripten SDK version into the WASM binary so JS consumers don't
+/// need to pass them at runtime.
 ///
-/// Set `CX_LOCKFILE=/path/to/cx.lock` and `CX_PLATFORM=emscripten-wasm32`
-/// at build time to bake them in.
+/// Set `CX_LOCKFILE=/path/to/cx.lock`, `CX_PLATFORM=emscripten-wasm32`,
+/// and `CX_EMSCRIPTEN_VERSION=3.1.58` at build time to bake them in.
 fn main() {
     println!("cargo::rustc-check-cfg=cfg(cx_embedded_lockfile)");
     println!("cargo::rustc-check-cfg=cfg(cx_embedded_platform)");
+    println!("cargo::rustc-check-cfg=cfg(cx_embedded_emscripten_version)");
     println!("cargo:rerun-if-env-changed=CX_LOCKFILE");
     println!("cargo:rerun-if-env-changed=CX_PLATFORM");
+    println!("cargo:rerun-if-env-changed=CX_EMSCRIPTEN_VERSION");
 
     let out_dir = std::env::var("OUT_DIR").unwrap();
     let out_path = std::path::Path::new(&out_dir);
@@ -42,6 +45,17 @@ fn main() {
             });
             println!("cargo:rustc-cfg=cx_embedded_platform");
             eprintln!("cx-web: embedding platform '{platform}'");
+        }
+    }
+
+    if let Ok(version) = std::env::var("CX_EMSCRIPTEN_VERSION") {
+        if !version.is_empty() {
+            let dest = out_path.join("embedded_emscripten_version.txt");
+            std::fs::write(&dest, &version).unwrap_or_else(|e| {
+                panic!("cx-web: failed to write embedded emscripten version: {e}")
+            });
+            println!("cargo:rustc-cfg=cx_embedded_emscripten_version");
+            eprintln!("cx-web: embedding emscripten version '{version}'");
         }
     }
 }
