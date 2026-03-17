@@ -98,31 +98,35 @@ async def _load_cx():
                     "Rebuild with: pixi run -e lite lite-build-local"
                 )
 
-        log.info("cx-wasm-bridge: loading WASM (%d bytes)", os.path.getsize(wasm_path))
+        wasm_size = os.path.getsize(wasm_path)
+        log.info("cx-wasm-bridge: loading WASM (%d bytes)", wasm_size)
 
         with open(wasm_path, "rb") as fh:
             wasm_bytes = fh.read()
-        wasm_blob = js.Blob.new(
-            [pyjs.to_js(bytes(wasm_bytes))],
-            pyjs.to_js({"type": "application/wasm"}),
-        )
-        wasm_url = str(js.URL.createObjectURL(wasm_blob))
+        wasm_data = pyjs.to_js(bytes(wasm_bytes))
 
         with open(js_path, encoding="utf-8") as fh:
             js_text = fh.read()
-        js_blob = js.Blob.new(
-            [js_text],
-            pyjs.to_js({"type": "text/javascript"}),
+
+        # Perform Blob creation, dynamic import, and WASM init entirely in
+        # JS to avoid pyjs proxy issues.  wasm-bindgen's glue code uses
+        # `typeof x === 'string'` checks that fail on pyjs string proxies,
+        # and Blob() needs a native JS Array with native JS String parts.
+        js._cx_load_module = js.Function.new(
+            "jsText", "wasmData",
+            "var jsUrl = URL.createObjectURL("
+            "  new Blob([String(jsText)], {type: 'text/javascript'}));"
+            "var wasmUrl = URL.createObjectURL("
+            "  new Blob([wasmData], {type: 'application/wasm'}));"
+            "return import(jsUrl).then(function(m) {"
+            "  return m.default(wasmUrl).then(function() {"
+            "    URL.revokeObjectURL(jsUrl);"
+            "    URL.revokeObjectURL(wasmUrl);"
+            "    return m;"
+            "  });"
+            "});"
         )
-        js_url = str(js.URL.createObjectURL(js_blob))
-
-        # Dynamic import via a tiny JS helper (avoids pyjs.eval for security).
-        js._cx_dynamic_import = js.Function.new("url", "return import(url)")
-        _cx = await js._cx_dynamic_import(js_url)
-        await _cx.default(wasm_url)
-
-        js.URL.revokeObjectURL(wasm_url)
-        js.URL.revokeObjectURL(js_url)
+        _cx = await js._cx_load_module(js_text, wasm_data)
         log.info("cx-wasm-bridge: WASM module loaded")
         return _cx
 
@@ -146,16 +150,32 @@ async def setup() -> None:
 
         cx = await _load_cx()
 
-        js_fetch_binary = pyjs.to_js(_sync_fetch_binary)
-        js_fetch_text = pyjs.to_js(_sync_fetch_text)
-
-        def _fetch_and_solve(request_json):
-            return cx.cx_fetch_and_solve(request_json, js_fetch_binary, js_fetch_text)
-
-        js.fetch_and_solve = pyjs.to_js(_fetch_and_solve)
-        js.cx_extract_package = cx.cx_extract_package
+        # pyjs.create_callable converts Python functions to JS-callable
+        # objects.  The handles must be kept alive for the session.
+        js_fetch_binary, _hnd1 = pyjs.create_callable(_sync_fetch_binary)
+        js_fetch_text, _hnd2 = pyjs.create_callable(_sync_fetch_text)
         js.sync_fetch_binary = js_fetch_binary
         js.sync_fetch_text = js_fetch_text
+
+        # All bridge functions are wrapped with JS Function.new() so that
+        # arguments crossing the pyjs boundary are coerced to native JS
+        # types.  wasm-bindgen's glue uses `typeof x === 'string'` and
+        # `passStringToWasm0` which reject pyjs proxy objects.
+        js._cx_solve_raw = cx.cx_fetch_and_solve
+        js.fetch_and_solve = js.Function.new(
+            "request",
+            "return globalThis._cx_solve_raw("
+            "  String(request),"
+            "  globalThis.sync_fetch_binary,"
+            "  globalThis.sync_fetch_text"
+            ")"
+        )
+
+        js._cx_extract_raw = cx.cx_extract_package
+        js.cx_extract_package = js.Function.new(
+            "bytes", "filename", "onFile",
+            "return globalThis._cx_extract_raw(bytes, String(filename), onFile)"
+        )
 
         _setup_done = True
         log.info("cx-wasm-bridge: js.fetch_and_solve registered")

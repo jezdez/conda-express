@@ -63,7 +63,6 @@ def extract_wasm(source_path, dest_dir):
         file_count += 1
 
     js_bytes = pyjs.to_js(archive_bytes)
-    js_bytes = pyjs.new(js.Uint8Array, js_bytes)
 
     js_callable, handle = pyjs.create_callable(on_file)
     try:
