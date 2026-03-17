@@ -106,6 +106,7 @@ pub(crate) fn convert_solution(records: Vec<RepoDataRecord>) -> SolveSolution {
         .into_iter()
         .map(|r| {
             let pr = &r.package_record;
+            let channel = r.channel.unwrap_or_else(|| channel_from_url(&r.url));
             SolvedRecord {
                 name: pr.name.as_normalized().to_string(),
                 version: pr.version.to_string(),
@@ -113,7 +114,7 @@ pub(crate) fn convert_solution(records: Vec<RepoDataRecord>) -> SolveSolution {
                 build_number: pr.build_number,
                 subdir: pr.subdir.clone(),
                 url: r.url.to_string(),
-                channel: r.channel.unwrap_or_default(),
+                channel,
                 file_name: r.identifier.to_string(),
                 sha256: pr.sha256.map(|h| format!("{h:x}")),
                 md5: pr.md5.map(|h| format!("{h:x}")),
@@ -128,6 +129,20 @@ pub(crate) fn convert_solution(records: Vec<RepoDataRecord>) -> SolveSolution {
         records: solved,
         total_packages: total,
     }
+}
+
+/// Derive a channel base URL from a package URL by stripping the
+/// `/<subdir>/<filename>` suffix.  Falls back to the full URL string.
+fn channel_from_url(url: &url::Url) -> String {
+    let s = url.as_str();
+    // Strip /<subdir>/<filename> — two path segments from the right
+    if let Some(idx) = s.rfind('/') {
+        let without_file = &s[..idx];
+        if let Some(idx2) = without_file.rfind('/') {
+            return without_file[..idx2].to_string();
+        }
+    }
+    s.to_string()
 }
 
 pub(crate) fn parse_channel_priority(s: Option<&str>) -> ChannelPriority {
