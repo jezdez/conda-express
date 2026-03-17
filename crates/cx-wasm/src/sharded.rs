@@ -202,9 +202,7 @@ fn get_or_fetch_index(
 ) -> Result<Rc<DecodedShardIndex>, CxWasmError> {
     let cached = INDEX_CACHE.with(|c| c.borrow().get(cache_key).cloned());
     if let Some(index) = cached {
-        web_sys::console::log_1(
-            &format!("cx-wasm: shard index cache hit for {cache_key}").into(),
-        );
+        web_sys::console::log_1(&format!("cx-wasm: shard index cache hit for {cache_key}").into());
         return Ok(index);
     }
 
@@ -379,8 +377,7 @@ fn fetch_sharded_records(
 
             let shard_url = format!("{shards_base}{hash}.msgpack.zst");
 
-            let was_cached =
-                SHARD_CACHE.with(|c| c.borrow().contains_key(&shard_url));
+            let was_cached = SHARD_CACHE.with(|c| c.borrow().contains_key(&shard_url));
 
             match get_or_fetch_shard(&shard_url, name, fetch_binary, base_url, &channel_url) {
                 Ok(cached_shard) => {
