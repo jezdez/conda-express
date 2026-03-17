@@ -78,7 +78,7 @@ lite-serve = { cmd = "echo 'Open http://localhost:8888/lab/index.html' && python
 # Build (with local packages) then serve — the full demo workflow
 lite-demo = { depends-on = ["lite-build-local", "lite-serve"] }
 # Remove the build output
-lite-clean = { cmd = "rm -rf _output .jupyterlite.doit.db", cwd = "lite" }
+lite-clean = { cmd = "rm -rf _output _env .jupyterlite.doit.db", cwd = "lite" }
 
 [environments]
 docs = ["docs"]

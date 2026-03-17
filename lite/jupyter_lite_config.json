@@ -5,6 +5,6 @@
     "federated_extensions": []
   },
   "XeusAddon": {
-    "environment_file": "environment.yml"
+    "empack_config": "empack_config.yaml"
   }
 }

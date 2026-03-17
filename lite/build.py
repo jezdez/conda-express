@@ -9,22 +9,35 @@ Usage::
     # Local build — adds the project's output/ channel and cx-wasm-kernel
     python build.py --with-local
 
-The script writes environment.yml (overwriting it), then calls
-``jupyter lite build``.  The generated file is .gitignored when it contains
-the machine-specific local channel path.
+The script creates the conda environment directly (keeping .pyc bytecode
+for faster browser startup), then calls ``jupyter lite build`` with
+``--XeusAddon.prefix`` pointing to the pre-built environment.
 """
 
 from __future__ import annotations
 
 import argparse
 import pathlib
+import shutil
 import subprocess
 import sys
 
 HERE = pathlib.Path(__file__).parent.resolve()
 ROOT = HERE.parent
 
+ENV_NAME = "xeus-python-kernel"
 
+BASE_CHANNELS = [
+    "https://repo.prefix.dev/emscripten-forge-4x",
+    "https://conda.anaconda.org/conda-forge",
+]
+
+BASE_SPECS = ["xeus-python", "numpy", "matplotlib", "ipywidgets"]
+
+LOCAL_EXTRA_SPECS = ["cx-wasm-kernel", "conda", "conda-emscripten"]
+
+
+# These templates are only written for documentation/reference purposes.
 BASE_ENV = """\
 name: xeus-python-kernel
 channels:
@@ -55,6 +68,58 @@ dependencies:
   - conda-emscripten
 """
 
+PLATFORM = "emscripten-wasm32"
+
+
+def _create_prefix(channels: list[str], specs: list[str]) -> pathlib.Path:
+    """Create the emscripten conda environment, keeping .pyc bytecode.
+
+    Unlike jupyterlite-xeus's default, this does NOT pass ``--no-pyc``
+    to micromamba, so pre-compiled bytecode from conda packages is
+    preserved.  Combined with the custom empack config that allows
+    ``*.pyc`` files, this avoids expensive runtime compilation of
+    every Python module on first import in the browser.
+    """
+    root_prefix = HERE / "_env"
+    prefix_path = root_prefix / "envs" / ENV_NAME
+
+    if prefix_path.exists():
+        shutil.rmtree(prefix_path)
+
+    root_prefix.mkdir(parents=True, exist_ok=True)
+
+    micromamba = shutil.which("micromamba")
+    if not micromamba:
+        raise RuntimeError(
+            "micromamba is needed for creating the emscripten environment.\n"
+            "Install it with: conda install micromamba -c conda-forge"
+        )
+
+    channels_args = []
+    for ch in channels:
+        channels_args.extend(["-c", ch])
+
+    cmd = [
+        micromamba,
+        "create",
+        "--yes",
+        "--prefix",
+        str(prefix_path),
+        "--relocate-prefix",
+        "",
+        "--root-prefix",
+        str(root_prefix),
+        f"--platform={PLATFORM}",
+        *channels_args,
+        *specs,
+    ]
+
+    print(f"[build.py] Creating environment at {prefix_path}")
+    subprocess.run(cmd, check=True)
+    print(f"[build.py] Environment created ({prefix_path})")
+
+    return prefix_path
+
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -75,21 +140,32 @@ def main() -> None:
             print("  pixi run -e recipes build-cx-wasm-kernel")
             print("  pixi run -e recipes build-conda-emscripten-plugin")
             sys.exit(1)
-        # Write to a gitignored file so environment.yml (the base) is never
-        # overwritten with machine-specific file:// paths.
+        channels = [f"file://{output}"] + BASE_CHANNELS
+        specs = BASE_SPECS + LOCAL_EXTRA_SPECS
+
+        # Write reference YAML (gitignored — contains machine-specific path)
         env_yml = HERE / "_local_environment.yml"
-        content = LOCAL_ENV_TEMPLATE.format(output=output)
-        env_yml.write_text(content)
+        env_yml.write_text(LOCAL_ENV_TEMPLATE.format(output=output))
         print(f"[build.py] Wrote {env_yml} (local channel: file://{output})")
-        extra_args = [f"--XeusAddon.environment_file={env_yml}"]
     else:
+        channels = list(BASE_CHANNELS)
+        specs = list(BASE_SPECS)
+
         env_yml = HERE / "environment.yml"
         env_yml.write_text(BASE_ENV)
         print(f"[build.py] Wrote {env_yml}")
-        extra_args = []
+
+    prefix_path = _create_prefix(channels, specs)
 
     result = subprocess.run(
-        ["jupyter", "lite", "build", "--config", "jupyter_lite_config.json", *extra_args],
+        [
+            "jupyter",
+            "lite",
+            "build",
+            "--config",
+            "jupyter_lite_config.json",
+            f"--XeusAddon.prefix={prefix_path}",
+        ],
         cwd=HERE,
     )
     sys.exit(result.returncode)
