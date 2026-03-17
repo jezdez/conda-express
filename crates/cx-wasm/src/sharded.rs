@@ -5,9 +5,26 @@
 //! `repodata.json`, returning parsed `RepoDataRecord`s directly.  HTTP
 //! requests are performed via JS callbacks (sync XHR in the Web Worker).
 //! All binary decoding (zstd + msgpack) and dependency crawling happens in Rust.
+//!
+//! ## Session-level caching
+//!
+//! Inspired by the native `cx` CLI's rattler Gateway (which caches repodata
+//! on disk), this module caches both shard indices and individual shard
+//! contents in memory for the lifetime of the WASM instance.  This avoids
+//! redundant network fetches when the user runs multiple `%cx install`
+//! commands in the same notebook session.
+//!
+//! - **Index cache**: keyed by `{channel}/{subdir}`, stores the decoded
+//!   shard index (package-name → shard-hash mapping).
+//! - **Shard cache**: keyed by shard URL (content-addressed via the hash),
+//!   stores parsed `RepoDataRecord`s and dependency names.  Since the URL
+//!   includes the content hash, cache entries naturally invalidate when
+//!   upstream data changes.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Read;
+use std::rc::Rc;
 
 use rattler_conda_types::{PackageRecord, Shard};
 use serde::Deserialize;
@@ -16,6 +33,39 @@ use wasm_bindgen::prelude::*;
 use crate::error::CxWasmError;
 
 const MAX_SHARDS: usize = 2000;
+
+// ─── Session-level caches ────────────────────────────────────────────────────
+
+struct CachedShard {
+    records: Vec<rattler_conda_types::RepoDataRecord>,
+    dep_names: BTreeSet<String>,
+}
+
+thread_local! {
+    static INDEX_CACHE: RefCell<HashMap<String, Rc<DecodedShardIndex>>> =
+        RefCell::new(HashMap::new());
+    static SHARD_CACHE: RefCell<HashMap<String, Rc<CachedShard>>> =
+        RefCell::new(HashMap::new());
+}
+
+/// Clear all cached shard indices and shard contents.
+///
+/// Exposed to JS/Python so the user can force a full re-fetch if needed
+/// (e.g. after a channel update mid-session).
+#[wasm_bindgen]
+pub fn cx_clear_repodata_cache() {
+    INDEX_CACHE.with(|c| c.borrow_mut().clear());
+    SHARD_CACHE.with(|c| c.borrow_mut().clear());
+    web_sys::console::log_1(&"cx-wasm: repodata cache cleared".into());
+}
+
+fn get_cache_stats() -> (usize, usize) {
+    let indices = INDEX_CACHE.with(|c| c.borrow().len());
+    let shards = SHARD_CACHE.with(|c| c.borrow().len());
+    (indices, shards)
+}
+
+// ─── Shard index types ───────────────────────────────────────────────────────
 
 /// Raw shard index deserialized from msgpack.
 ///
@@ -35,6 +85,7 @@ struct RawShardedSubdirInfo {
     shards_base_url: String,
 }
 
+#[derive(Clone)]
 struct DecodedShardIndex {
     #[allow(dead_code)]
     base_url: String,
@@ -140,6 +191,87 @@ fn resolve_shards_base_url(shards_base_url: &str, index_url: &str) -> String {
     base
 }
 
+// ─── Cache helpers ───────────────────────────────────────────────────────────
+
+/// Get the shard index from cache, or fetch + decode + cache it.
+fn get_or_fetch_index(
+    cache_key: &str,
+    base: &str,
+    subdir: &str,
+    fetch_binary: &js_sys::Function,
+) -> Result<Rc<DecodedShardIndex>, CxWasmError> {
+    let cached = INDEX_CACHE.with(|c| c.borrow().get(cache_key).cloned());
+    if let Some(index) = cached {
+        web_sys::console::log_1(
+            &format!("cx-wasm: shard index cache hit for {cache_key}").into(),
+        );
+        return Ok(index);
+    }
+
+    let index_url = format!("{base}/{subdir}/repodata_shards.msgpack.zst");
+    let index_bytes = call_fetch_binary(fetch_binary, &index_url)?;
+    let index = Rc::new(decode_shard_index(&index_bytes)?);
+
+    INDEX_CACHE.with(|c| {
+        c.borrow_mut()
+            .insert(cache_key.to_string(), Rc::clone(&index));
+    });
+    web_sys::console::log_1(
+        &format!(
+            "cx-wasm: cached shard index for {cache_key} ({} packages)",
+            index.shards.len()
+        )
+        .into(),
+    );
+
+    Ok(index)
+}
+
+/// Get a shard's records from cache, or fetch + decode + cache them.
+fn get_or_fetch_shard(
+    shard_url: &str,
+    name: &str,
+    fetch_binary: &js_sys::Function,
+    base_url: &str,
+    channel_url: &str,
+) -> Result<Rc<CachedShard>, CxWasmError> {
+    let cached = SHARD_CACHE.with(|c| c.borrow().get(shard_url).cloned());
+    if let Some(shard) = cached {
+        return Ok(shard);
+    }
+
+    let shard_bytes = call_fetch_binary(fetch_binary, shard_url)
+        .map_err(|e| CxWasmError::FetchFailed(format!("shard {name}: {e}")))?;
+    let decompressed = decompress_zstd(&shard_bytes)?;
+    let shard: Shard = rmp_serde::from_slice(&decompressed)
+        .map_err(|e| CxWasmError::RepodataParse(format!("msgpack decode shard for {name}: {e}")))?;
+
+    let dep_names = shard_dep_names(&shard);
+
+    let mut records = Vec::new();
+    for (id, record) in shard.packages.iter().chain(shard.conda_packages.iter()) {
+        if shard.removed.contains(id) {
+            continue;
+        }
+        let url = url::Url::parse(&format!("{base_url}{id}"))
+            .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}")))?;
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: record.clone(),
+            identifier: id.clone().into(),
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+
+    let cached = Rc::new(CachedShard { records, dep_names });
+    SHARD_CACHE.with(|c| {
+        c.borrow_mut()
+            .insert(shard_url.to_string(), Rc::clone(&cached));
+    });
+
+    Ok(cached)
+}
+
 // ─── Main entry point ────────────────────────────────────────────────────────
 
 /// Fetch repodata and return parsed `RepoDataRecord`s directly (no JSON
@@ -215,16 +347,17 @@ fn fetch_sharded_records(
     fetch_binary: &js_sys::Function,
     base_url: &str,
 ) -> Result<Vec<rattler_conda_types::RepoDataRecord>, CxWasmError> {
-    let index_url = format!("{base}/{subdir}/repodata_shards.msgpack.zst");
-    let index_bytes = call_fetch_binary(fetch_binary, &index_url)?;
-    let index = decode_shard_index(&index_bytes)?;
+    let cache_key = format!("{base}/{subdir}");
+    let index = get_or_fetch_index(&cache_key, base, subdir, fetch_binary)?;
 
-    let _shards_base = resolve_shards_base_url(&index.shards_base_url, &index_url);
+    let index_url = format!("{base}/{subdir}/repodata_shards.msgpack.zst");
+    let shards_base = resolve_shards_base_url(&index.shards_base_url, &index_url);
     let channel_url = base.to_string();
 
     let mut fetched_names: BTreeSet<String> = BTreeSet::new();
     let mut all_records: Vec<rattler_conda_types::RepoDataRecord> = Vec::new();
     let mut fetched = 0usize;
+    let mut cache_hits = 0usize;
     let mut to_fetch: Vec<String> = seeds.to_vec();
 
     while !to_fetch.is_empty() && fetched < MAX_SHARDS {
@@ -244,36 +377,29 @@ fn fetch_sharded_records(
                 None => continue,
             };
 
-            let shard_url = format!("{_shards_base}{hash}.msgpack.zst");
-            if let Ok(shard_bytes) = call_fetch_binary(fetch_binary, &shard_url) {
-                let decompressed = decompress_zstd(&shard_bytes)?;
-                let shard: Shard = rmp_serde::from_slice(&decompressed).map_err(|e| {
-                    CxWasmError::RepodataParse(format!("msgpack decode shard for {name}: {e}"))
-                })?;
+            let shard_url = format!("{shards_base}{hash}.msgpack.zst");
 
-                let dep_names = shard_dep_names(&shard);
+            let was_cached =
+                SHARD_CACHE.with(|c| c.borrow().contains_key(&shard_url));
 
-                for (id, record) in shard.packages.iter().chain(shard.conda_packages.iter()) {
-                    if shard.removed.contains(id) {
-                        continue;
+            match get_or_fetch_shard(&shard_url, name, fetch_binary, base_url, &channel_url) {
+                Ok(cached_shard) => {
+                    all_records.extend(cached_shard.records.iter().cloned());
+                    fetched += 1;
+                    if was_cached {
+                        cache_hits += 1;
                     }
-                    let url = url::Url::parse(&format!("{base_url}{id}")).map_err(|e| {
-                        CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}"))
-                    })?;
-                    all_records.push(rattler_conda_types::RepoDataRecord {
-                        package_record: record.clone(),
-                        identifier: id.clone().into(),
-                        url,
-                        channel: Some(channel_url.clone()),
-                    });
+
+                    for dep in &cached_shard.dep_names {
+                        if !fetched_names.contains(dep) && index.shards.contains_key(dep) {
+                            next_round.push(dep.clone());
+                        }
+                    }
                 }
-
-                fetched += 1;
-
-                for dep in dep_names {
-                    if !fetched_names.contains(&dep) && index.shards.contains_key(&dep) {
-                        next_round.push(dep);
-                    }
+                Err(e) => {
+                    web_sys::console::warn_1(
+                        &format!("cx-wasm: failed to fetch shard for {name}: {e}").into(),
+                    );
                 }
             }
         }
@@ -287,9 +413,11 @@ fn fetch_sharded_records(
         )));
     }
 
+    let (total_indices, total_shards) = get_cache_stats();
     web_sys::console::log_1(
         &format!(
-            "cx-wasm: fetched {fetched} shards => {} records for {base}/{subdir}",
+            "cx-wasm: {fetched} shards ({cache_hits} cached, {} fetched) => {} records for {base}/{subdir} [cache: {total_indices} indices, {total_shards} shards]",
+            fetched - cache_hits,
             all_records.len(),
         )
         .into(),
