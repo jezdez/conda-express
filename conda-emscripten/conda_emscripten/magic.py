@@ -5,9 +5,10 @@ from __future__ import annotations
 import logging
 import sys
 
-from .patches import patch_conda_internals, patch_urllib3
-
 log = logging.getLogger(__name__)
+
+_patches_applied = False
+_run_command = None
 
 _HELP = """\
 %cx — conda-express in the browser (powered by cx-wasm)
@@ -53,26 +54,37 @@ async def cx_magic(line: str) -> None:
     if command in _MUTATING and "--yes" not in args and "-y" not in args:
         args = ["--yes", *args]
 
+    global _patches_applied, _run_command
+
     try:
         import cx_wasm_bridge
 
         if not cx_wasm_bridge.is_ready():
             print("Loading cx-wasm…")
             await cx_wasm_bridge.setup()
-            patch_urllib3()
-            patch_conda_internals()
     except ImportError:
-        pass  # cx_wasm_bridge not installed (e.g. cx-worker.js context)
+        pass
 
-    try:
-        from conda.cli.python_api import run_command
-    except ImportError:
-        print(
-            "conda is not installed in this kernel.\nRebuild with: pixi run -e lite lite-build-local"
-        )
-        return
+    if not _patches_applied:
+        from .patches import patch_conda_internals, patch_urllib3
 
-    stdout, stderr, rc = run_command(command, *args, use_exception_handler=True)
+        patch_urllib3()
+        patch_conda_internals()
+        _patches_applied = True
+
+    if _run_command is None:
+        try:
+            from conda.cli.python_api import run_command
+
+            _run_command = run_command
+        except ImportError:
+            print(
+                "conda is not installed in this kernel.\n"
+                "Rebuild with: pixi run -e lite lite-build-local"
+            )
+            return
+
+    stdout, stderr, rc = _run_command(command, *args, use_exception_handler=True)
     if stdout:
         print(stdout, end="")
     if stderr:

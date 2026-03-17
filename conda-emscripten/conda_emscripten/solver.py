@@ -121,6 +121,13 @@ def _solution_record_to_package_record(r: dict) -> PackageRecord:
     channel_url = r.get("channel", "")
     subdir = r.get("subdir", "noarch")
 
+    if not channel_url:
+        url = r.get("url", "")
+        if url:
+            # Derive channel from package URL: strip /<subdir>/<filename>
+            parts = url.rsplit("/", 2)
+            channel_url = parts[0] if len(parts) >= 3 else url
+
     if channel_url and not channel_url.endswith(("noarch", subdir)):
         channel_with_subdir = f"{channel_url}/{subdir}"
     else:
@@ -266,7 +273,7 @@ class CxWasmSolver(Solver):
             len(self.specs_to_remove),
         )
 
-        seed_names = self._collect_seed_names()
+        seed_names = self._collect_seed_names(installed)
         installed_records = _records_to_dicts(installed.values()) if installed else []
         virtual_packages = self._collect_virtual_packages()
         platform = context.subdir or "emscripten-wasm32"
@@ -298,8 +305,6 @@ class CxWasmSolver(Solver):
             len(seed_names),
         )
         solution = js.fetch_and_solve(json.dumps(request))
-        solution = json.loads(js.JSON.stringify(solution))
-
         solved_records = _solution_to_records(solution)
         log.info("CxWasmSolver: solution has %d packages", len(solved_records))
 
@@ -323,14 +328,17 @@ class CxWasmSolver(Solver):
 
         return IndexedSet(PrefixGraph(records).graph)
 
-    def _collect_seed_names(self) -> list[str]:
+    def _collect_seed_names(
+        self, installed: dict[str, PrefixRecord] | None = None
+    ) -> list[str]:
         """Collect package names to seed sharded repodata fetching.
 
         Includes: specs being added, specs being removed, and all currently
         installed package names (since the solver needs to re-resolve them).
-        """
-        from conda.core.prefix_data import PrefixData
 
+        When *installed* is provided, its keys are used directly instead of
+        creating a second PrefixData scan.
+        """
         names: set[str] = set()
         for s in self.specs_to_add:
             if s.name:
@@ -339,9 +347,13 @@ class CxWasmSolver(Solver):
             if s.name:
                 names.add(s.name)
 
-        prefix_data = PrefixData(self.prefix)
-        for rec in prefix_data.iter_records():
-            names.add(rec.name)
+        if installed is not None:
+            names.update(installed.keys())
+        else:
+            from conda.core.prefix_data import PrefixData
+
+            for rec in PrefixData(self.prefix).iter_records():
+                names.add(rec.name)
 
         return sorted(names)
 

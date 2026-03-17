@@ -8,8 +8,6 @@ from conda import plugins
 from conda.base.context import context
 from conda.plugins.types import CondaPreCommand, CondaSolver, CondaVirtualPackage
 
-from .solver import CxWasmSolver
-
 _pre_command_init_done = False
 
 
@@ -45,6 +43,8 @@ def _emscripten_version() -> str | None:
 
 @plugins.hookimpl
 def conda_solvers():
+    from .solver import CxWasmSolver
+
     yield CondaSolver(name="cx-wasm", backend=CxWasmSolver)
 
 
