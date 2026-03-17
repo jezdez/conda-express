@@ -91,6 +91,40 @@ Download the binary for your platform from the
 
 Each file has a matching `.sha256` checksum.
 
+### Docker
+
+A minimal, hardened multi-arch image (~37 MB) is published to GHCR on every release:
+
+```bash
+docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootstrap
+```
+
+The image runs as non-root (uid 65532), works with `--read-only`, and includes provenance attestations and SBOMs. Docker Desktop on macOS and Windows automatically selects the right architecture (linux/amd64 or linux/arm64).
+
+```bash
+# Run conda commands through cx
+docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express create -n myenv python=3.12
+```
+
+Use as a container in CI (GitHub Actions):
+
+```yaml
+jobs:
+  test:
+    container: ghcr.io/jezdez/conda-express:latest
+    steps:
+      - run: cx bootstrap && cx create -n test python numpy
+```
+
+Use as a base for multi-stage application builds:
+
+```dockerfile
+FROM ghcr.io/jezdez/conda-express:latest AS conda-builder
+RUN cx bootstrap && cx create -n app python numpy pandas
+FROM gcr.io/distroless/cc-debian12:nonroot
+COPY --from=conda-builder /home/nonroot/.cx/envs/app /opt/conda
+```
+
 ### From PyPI
 
 ```bash

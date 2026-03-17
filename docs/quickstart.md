@@ -91,6 +91,22 @@ cargo install conda-express
 ```
 ::::
 
+::::{tab-item} Docker
+A minimal, hardened multi-arch image (~37 MB) is published to GHCR:
+
+```bash
+docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootstrap
+```
+
+Works on Linux, macOS, and Windows via Docker Desktop. The image runs as
+non-root (uid 65532), supports `--read-only`, and includes provenance
+attestations and SBOMs.
+
+```bash
+docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express create -n myenv python=3.12
+```
+::::
+
 ::::{tab-item} Build from source
 [pixi](https://pixi.sh) manages the Rust toolchain from conda-forge:
 

@@ -31,6 +31,14 @@ powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-expres
 ```
 :::
 
+:::{tab-item} Docker
+```bash
+docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootstrap
+```
+
+Works on Linux, macOS, and Windows via Docker Desktop.
+:::
+
 :::{tab-item} pip / cargo
 ```bash
 pip install conda-express
