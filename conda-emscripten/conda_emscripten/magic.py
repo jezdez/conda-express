@@ -8,7 +8,6 @@ log = logging.getLogger(__name__)
 
 _patches_applied = False
 _run_command = None
-_load_dyn_lib = None
 
 _HELP = """\
 %cx / %conda — real conda in the browser (accelerated by cx-wasm)
@@ -42,37 +41,41 @@ channels:
 """
 
 
+def _is_shared_lib(filename: str) -> bool:
+    """True for ``.so``, ``.so.1``, ``.so.1.10.0``, etc."""
+    parts = filename.split(".")
+    return "so" in parts
+
+
 def _find_shared_libs(prefix: str) -> set[str]:
-    """Walk *prefix* and return the set of all ``.so`` file paths."""
+    """Walk *prefix* and return all shared library paths.
+
+    Matches both bare ``.so`` extensions and versioned variants like
+    ``liblz4.so.1.10.0`` — emscripten-forge packages use both.
+    """
     libs: set[str] = set()
     for dirpath, _dirnames, filenames in os.walk(prefix):
         for fn in filenames:
-            if fn.endswith(".so"):
+            if _is_shared_lib(fn):
                 libs.add(os.path.join(dirpath, fn))
     return libs
 
 
-def _get_loader():
-    """Return a JS function that calls Emscripten's ``loadDynamicLibrary``.
+def _load_shared_lib(path: str) -> None:
+    """Load a single WASM shared library into Emscripten's dynamic linker.
 
-    Built via ``js.Function.new()`` so the call runs in pure JS — no pyjs
-    proxy wrapping — matching the pattern used in ``cx_wasm_bridge``.
+    Uses ``ctypes.CDLL`` with ``RTLD_GLOBAL`` which calls Emscripten's
+    ``dlopen`` → ``loadDynamicLibrary`` under the hood.  This is more
+    reliable than calling ``Module.loadDynamicLibrary`` via JS because
+    ``Module`` may not be on ``globalThis`` in the xeus-python worker.
     """
-    global _load_dyn_lib
-    if _load_dyn_lib is not None:
-        return _load_dyn_lib
+    import ctypes  # noqa: PLC0415
 
-    import js  # noqa: PLC0415
-
-    _load_dyn_lib = js.Function.new(
-        "path",
-        "Module.loadDynamicLibrary(path, {global: true, nodelete: true});"
-    )
-    return _load_dyn_lib
+    ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)
 
 
 def _load_new_shared_libs(before: set[str], prefix: str) -> None:
-    """Register newly installed ``.so`` files with Emscripten's dynamic linker.
+    """Register newly installed shared libraries with Emscripten's dynamic linker.
 
     Compares the current set of shared libraries under *prefix* against the
     *before* snapshot taken prior to the conda command.  New libraries are
@@ -87,21 +90,20 @@ def _load_new_shared_libs(before: set[str], prefix: str) -> None:
 
     log.info("conda-emscripten: %d new shared libraries to load", len(new_libs))
 
-    loader = _get_loader()
     failed: list[tuple[str, Exception]] = []
 
     for so_path in new_libs:
         try:
-            loader(so_path)
+            _load_shared_lib(so_path)
             log.debug("conda-emscripten: loaded %s", so_path)
         except Exception as exc:  # noqa: BLE001
             failed.append((so_path, exc))
 
-    # Retry once for libraries whose dependencies were loaded in the first pass.
+    # Retry once — a library's dependencies may have been loaded in the first pass.
     still_failed: list[tuple[str, Exception]] = []
     for so_path, _prev_exc in failed:
         try:
-            loader(so_path)
+            _load_shared_lib(so_path)
             log.debug("conda-emscripten: loaded %s (retry)", so_path)
         except Exception as exc:  # noqa: BLE001
             still_failed.append((so_path, exc))
