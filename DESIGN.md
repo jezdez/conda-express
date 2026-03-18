@@ -150,75 +150,21 @@ After bootstrap, cx writes a `conda-meta/frozen` marker file per [CEP 22](https:
 cx-wasm compiles the same rattler-based solver and conda package extractor to `wasm32-unknown-unknown` via `wasm-pack`. In the browser, it runs inside a Web Worker (xeus-python kernel worker) and communicates with Python via pyjs. Real conda runs in WASM — this is not a reimplementation.
 
 ```
-User types: %conda install lz4
-       |
-       v
-  cx-jupyterlite         JupyterLite extension (main thread):
-       |                  rewrites bare "conda" → "%cx" in cell source
-       v
-  magic.py              IPython %cx / %conda magic
-       |                  auto-injects --yes, snapshots .so files
-       v
-  _bootstrap_prefix()    One-time MEMFS setup: conda-meta/, .condarc,
-       |                  env vars (CONDA_ROOT_PREFIX, CONDA_SUBDIR, etc.)
-       v
-  patches.py             Runtime patches for Emscripten:
-       |                  - urllib3: sync XHR instead of async fetch
-       |                  - download_inner: no-seek HTTP fetch
-       |                  - ExtractPackageAction: WASM extractor
-       |                  - subprocess: silent no-op
-       v
-  conda.cli.main.main()  Real conda CLI — full command support
-       |
-       v
-  solver.py              CxWasmSolver (CONDA_SOLVER=cx-wasm)
-       |                  builds request JSON, calls js.fetch_and_solve()
-       v
-  cx_wasm_bridge         Loads cx-wasm WASM via blob URLs, registers
-       |                  js.fetch_and_solve + js.cx_extract_package
-       v
-  cx-wasm (Rust/WASM)   gateway.rs: fetch repodata via sync XHR callbacks
-       |                  solve.rs: resolvo solver
-       |                  extract.rs: streaming .conda/.tar.bz2 extraction
-       v
-  extractor.py           Calls js.cx_extract_package (Uint8Array conversion),
-       |                  writes to MEMFS; Python tarfile fallback for .tar.bz2
-       v
-  conda links package    Files copied to prefix in MEMFS
-       |
-       v
-  _load_new_shared_libs  Finds new .so files (including versioned: .so.1.10.0),
-       |                  loads via ctypes.CDLL with RTLD_GLOBAL (shallowest
-       |                  first, one retry pass for dependency ordering)
-       v
-  Package installed, C extensions importable in the same kernel session
+%conda install lz4
+  → cx-jupyterlite       rewrites bare "conda" → "%cx" (main thread)
+  → magic.py             %cx / %conda magic, snapshots .so files
+  → patches.py           runtime patches (sync XHR, no-seek download,
+                          WASM extractor, subprocess no-op)
+  → conda.cli.main()     real conda CLI
+  → CxWasmSolver         → js.fetch_and_solve() → cx-wasm (Rust/WASM)
+  → extractor.py         → js.cx_extract_package() → MEMFS
+  → _load_new_shared_libs  ctypes.CDLL(RTLD_GLOBAL) for new .so files
+  → import lz4           C extensions work immediately
 ```
 
-#### MEMFS compatibility patches
+Emscripten's MEMFS lacks `seek()`, `subprocess`, and `fcntl.lockf`. The `patches.py` module monkey-patches conda's download pipeline, extractor, and subprocess calls at runtime. After mutating commands, `_load_new_shared_libs()` registers new `.so` files (including versioned names like `liblz4.so.1.10.0`) with Emscripten's dynamic linker so C extensions are importable.
 
-Emscripten's in-memory filesystem (MEMFS) has fundamental limitations that conda assumes won't exist: no `seek()`, no `subprocess`, no `fcntl.lockf`. The `patches.py` module applies runtime monkey-patches:
-
-| Patch | What it fixes |
-|---|---|
-| `download_inner` | Replaces conda's partial-download + checksum-via-seek with a simple fetch-verify-write |
-| `ExtractPackageAction.execute` | Routes extraction through cx-wasm's Rust extractor instead of `conda_package_handling` (which needs `seek()`) |
-| `subprocess` | No-ops `any_subprocess` and `subprocess_call` — post-link scripts can't run in the browser |
-| `RepodataCache.save` | Swallows `OSError` from repodata cache writes (MEMFS limitation) |
-| `_notify_conda_outdated` | Suppresses outdated conda check (irrelevant in browser) |
-
-#### Shared library loading
-
-After a mutating conda command (`install`, `update`, `create`), newly installed `.so` files need to be registered with Emscripten's dynamic linker before Python can `import` them. The `_load_new_shared_libs()` function in `magic.py`:
-
-1. Snapshots all `.so` files before the command
-2. After the command, finds new `.so` files (matching versioned names like `liblz4.so.1.10.0`)
-3. Sorts by directory depth (C runtime libs before Python extension modules)
-4. Loads each via `ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)`, which calls Emscripten's `dlopen` → `loadDynamicLibrary`
-5. Retries failed loads once (handles dependency ordering)
-
-This enables packages with C extensions (like `lz4`) to work after runtime installation.
-
-The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC and IndexedDB for caching the bootstrap filesystem snapshot (~50 MB). JupyterLite integration uses the same WASM module but loaded through the xeus-python kernel worker, with the `cx_wasm_bridge` Python package handling blob URL initialization.
+The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC and IndexedDB for caching (~50 MB). JupyterLite integration uses the same WASM module loaded through the xeus-python kernel worker.
 
 ---
 
