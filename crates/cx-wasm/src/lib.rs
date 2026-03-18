@@ -77,7 +77,6 @@ pub fn cx_init() -> String {
     format!("cx-wasm v{}", env!("CARGO_PKG_VERSION"))
 }
 
-/// Returns the embedded lockfile content, or `undefined` if none was baked in at build time.
 #[wasm_bindgen]
 pub fn cx_embedded_lockfile() -> Option<String> {
     #[cfg(cx_embedded_lockfile)]
@@ -90,7 +89,6 @@ pub fn cx_embedded_lockfile() -> Option<String> {
     }
 }
 
-/// Returns the embedded target platform (e.g. "emscripten-wasm32"), or `undefined`.
 #[wasm_bindgen]
 pub fn cx_embedded_platform() -> Option<String> {
     #[cfg(cx_embedded_platform)]
@@ -116,8 +114,6 @@ extern "C" {
     fn global_clear_timeout(id: i32);
 }
 
-/// Fetch bytes from a URL using the browser Fetch API with a 5-minute timeout.
-/// Works in both Window (main thread) and Worker contexts.
 pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     use js_sys::{ArrayBuffer, Uint8Array};
     use wasm_bindgen::JsCast;
@@ -177,14 +173,6 @@ pub(crate) async fn fetch_bytes(url: &str) -> Result<Vec<u8>, CxWasmError> {
     result
 }
 
-/// Streaming bootstrap: download and extract all packages, calling `on_file` for each
-/// extracted file with `(packageName, path, bytes)`.
-///
-/// Use this to write files directly to a virtual filesystem (e.g., Emscripten MEMFS)
-/// without buffering everything in memory.
-///
-/// `on_progress` is an optional callback: `on_progress(current, total, packageName)`.
-/// `on_file` is a required callback: `on_file(packageName, path, bytes: Uint8Array)`.
 #[wasm_bindgen]
 pub async fn cx_bootstrap_streaming(
     lockfile_content: String,
@@ -202,9 +190,6 @@ pub async fn cx_bootstrap_streaming(
     to_js(&result)
 }
 
-/// Extract a `.conda` or `.tar.bz2` package from raw bytes (already in memory).
-///
-/// `on_file` callback signature: `(path: string, data: Uint8Array) => void`
 #[wasm_bindgen]
 pub fn cx_extract_package(
     bytes: &[u8],
@@ -254,7 +239,6 @@ struct PackagePlanEntry {
     md5: Option<String>,
 }
 
-/// Get a summary of what bootstrap would do: package count, names, total download size.
 #[wasm_bindgen]
 pub fn cx_bootstrap_plan(lockfile_content: &str, platform_str: &str) -> Result<JsValue, JsValue> {
     let platform = parse_platform(platform_str)?;

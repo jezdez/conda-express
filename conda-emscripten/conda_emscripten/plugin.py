@@ -1,5 +1,3 @@
-"""Conda plugin hooks for Emscripten: solver, extractor, virtual packages, %cx magic."""
-
 from __future__ import annotations
 
 import sys
@@ -12,7 +10,6 @@ _pre_command_init_done = False
 
 
 def _on_pre_command(_command: str) -> None:
-    """Warm up the WASM bridge before the first conda command runs."""
     global _pre_command_init_done
 
     if sys.platform != "emscripten" or _pre_command_init_done:

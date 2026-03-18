@@ -1,5 +1,3 @@
-"""IPython %cx line magic — conda-express in the browser."""
-
 from __future__ import annotations
 
 import logging
@@ -32,19 +30,12 @@ _COMMANDS = _MUTATING | {"list", "search"}
 
 
 async def cx_magic(line: str) -> None:
-    """IPython line magic: ``%cx install zlib``.
-
-    Browser-side equivalent of the ``cx`` CLI.  Loads the cx-wasm bridge on
-    first use; ``--yes`` is injected for mutating commands so conda never
-    blocks on interactive prompts.
-    """
-    line = line.strip()
-    if not line or line in ("-h", "--help", "help"):
+    """IPython line magic: ``%cx install zlib``."""
+    if not (line := line.strip()) or line in ("-h", "--help", "help"):
         print(_HELP)
         return
 
-    parts = line.split()
-    command, args = parts[0], parts[1:]
+    command, *args = line.split()
 
     if command not in _COMMANDS:
         print(f"Unknown command: {command!r}\n")

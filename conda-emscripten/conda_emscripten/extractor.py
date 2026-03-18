@@ -16,13 +16,6 @@ def extract_wasm(source_path, dest_dir):
     Reads the archive bytes from the Emscripten MEMFS, passes them to
     ``js.cx_extract_package`` (cx-wasm), and writes each extracted file
     into *dest_dir*.
-
-    Parameters
-    ----------
-    source_path : str or PathLike
-        Path to the package archive on the virtual filesystem.
-    dest_dir : str or PathLike
-        Directory to extract package contents into.
     """
     import js
     import pyjs

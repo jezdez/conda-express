@@ -8,7 +8,7 @@ import sysconfig
 class CxNotFound(FileNotFoundError): ...
 
 
-def find_cx_bin() -> str:
+def find_cx_bin():
     """Return the path to the cx binary."""
     cx_exe = "cx" + sysconfig.get_config_var("EXE")
 
@@ -30,12 +30,12 @@ def find_cx_bin() -> str:
         sysconfig.get_path("scripts", scheme=_user_scheme()),
     ]
 
-    seen: list[str] = []
-    for target in targets:
-        if not target or target in seen:
+    seen = []
+    for t in targets:
+        if not t or t in seen:
             continue
-        seen.append(target)
-        path = os.path.join(target, cx_exe)
+        seen.append(t)
+        path = os.path.join(t, cx_exe)
         if os.path.isfile(path):
             return path
 
@@ -45,11 +45,12 @@ def find_cx_bin() -> str:
     )
 
 
-def _module_path() -> str | None:
+def _module_path():
     return os.path.dirname(__file__)
 
 
-def _matching_parents(path: str | None, match: str) -> str | None:
+def _matching_parents(path, match):
+    """Walk backwards through path segments matching glob pattern."""
     from fnmatch import fnmatch
 
     if not path:
@@ -59,20 +60,20 @@ def _matching_parents(path: str | None, match: str) -> str | None:
     if len(parts) < len(match_parts):
         return None
     if not all(
-        fnmatch(part, mp)
-        for part, mp in zip(reversed(parts), reversed(match_parts))
+        fnmatch(p, m)
+        for p, m in zip(reversed(parts), reversed(match_parts))
     ):
         return None
     return os.sep.join(parts[: -len(match_parts)])
 
 
-def _join(path: str | None, *parts: str) -> str | None:
+def _join(path, *parts):
     if not path:
         return None
     return os.path.join(path, *parts)
 
 
-def _user_scheme() -> str:
+def _user_scheme():
     if sys.version_info >= (3, 10):
         return sysconfig.get_preferred_scheme("user")
     elif os.name == "nt":

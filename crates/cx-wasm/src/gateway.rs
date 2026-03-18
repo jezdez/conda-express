@@ -101,13 +101,7 @@ struct FetchAndSolveRequest {
 }
 
 /// Fetch repodata for all channels/subdirs and solve in one call.
-///
-/// This eliminates the JSON serialization roundtrip between Rust and
-/// JS/Python: repodata is fetched via JS callbacks, decoded directly into
-/// `RepoDataRecord`s, and passed straight to the solver.
-///
-/// `fetch_binary` and `fetch_text` are JS functions for synchronous HTTP
-/// requests (sync XHR in the Web Worker).
+/// `fetch_binary`/`fetch_text` are JS sync XHR callbacks from the worker.
 #[wasm_bindgen]
 pub fn cx_fetch_and_solve(
     request: JsValue,
@@ -143,32 +137,32 @@ pub fn cx_fetch_and_solve(
 
     let mut all_records = Vec::new();
 
-    for channel in &req.channels {
-        for subdir in &channel.subdirs {
+    for ch in &req.channels {
+        for sd in &ch.subdirs {
             match fetch_repodata_records(
-                &channel.url,
-                subdir,
+                &ch.url,
+                sd,
                 &req.seed_names,
                 fetch_binary,
                 fetch_text,
             ) {
-                Ok(records) => {
+                Ok(recs) => {
                     web_sys::console::log_1(
                         &format!(
                             "cx-wasm: fetched {} records for {}/{}",
-                            records.len(),
-                            channel.url,
-                            subdir,
+                            recs.len(),
+                            ch.url,
+                            sd,
                         )
                         .into(),
                     );
-                    all_records.push(records);
+                    all_records.push(recs);
                 }
                 Err(e) => {
                     web_sys::console::warn_1(
                         &format!(
                             "cx-wasm: failed to fetch repodata for {}/{}: {}",
-                            channel.url, subdir, e,
+                            ch.url, sd, e,
                         )
                         .into(),
                     );

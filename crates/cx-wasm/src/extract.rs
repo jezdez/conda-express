@@ -12,9 +12,6 @@ pub struct ExtractStats {
     pub total_size: usize,
 }
 
-// --- Streaming extraction: yield (path, bytes) per file via callback ---
-
-/// Stream all entries from a tar archive, calling `on_file(path, bytes)` for each.
 fn stream_tar_entries<R: Read, F>(
     tar: &mut tar::Archive<R>,
     on_file: &mut F,
@@ -49,10 +46,6 @@ where
     Ok(stats)
 }
 
-/// Extract a `.conda` archive, streaming each file's contents to the callback.
-///
-/// Calls `on_file(path, bytes)` for every file in the archive.
-/// Returns aggregate stats (file count, total bytes).
 pub fn extract_conda_streaming<F>(bytes: &[u8], mut on_file: F) -> Result<ExtractStats, CxWasmError>
 where
     F: FnMut(&str, &[u8]) -> Result<(), CxWasmError>,
@@ -81,7 +74,6 @@ where
     Ok(stats)
 }
 
-/// Extract a `.tar.bz2` archive, streaming each file's contents to the callback.
 pub fn extract_tar_bz2_streaming<F>(
     bytes: &[u8],
     mut on_file: F,
@@ -95,7 +87,6 @@ where
     stream_tar_entries(&mut tar, &mut on_file)
 }
 
-/// Streaming variant of zstd tar extraction.
 fn extract_tar_zst_streaming<R: Read, F>(
     zst_reader: R,
     on_file: &mut F,

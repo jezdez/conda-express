@@ -19,7 +19,6 @@ pub struct StreamingBootstrapResult {
     pub errors: Vec<String>,
 }
 
-/// Parse lockfile records for a given platform.
 pub(crate) fn get_records(
     lockfile_content: &str,
     platform: Platform,
@@ -36,11 +35,6 @@ pub(crate) fn get_records(
         .ok_or_else(|| CxWasmError::NoRecordsForPlatform(platform.as_str().to_string()))
 }
 
-/// Streaming bootstrap: download and extract all packages, calling `on_file` for each
-/// extracted file with its path and bytes.
-///
-/// `on_progress(current, total, package_name)` — called before each package download.
-/// `on_file(package_name, path, bytes)` — called for each extracted file.
 pub async fn bootstrap_streaming_impl(
     lockfile_content: &str,
     platform_str: &str,
@@ -66,10 +60,10 @@ pub async fn bootstrap_streaming_impl(
         errors: Vec::new(),
     };
 
-    for (i, record) in records.into_iter().enumerate() {
-        let name = record.package_record.name.as_normalized().to_string();
-        let version = record.package_record.version.to_string();
-        let url = record.url.to_string();
+    for (i, r) in records.into_iter().enumerate() {
+        let name = r.package_record.name.as_normalized().to_string();
+        let version = r.package_record.version.to_string();
+        let url = r.url.to_string();
 
         if let Some(cb) = on_progress {
             let _ = cb.call3(

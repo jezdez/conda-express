@@ -32,9 +32,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::error::CxWasmError;
 
+// TODO: make configurable per-channel or via JS options
 const MAX_SHARDS: usize = 2000;
-
-// ─── Session-level caches ────────────────────────────────────────────────────
 
 struct CachedShard {
     records: Vec<rattler_conda_types::RepoDataRecord>,
@@ -48,10 +47,6 @@ thread_local! {
         RefCell::new(HashMap::new());
 }
 
-/// Clear all cached shard indices and shard contents.
-///
-/// Exposed to JS/Python so the user can force a full re-fetch if needed
-/// (e.g. after a channel update mid-session).
 #[wasm_bindgen]
 pub fn cx_clear_repodata_cache() {
     INDEX_CACHE.with(|c| c.borrow_mut().clear());
@@ -65,14 +60,8 @@ fn get_cache_stats() -> (usize, usize) {
     (indices, shards)
 }
 
-// ─── Shard index types ───────────────────────────────────────────────────────
-
-/// Raw shard index deserialized from msgpack.
-///
-/// We avoid rattler's `ShardedRepodata` type because its `serde_with` +
-/// `ahash::HashMap` + `SerializableHash` chain silently produces an empty
-/// map in wasm32 builds.  Using `serde_bytes::ByteBuf` directly handles
-/// msgpack binary values without any custom serde adapters.
+// Rattler's ShardedRepodata has serde_with + ahash issues in wasm32 that
+// silently produce empty maps, so we deserialize manually with serde_bytes.
 #[derive(Deserialize)]
 struct RawShardedRepodata {
     info: RawShardedSubdirInfo,
@@ -92,8 +81,6 @@ struct DecodedShardIndex {
     shards_base_url: String,
     shards: BTreeMap<String, String>,
 }
-
-// ─── Internal helpers ────────────────────────────────────────────────────────
 
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>, CxWasmError> {
     if compressed.is_empty() {
@@ -134,11 +121,10 @@ fn decode_shard_index(compressed: &[u8]) -> Result<DecodedShardIndex, CxWasmErro
     })
 }
 
-/// Extract unique dependency package names from a Shard.
 fn shard_dep_names(shard: &Shard) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
-    for record in shard.packages.values().chain(shard.conda_packages.values()) {
-        extract_dep_names(record, &mut names);
+    for rec in shard.packages.values().chain(shard.conda_packages.values()) {
+        extract_dep_names(rec, &mut names);
     }
     names
 }
@@ -151,7 +137,6 @@ fn extract_dep_names(record: &PackageRecord, names: &mut BTreeSet<String>) {
     }
 }
 
-/// Call a JS function with one string argument and get back a Uint8Array.
 fn call_fetch_binary(cb: &js_sys::Function, url: &str) -> Result<Vec<u8>, CxWasmError> {
     let js_url = JsValue::from_str(url);
     let result = cb
@@ -162,7 +147,6 @@ fn call_fetch_binary(cb: &js_sys::Function, url: &str) -> Result<Vec<u8>, CxWasm
     Ok(array.to_vec())
 }
 
-/// Call a JS function with one string argument and get back a string.
 fn call_fetch_text(cb: &js_sys::Function, url: &str) -> Result<String, CxWasmError> {
     let js_url = JsValue::from_str(url);
     let result = cb
@@ -174,7 +158,6 @@ fn call_fetch_text(cb: &js_sys::Function, url: &str) -> Result<String, CxWasmErr
         .ok_or_else(|| CxWasmError::FetchFailed(format!("{url}: response was not a string")))
 }
 
-/// Resolve the shards base URL relative to the index URL.
 fn resolve_shards_base_url(shards_base_url: &str, index_url: &str) -> String {
     let mut base = shards_base_url.to_string();
 
@@ -191,9 +174,6 @@ fn resolve_shards_base_url(shards_base_url: &str, index_url: &str) -> String {
     base
 }
 
-// ─── Cache helpers ───────────────────────────────────────────────────────────
-
-/// Get the shard index from cache, or fetch + decode + cache it.
 fn get_or_fetch_index(
     cache_key: &str,
     base: &str,
@@ -225,7 +205,6 @@ fn get_or_fetch_index(
     Ok(index)
 }
 
-/// Get a shard's records from cache, or fetch + decode + cache them.
 fn get_or_fetch_shard(
     shard_url: &str,
     name: &str,
@@ -247,14 +226,14 @@ fn get_or_fetch_shard(
     let dep_names = shard_dep_names(&shard);
 
     let mut records = Vec::new();
-    for (id, record) in shard.packages.iter().chain(shard.conda_packages.iter()) {
+    for (id, rec) in shard.packages.iter().chain(shard.conda_packages.iter()) {
         if shard.removed.contains(id) {
             continue;
         }
         let url = url::Url::parse(&format!("{base_url}{id}"))
             .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}")))?;
         records.push(rattler_conda_types::RepoDataRecord {
-            package_record: record.clone(),
+            package_record: rec.clone(),
             identifier: id.clone().into(),
             url,
             channel: Some(channel_url.to_string()),
@@ -270,10 +249,6 @@ fn get_or_fetch_shard(
     Ok(cached)
 }
 
-// ─── Main entry point ────────────────────────────────────────────────────────
-
-/// Fetch repodata and return parsed `RepoDataRecord`s directly (no JSON
-/// roundtrip).  Used by [`crate::gateway::cx_fetch_and_solve`].
 pub(crate) fn fetch_repodata_records(
     channel_url: &str,
     subdir: &str,
@@ -320,17 +295,17 @@ fn parse_repodata_text(
     })?;
 
     let mut records = Vec::new();
-    for (identifier, pkg) in repo
+    for (id, pkg) in repo
         .packages
         .into_iter()
         .chain(repo.conda_packages.into_iter())
     {
-        let url = url::Url::parse(&format!("{base_url}{identifier}")).map_err(|e| {
-            CxWasmError::RepodataParse(format!("invalid URL for {identifier}: {e}"))
+        let url = url::Url::parse(&format!("{base_url}{id}")).map_err(|e| {
+            CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}"))
         })?;
         records.push(rattler_conda_types::RepoDataRecord {
             package_record: pkg,
-            identifier,
+            identifier: id,
             url,
             channel: Some(channel_url.to_string()),
         });
@@ -352,23 +327,23 @@ fn fetch_sharded_records(
     let shards_base = resolve_shards_base_url(&index.shards_base_url, &index_url);
     let channel_url = base.to_string();
 
-    let mut fetched_names: BTreeSet<String> = BTreeSet::new();
+    let mut seen: BTreeSet<String> = BTreeSet::new();
     let mut all_records: Vec<rattler_conda_types::RepoDataRecord> = Vec::new();
-    let mut fetched = 0usize;
-    let mut cache_hits = 0usize;
-    let mut to_fetch: Vec<String> = seeds.to_vec();
+    let mut n_fetched = 0usize;
+    let mut n_cached = 0usize;
+    let mut queue: Vec<String> = seeds.to_vec();
 
-    while !to_fetch.is_empty() && fetched < MAX_SHARDS {
-        let mut next_round: Vec<String> = Vec::new();
+    while !queue.is_empty() && n_fetched < MAX_SHARDS {
+        let mut next: Vec<String> = Vec::new();
 
-        for name in &to_fetch {
-            if fetched >= MAX_SHARDS {
+        for name in &queue {
+            if n_fetched >= MAX_SHARDS {
                 break;
             }
-            if fetched_names.contains(name) {
+            if seen.contains(name) {
                 continue;
             }
-            fetched_names.insert(name.clone());
+            seen.insert(name.clone());
 
             let hash = match index.shards.get(name) {
                 Some(h) => h,
@@ -380,16 +355,16 @@ fn fetch_sharded_records(
             let was_cached = SHARD_CACHE.with(|c| c.borrow().contains_key(&shard_url));
 
             match get_or_fetch_shard(&shard_url, name, fetch_binary, base_url, &channel_url) {
-                Ok(cached_shard) => {
-                    all_records.extend(cached_shard.records.iter().cloned());
-                    fetched += 1;
+                Ok(s) => {
+                    all_records.extend(s.records.iter().cloned());
+                    n_fetched += 1;
                     if was_cached {
-                        cache_hits += 1;
+                        n_cached += 1;
                     }
 
-                    for dep in &cached_shard.dep_names {
-                        if !fetched_names.contains(dep) && index.shards.contains_key(dep) {
-                            next_round.push(dep.clone());
+                    for dep in &s.dep_names {
+                        if !seen.contains(dep) && index.shards.contains_key(dep) {
+                            next.push(dep.clone());
                         }
                     }
                 }
@@ -401,7 +376,7 @@ fn fetch_sharded_records(
             }
         }
 
-        to_fetch = next_round;
+        queue = next;
     }
 
     if all_records.is_empty() {
@@ -413,8 +388,8 @@ fn fetch_sharded_records(
     let (total_indices, total_shards) = get_cache_stats();
     web_sys::console::log_1(
         &format!(
-            "cx-wasm: {fetched} shards ({cache_hits} cached, {} fetched) => {} records for {base}/{subdir} [cache: {total_indices} indices, {total_shards} shards]",
-            fetched - cache_hits,
+            "cx-wasm: {n_fetched} shards ({n_cached} cached, {} fetched) => {} records for {base}/{subdir} [cache: {total_indices} indices, {total_shards} shards]",
+            n_fetched - n_cached,
             all_records.len(),
         )
         .into(),
