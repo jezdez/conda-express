@@ -157,6 +157,13 @@ def main() -> None:
 
     prefix_path = _create_prefix(channels, specs)
 
+    cx_jl = ROOT / "cx-jupyterlite"
+    if (cx_jl / "package.json").exists():
+        print("[build.py] Building cx-jupyterlite extension …")
+        subprocess.run(["jlpm", "install"], cwd=cx_jl, check=True)
+        subprocess.run(["jlpm", "run", "build"], cwd=cx_jl, check=True)
+        print("[build.py] cx-jupyterlite extension built")
+
     result = subprocess.run(
         [
             "jupyter",

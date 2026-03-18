@@ -15,17 +15,10 @@ def _on_pre_command(_command: str) -> None:
     if sys.platform != "emscripten" or _pre_command_init_done:
         return
 
-    from .magic import register
     from .patches import patch_conda_internals, patch_urllib3
 
     patch_urllib3()
     patch_conda_internals()
-    register()
-
-    try:
-        import cx_wasm_bridge  # noqa: F401  — import triggers background load
-    except ImportError:
-        pass
 
     _pre_command_init_done = True
 

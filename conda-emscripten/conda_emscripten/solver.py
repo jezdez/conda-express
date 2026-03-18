@@ -156,16 +156,22 @@ def _solution_record_to_package_record(r: dict) -> PackageRecord:
 
 
 def _solution_to_records(solution) -> list[PackageRecord]:
-    """Convert cx-wasm solution (JS object or dict) to conda PackageRecords."""
-    sol_records = (
-        solution["records"] if isinstance(solution, dict) else solution.records
-    )
+    """Convert cx-wasm solution (JS object or dict) to conda PackageRecords.
+
+    pyjs's ``to_py()`` can't reliably convert the nested objects that
+    ``serde_wasm_bindgen`` produces, so we round-trip through JSON when
+    the solution is a JS value.
+    """
+    if isinstance(solution, dict):
+        sol_records = solution["records"]
+    else:
+        import js as _js  # noqa: PLC0415
+
+        solution = json.loads(str(_js.JSON.stringify(solution)))
+        sol_records = solution["records"]
+
     records = []
-    for rec in sol_records:
-        if isinstance(rec, dict):
-            r = rec
-        else:
-            r = rec.to_py() if hasattr(rec, "to_py") else dict(rec)
+    for r in sol_records:
         records.append(_solution_record_to_package_record(r))
     return records
 
@@ -180,6 +186,10 @@ class CxWasmSolver(Solver):
     """
 
     _uses_ssc = False
+
+    @staticmethod
+    def user_agent() -> str:
+        return "cx-wasm"
 
     def __init__(
         self,

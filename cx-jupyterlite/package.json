@@ -1,0 +1,61 @@
+{
+  "name": "@conda-express/cx-jupyterlite",
+  "version": "0.1.0",
+  "description": "JupyterLite extension: routes %conda commands through real conda via cx-wasm",
+  "license": "BSD-3-Clause",
+  "author": "conda-express contributors",
+  "homepage": "https://github.com/jezdez/conda-express",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jezdez/conda-express.git"
+  },
+  "files": [
+    "lib/**/*.{d.ts,js,js.map,json}",
+    "style/**/*.css"
+  ],
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "style": "style/index.css",
+  "scripts": {
+    "build": "rimraf tsconfig.tsbuildinfo && tsc --sourceMap && jupyter labextension build --development True .",
+    "build:prod": "rimraf tsconfig.tsbuildinfo && tsc && jupyter labextension build .",
+    "clean": "rimraf lib labextension tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@jupyterlab/application": "^4.5.0",
+    "@jupyterlab/coreutils": "^6.5.0",
+    "@jupyterlab/services": "^7.5.0",
+    "@jupyterlite/apputils": "^0.7.0",
+    "@jupyterlite/services": "^0.7.0",
+    "@jupyterlite/xeus": "^4.5.0",
+    "@jupyterlite/xeus-extension": "^4.5.0",
+    "@lumino/coreutils": "^2"
+  },
+  "devDependencies": {
+    "@jupyterlab/builder": "^4.5.0",
+    "rimraf": "^5.0.1",
+    "typescript": "^5.5"
+  },
+  "jupyterlab": {
+    "extension": true,
+    "outputDir": "labextension",
+    "sharedPackages": {
+      "@jupyterlite/apputils": {
+        "bundled": false,
+        "singleton": true
+      },
+      "@jupyterlite/services": {
+        "bundled": false,
+        "singleton": true
+      },
+      "@jupyterlite/xeus": {
+        "bundled": false,
+        "singleton": true
+      },
+      "@jupyterlite/xeus-extension": {
+        "bundled": false,
+        "singleton": true
+      }
+    }
+  }
+}

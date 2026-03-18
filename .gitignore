@@ -10,3 +10,9 @@ crates/cx-wasm/www/cx.lock
 crates/cx-wasm/www/test.conda
 /output
 recipes/conda-emscripten/lockfile-env/.pixi
+cx-jupyterlite/node_modules/
+cx-jupyterlite/lib/
+cx-jupyterlite/labextension/
+cx-jupyterlite/.yarn/
+cx-jupyterlite/yarn.lock
+cx-jupyterlite/tsconfig.tsbuildinfo

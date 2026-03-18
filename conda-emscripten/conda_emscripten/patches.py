@@ -89,5 +89,134 @@ def patch_conda_internals() -> None:
                 pass
 
         RepodataCache.save = _safe_save
+
+        # conda's download pipeline (download_inner + download_partial_file)
+        # uses seek() on the target file for partial downloads and checksum
+        # verification.  MEMFS doesn't support seek at all, so replace
+        # download_inner with a simple fetch-verify-write that never seeks.
+        import conda.gateways.connection.download as _dl
+
+        def _memfs_download_inner(
+            url, target_full_path, md5, sha256, size, progress_update_callback
+        ):
+            import hashlib
+            from pathlib import Path
+
+            from conda.base.context import context as _ctx
+
+            timeout = (
+                _ctx.remote_connect_timeout_secs,
+                _ctx.remote_read_timeout_secs,
+            )
+            session = _dl.get_session(url)
+            resp = session.get(
+                url, proxies=session.proxies, timeout=timeout,
+            )
+            if log.isEnabledFor(logging.DEBUG):
+                log.debug(_dl.stringify(resp, content_max_len=256))
+            resp.raise_for_status()
+
+            data = resp.content
+
+            if sha256 or md5:
+                checksum_type = "sha256" if sha256 else "md5"
+                expected = sha256 if sha256 else md5
+                actual = hashlib.new(checksum_type, data).hexdigest()
+                if actual != expected:
+                    from conda.exceptions import ChecksumMismatchError
+
+                    raise ChecksumMismatchError(
+                        url, str(target_full_path),
+                        checksum_type, expected, actual,
+                    )
+
+            target = Path(target_full_path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+
+        _dl.download_inner = _memfs_download_inner
+        log.debug("conda-emscripten: download_inner patched (no seek)")
+
+        # conda's built-in extractor uses conda_package_handling which calls
+        # tarfile.open() — that needs seek() which MEMFS doesn't support.
+        # Patch ExtractPackageAction.execute to call our WASM extractor
+        # in place of context.plugin_manager.extract_package, keeping
+        # all original post-extraction bookkeeping intact.
+        from .extractor import extract_wasm
+        from conda.core.path_actions import ExtractPackageAction
+
+        _orig_epa_execute = ExtractPackageAction.execute
+
+        def _wasm_epa_execute(self, progress_update_callback=None):
+            import json as _json
+            from os.path import basename, getsize, join, lexists
+
+            from conda.base.context import context as _ctx
+            from conda.core.package_cache_data import PackageCacheData
+            from conda.gateways.disk.delete import rm_rf
+            from conda.gateways.disk.read import read_index_json
+            from conda.gateways.disk.create import write_as_json_to_file
+            from conda.models.channel import Channel
+            from conda.models.match_spec import MatchSpec
+            from conda.models.records import PackageCacheRecord, PackageRecord
+            from conda.common.url import has_platform
+            from conda.gateways.disk.read import compute_sum
+
+            log.debug(
+                "conda-emscripten: extracting %s → %s (WASM)",
+                self.source_full_path,
+                self.target_full_path,
+            )
+            if lexists(self.target_full_path):
+                rm_rf(self.target_full_path)
+
+            extract_wasm(self.source_full_path, self.target_full_path)
+
+            try:
+                raw_index_json = read_index_json(self.target_full_path)
+            except (OSError, _json.JSONDecodeError, FileNotFoundError):
+                print(
+                    f"ERROR: corrupt package tarball at {self.source_full_path}."
+                )
+                return
+
+            if isinstance(self.record_or_spec, MatchSpec):
+                url = self.record_or_spec.get_raw_value("url")
+                if not url:
+                    raise ValueError("URL cannot be empty.")
+                channel = (
+                    Channel(url)
+                    if has_platform(url, _ctx.known_subdirs)
+                    else Channel(None)
+                )
+                fn = basename(url)
+                sha256 = self.sha256 or compute_sum(self.source_full_path, "sha256")
+                size = getsize(self.source_full_path)
+                md5 = self.md5 or compute_sum(self.source_full_path, "md5")
+                repodata_record = PackageRecord.from_objects(
+                    raw_index_json, url=url, channel=channel,
+                    fn=fn, sha256=sha256, size=size, md5=md5,
+                )
+            else:
+                repodata_record = PackageRecord.from_objects(
+                    self.record_or_spec, raw_index_json,
+                )
+
+            repodata_record_path = join(
+                self.target_full_path, "info", "repodata_record.json",
+            )
+            write_as_json_to_file(repodata_record_path, repodata_record)
+
+            target_package_cache = PackageCacheData(self.target_pkgs_dir)
+            package_cache_record = PackageCacheRecord.from_objects(
+                repodata_record,
+                package_tarball_full_path=self.source_full_path,
+                extracted_package_dir=self.target_full_path,
+            )
+            target_package_cache.insert(package_cache_record)
+
+        ExtractPackageAction.execute = _wasm_epa_execute
+        log.debug("conda-emscripten: ExtractPackageAction.execute patched (WASM extractor)")
+
     except ImportError:
         pass  # conda not installed; patches not needed

@@ -25,6 +25,10 @@ log = logging.getLogger(__name__)
 _cx = None  # cached ES-module proxy after _load_cx()
 _setup_done = False  # True once js.fetch_and_solve etc. are registered
 
+# Must survive for the entire session — pyjs invalidates the JS-side proxy
+# when the Python handle is garbage collected.
+_bridge_refs: list = []
+
 _load_lock: asyncio.Lock | None = None
 _setup_lock: asyncio.Lock | None = None
 
@@ -150,32 +154,38 @@ async def setup() -> None:
 
         cx = await _load_cx()
 
-        # pyjs.create_callable converts Python functions to JS-callable
-        # objects.  The handles must be kept alive for the session.
-        js_fetch_binary, _hnd1 = pyjs.create_callable(_sync_fetch_binary)
-        js_fetch_text, _hnd2 = pyjs.create_callable(_sync_fetch_text)
-        js.sync_fetch_binary = js_fetch_binary
-        js.sync_fetch_text = js_fetch_text
+        # pyjs.create_callable returns (js_callable, prevent_gc_handle).
+        # Both must be stored in _bridge_refs so pyjs doesn't invalidate
+        # the JS-side proxy when the Python handle is garbage collected.
+        js_fetch_binary, hnd1 = pyjs.create_callable(_sync_fetch_binary)
+        js_fetch_text, hnd2 = pyjs.create_callable(_sync_fetch_text)
+        _bridge_refs.extend([js_fetch_binary, hnd1, js_fetch_text, hnd2])
 
-        # All bridge functions are wrapped with JS Function.new() so that
-        # arguments crossing the pyjs boundary are coerced to native JS
-        # types.  wasm-bindgen's glue uses `typeof x === 'string'` and
-        # `passStringToWasm0` which reject pyjs proxy objects.
-        js._cx_solve_raw = cx.cx_fetch_and_solve
-        js.fetch_and_solve = js.Function.new(
-            "request",
-            "return globalThis._cx_solve_raw("
-            "  String(request),"
-            "  globalThis.sync_fetch_binary,"
-            "  globalThis.sync_fetch_text"
-            ")"
+        # Register all bridge functions from pure JS via a single
+        # Function.new() call.  Setting globalThis properties through
+        # pyjs's js.__setattr__ wraps values in proxy objects that aren't
+        # directly callable from JS (typeof returns 'object', not
+        # 'function').  By receiving cx/fetchBin/fetchText as Function
+        # parameters, JS gets the raw underlying objects and can assign
+        # them to globalThis as native callables.
+        js._cx_register_bridge = js.Function.new(
+            "cx", "fetchBin", "fetchText",
+            "globalThis.sync_fetch_binary = fetchBin;"
+            "globalThis.sync_fetch_text = fetchText;"
+            "globalThis._cx_solve_raw = cx.cx_fetch_and_solve;"
+            "globalThis.fetch_and_solve = function(request) {"
+            "  return globalThis._cx_solve_raw("
+            "    String(request),"
+            "    globalThis.sync_fetch_binary,"
+            "    globalThis.sync_fetch_text"
+            "  );"
+            "};"
+            "globalThis._cx_extract_raw = cx.cx_extract_package;"
+            "globalThis.cx_extract_package = function(bytes, filename, onFile) {"
+            "  return globalThis._cx_extract_raw(bytes, String(filename), onFile);"
+            "};"
         )
-
-        js._cx_extract_raw = cx.cx_extract_package
-        js.cx_extract_package = js.Function.new(
-            "bytes", "filename", "onFile",
-            "return globalThis._cx_extract_raw(bytes, String(filename), onFile)"
-        )
+        js._cx_register_bridge(cx, js_fetch_binary, js_fetch_text)
 
         _setup_done = True
         log.info("cx-wasm-bridge: js.fetch_and_solve registered")
