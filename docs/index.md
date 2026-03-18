@@ -129,25 +129,25 @@ One binary, one command. No Python, no installer, no shell modifications require
 Get up and running in minutes.
 :::
 
-:::{grid-item-card} {octicon}`tools` Build custom cx binaries
+:::{grid-item-card} {octicon}`tools` Custom builds
 :link: guides/custom-builds
 :link-type: doc
 
 Bake your own packages into a cx binary.
 :::
 
-:::{grid-item-card} {octicon}`terminal` CLI reference
+:::{grid-item-card} {octicon}`terminal` CLI
 :link: reference/cli
 :link-type: doc
 
 All commands and options.
 :::
 
-:::{grid-item-card} {octicon}`play` GitHub Action reference
+:::{grid-item-card} {octicon}`play` GitHub Action
 :link: reference/github-action
 :link-type: doc
 
-Inputs, outputs, and behavior of the composite action and reusable workflow.
+Build custom cx binaries in CI with the composite action.
 :::
 
 :::{grid-item-card} {octicon}`gear` Configuration
@@ -164,12 +164,11 @@ Build-time and runtime settings.
 Design decisions and internals.
 :::
 
-:::{grid-item-card} {octicon}`globe` conda in the browser
+:::{grid-item-card} {octicon}`globe` Browser
 :link: guides/browser
 :link-type: doc
 
-Real conda running in WebAssembly — `%conda install lz4` in a JupyterLite notebook,
-no server required. [Try the live demo →](https://jezdez.github.io/conda-express/demo/lab/index.html)
+Real conda in WebAssembly — no server required. [Live demo →](https://jezdez.github.io/conda-express/demo/lab/index.html)
 :::
 
 ::::::

@@ -4,7 +4,7 @@
 
 :::::{tab-set}
 
-::::{tab-item} Homebrew (recommended)
+::::{tab-item} Homebrew
 The easiest way to install on macOS and Linux:
 
 ```bash
@@ -59,7 +59,7 @@ $Env:CX_VERSION = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1
 
 ::::
 
-::::{tab-item} GitHub Releases
+::::{tab-item} Releases
 Download the binary for your platform from the
 [latest release](https://github.com/jezdez/conda-express/releases/latest):
 
@@ -107,7 +107,7 @@ docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express create
 ```
 ::::
 
-::::{tab-item} Build from source
+::::{tab-item} Source
 [pixi](https://pixi.sh) manages the Rust toolchain from conda-forge:
 
 ```bash

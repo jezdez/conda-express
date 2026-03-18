@@ -14,5 +14,4 @@ cx-jupyterlite/node_modules/
 cx-jupyterlite/lib/
 cx-jupyterlite/labextension/
 cx-jupyterlite/.yarn/
-cx-jupyterlite/yarn.lock
 cx-jupyterlite/tsconfig.tsbuildinfo
