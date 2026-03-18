@@ -180,17 +180,21 @@ cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, 
 1. **cx-wasm crate** (`crates/cx-wasm/`) — Rust crate compiled to `wasm32-unknown-unknown` via `wasm-pack`. Exports `cx_fetch_and_solve` (combined repodata fetch + resolvo solve using sync XHR callbacks) and `cx_extract_package` (streaming `.conda`/`.tar.bz2` extraction).
 
 2. **conda-emscripten plugin** (`conda-emscripten/`) — Python conda plugin providing:
-   - `CxWasmSolver` (`CONDA_SOLVER=cx-wasm`) — delegates to `js.fetch_and_solve`
-   - WASM-based package extractor — calls `js.cx_extract_package`
+   - `CxWasmSolver` (`CONDA_SOLVER=cx-wasm`) — delegates to `js.fetch_and_solve`, round-trips solutions through JSON
+   - WASM-based package extractor — calls `js.cx_extract_package` with explicit `Uint8Array` conversion; Python streaming tarfile fallback for `.tar.bz2`
    - Virtual packages (`__unix`, `__emscripten`)
-   - `%cx` IPython magic with auto-initialization
-   - Runtime patches for urllib3 (sync XHR) and conda internals (MEMFS stubs)
+   - `%cx` and `%conda` IPython magics (via `%load_ext conda_emscripten`)
+   - MEMFS bootstrap (creates `conda-meta/`, `.condarc`, sets env vars)
+   - Shared library loading after install (`ctypes.CDLL` with `RTLD_GLOBAL`)
+   - Runtime patches: urllib3 sync XHR, no-seek `download_inner`, WASM `ExtractPackageAction`, subprocess no-op, MEMFS stubs
 
-3. **cx-wasm-kernel** (`recipes/cx-wasm-kernel/`) — conda package that places the WASM files and `cx_wasm_bridge` Python module into a xeus-python kernel prefix. The bridge loads WASM via blob URLs and registers JS bridge functions on the global scope.
+3. **cx-jupyterlite** (`cx-jupyterlite/`) — TypeScript JupyterLab federated extension that intercepts `execute_request` messages on the main thread and rewrites bare `conda` commands to `%cx` so the IPython magic handles them. Also catches `%conda` and `!conda` forms.
 
-4. **JupyterLite demo** (`lite/`) — builds a static JupyterLite site with xeus-python + the above packages. `lite/build.py --with-local` includes locally-built packages; `lite/build.py` uses public channels only.
+4. **cx-wasm-kernel** (`recipes/cx-wasm-kernel/`) — conda package that places the WASM files and `cx_wasm_bridge` Python module into a xeus-python kernel prefix. The bridge loads WASM via blob URLs and registers JS bridge functions on the global scope using `js.Function.new()` to avoid pyjs proxy wrapping.
 
-5. **Web Worker demo** (`crates/cx-wasm/www/`) — standalone browser demo using Comlink for RPC, IndexedDB for caching (~50 MB bootstrap cache), and pyjs for Python execution.
+5. **JupyterLite demo** (`lite/`) — builds a static JupyterLite site with xeus-python + the above packages. `lite/build.py --with-local` includes locally-built packages and builds cx-jupyterlite; `lite/build.py` uses public channels only.
+
+6. **Web Worker demo** (`crates/cx-wasm/www/`) — standalone browser demo using Comlink for RPC, IndexedDB for caching (~50 MB bootstrap cache), and pyjs for Python execution.
 
 ### Status
 
@@ -199,8 +203,12 @@ cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, 
 | cx-wasm crate (solver + extractor to WASM) | Done |
 | Sharded repodata fetch in Rust (sync XHR callbacks) | Done |
 | Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
-| Streaming package extraction | Done |
+| Streaming package extraction (`.conda` + `.tar.bz2`) | Done |
 | conda-emscripten plugin (solver, extractor, vpkgs, magic) | Done |
+| `%conda` / `%cx` IPython magics (via `%load_ext conda_emscripten`) | Done |
+| cx-jupyterlite extension (bare `conda` command interception) | Done |
+| MEMFS patches (no-seek download, WASM extractor, subprocess no-op) | Done |
+| Shared library loading for C extensions (`ctypes.CDLL` + `RTLD_GLOBAL`) | Done |
 | cx-wasm-kernel conda package | Done |
 | JupyterLite demo site | Done |
 | GitHub Pages deployment (docs + `/demo/`) | Done |
@@ -256,7 +264,10 @@ All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for th
 | Homebrew formula (same-repo tap) | Done |
 | Installer scripts (get-cx.sh, get-cx.ps1) | Done |
 | cx-wasm crate (browser solver + extractor) | Done |
-| conda-emscripten plugin | Done |
+| conda-emscripten plugin (solver, extractor, magics, patches) | Done |
+| cx-jupyterlite extension (conda command interception) | Done |
+| Shared library loading for C extensions | Done |
+| MEMFS compatibility patches (download, extract, subprocess) | Done |
 | JupyterLite demo + GitHub Pages deployment | Done |
 | Include conda-tasks in default package set | Blocked (needs conda-forge feedstock) |
 | Include conda-workspaces in default package set | Blocked (needs conda-forge feedstock for conda-workspaces; conda-lockfiles already on conda-forge) |

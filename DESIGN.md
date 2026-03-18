@@ -42,7 +42,7 @@ The project also includes **cx-wasm**, a WebAssembly build of the same rattler-b
 
 ### cx-wasm (browser)
 
-**Working end-to-end** — `%cx install zlib` runs in a JupyterLite notebook, solving via resolvo, downloading from emscripten-forge/conda-forge, extracting via WASM, and installing to MEMFS.
+**Working end-to-end** — `%conda install lz4` runs in a JupyterLite notebook, solving via resolvo, downloading from emscripten-forge/conda-forge, extracting via WASM, installing to MEMFS, and loading C extension shared libraries so `import lz4` works immediately.
 
 | Feature | Status |
 |---|---|
@@ -51,8 +51,11 @@ The project also includes **cx-wasm**, a WebAssembly build of the same rattler-b
 | Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
 | Streaming package extraction (`.conda` + `.tar.bz2`) | Done |
 | conda-emscripten plugin (solver, extractor, virtual packages) | Done |
-| `%cx` IPython magic with auto-init | Done |
+| `%cx` / `%conda` IPython magics (via `%load_ext conda_emscripten`) | Done |
 | cx-wasm-kernel conda package (WASM bridge for xeus-python) | Done |
+| cx-jupyterlite extension (intercepts bare `conda` commands) | Done |
+| Shared library loading after install (`ctypes.CDLL` + `RTLD_GLOBAL`) | Done |
+| MEMFS compatibility patches (no-seek download, subprocess no-op) | Done |
 | JupyterLite demo site with `lite/build.py` | Done |
 | GitHub Pages deployment (docs + demo) | Done |
 | Web Worker architecture (Comlink RPC, IndexedDB caching) | Done |
@@ -144,19 +147,31 @@ After bootstrap, cx writes a `conda-meta/frozen` marker file per [CEP 22](https:
 
 ### cx-wasm (browser)
 
-cx-wasm compiles the same rattler-based solver and conda package extractor to `wasm32-unknown-unknown` via `wasm-pack`. In the browser, it runs inside a Web Worker (or a xeus-python kernel worker) and communicates with Python via pyjs.
+cx-wasm compiles the same rattler-based solver and conda package extractor to `wasm32-unknown-unknown` via `wasm-pack`. In the browser, it runs inside a Web Worker (xeus-python kernel worker) and communicates with Python via pyjs. Real conda runs in WASM — this is not a reimplementation.
 
 ```
-User types: %cx install zlib
+User types: %conda install lz4
        |
        v
-  magic.py              IPython %cx magic (auto-injects --yes)
+  cx-jupyterlite         JupyterLite extension (main thread):
+       |                  rewrites bare "conda" → "%cx" in cell source
+       v
+  magic.py              IPython %cx / %conda magic
+       |                  auto-injects --yes, snapshots .so files
+       v
+  _bootstrap_prefix()    One-time MEMFS setup: conda-meta/, .condarc,
+       |                  env vars (CONDA_ROOT_PREFIX, CONDA_SUBDIR, etc.)
+       v
+  patches.py             Runtime patches for Emscripten:
+       |                  - urllib3: sync XHR instead of async fetch
+       |                  - download_inner: no-seek HTTP fetch
+       |                  - ExtractPackageAction: WASM extractor
+       |                  - subprocess: silent no-op
+       v
+  conda.cli.main.main()  Real conda CLI — full command support
        |
        v
-  plugin.py             conda pre_command hook (patches + bridge init)
-       |
-       v
-      solver.py             CxWasmSolver (CONDA_SOLVER=cx-wasm)
+  solver.py              CxWasmSolver (CONDA_SOLVER=cx-wasm)
        |                  builds request JSON, calls js.fetch_and_solve()
        v
   cx_wasm_bridge         Loads cx-wasm WASM via blob URLs, registers
@@ -166,11 +181,42 @@ User types: %cx install zlib
        |                  solve.rs: resolvo solver
        |                  extract.rs: streaming .conda/.tar.bz2 extraction
        v
-  extractor.py           Calls js.cx_extract_package, writes to MEMFS
+  extractor.py           Calls js.cx_extract_package (Uint8Array conversion),
+       |                  writes to MEMFS; Python tarfile fallback for .tar.bz2
+       v
+  conda links package    Files copied to prefix in MEMFS
        |
        v
-  Package installed, importable in the same kernel session
+  _load_new_shared_libs  Finds new .so files (including versioned: .so.1.10.0),
+       |                  loads via ctypes.CDLL with RTLD_GLOBAL (shallowest
+       |                  first, one retry pass for dependency ordering)
+       v
+  Package installed, C extensions importable in the same kernel session
 ```
+
+#### MEMFS compatibility patches
+
+Emscripten's in-memory filesystem (MEMFS) has fundamental limitations that conda assumes won't exist: no `seek()`, no `subprocess`, no `fcntl.lockf`. The `patches.py` module applies runtime monkey-patches:
+
+| Patch | What it fixes |
+|---|---|
+| `download_inner` | Replaces conda's partial-download + checksum-via-seek with a simple fetch-verify-write |
+| `ExtractPackageAction.execute` | Routes extraction through cx-wasm's Rust extractor instead of `conda_package_handling` (which needs `seek()`) |
+| `subprocess` | No-ops `any_subprocess` and `subprocess_call` — post-link scripts can't run in the browser |
+| `RepodataCache.save` | Swallows `OSError` from repodata cache writes (MEMFS limitation) |
+| `_notify_conda_outdated` | Suppresses outdated conda check (irrelevant in browser) |
+
+#### Shared library loading
+
+After a mutating conda command (`install`, `update`, `create`), newly installed `.so` files need to be registered with Emscripten's dynamic linker before Python can `import` them. The `_load_new_shared_libs()` function in `magic.py`:
+
+1. Snapshots all `.so` files before the command
+2. After the command, finds new `.so` files (matching versioned names like `liblz4.so.1.10.0`)
+3. Sorts by directory depth (C runtime libs before Python extension modules)
+4. Loads each via `ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)`, which calls Emscripten's `dlopen` → `loadDynamicLibrary`
+5. Retries failed loads once (handles dependency ordering)
+
+This enables packages with C extensions (like `lz4`) to work after runtime installation.
 
 The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC and IndexedDB for caching the bootstrap filesystem snapshot (~50 MB). JupyterLite integration uses the same WASM module but loaded through the xeus-python kernel worker, with the `cx_wasm_bridge` Python package handling blob URL initialization.
 
@@ -224,24 +270,31 @@ conda-express/
   conda-emscripten/     conda plugin for Emscripten environments
     pyproject.toml      Registered as conda-emscripten = conda_emscripten.plugin
     conda_emscripten/
-      __init__.py       tqdm warning filters, urllib3 log level
+      __init__.py       IPython extension entry point (%load_ext conda_emscripten)
       plugin.py         conda @hookimpl hooks (solver, extractor, vpkgs, pre-command)
-      solver.py         CxWasmSolver (CONDA_SOLVER=cx-wasm)
-      extractor.py      WASM-based package extraction via pyjs
-      patches.py        urllib3 sync XHR patch + conda MEMFS stubs
-      magic.py          %cx IPython magic with auto-init
+      solver.py         CxWasmSolver (CONDA_SOLVER=cx-wasm) with JSON round-trip
+      extractor.py      WASM extraction (Uint8Array) + streaming tarfile fallback
+      patches.py        urllib3 sync XHR, no-seek download, WASM extractor,
+                        subprocess no-op, MEMFS stubs
+      magic.py          %cx / %conda magics, MEMFS bootstrap, shared lib loading
+
+  cx-jupyterlite/       JupyterLite extension (TypeScript)
+    src/index.ts        Disables default xeus kernel, registers CxWebWorkerKernel
+    src/kernel.ts       Intercepts execute_request messages, rewrites bare
+                        "conda" commands to "%cx" so the IPython magic handles them
+    package.json        @cx/jupyterlite-extension
 
   recipes/              conda package build recipes
-    conda-emscripten/   Patched conda for emscripten (6+ patches)
+    conda-emscripten/   Patched conda for emscripten (8 patches)
     conda-emscripten-plugin/  conda-emscripten plugin package
     cx-wasm-kernel/     WASM files + Python bridge for xeus-python
       cx_wasm_bridge/   Loads cx-wasm via blob URLs, registers JS bridge
     frozendict-noarch/  frozendict 2.4.6 as noarch
 
   lite/                 JupyterLite demo site
-    build.py            Builds site; --with-local adds cx-wasm-kernel
-    environment.yml     Base environment (public channels only)
-    jupyter_lite_config.json
+    build.py            Builds site; --with-local adds cx-wasm-kernel + cx-jupyterlite
+    jupyter_lite_config.json  Includes cx-jupyterlite as federated extension
+    jupyter-lite.json   Runtime config (disables default xeus kernel registration)
     files/notebooks/    Demo notebooks
 
   python/               PyPI wrapper
