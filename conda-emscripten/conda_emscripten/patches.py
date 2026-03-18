@@ -218,5 +218,25 @@ def patch_conda_internals() -> None:
         ExtractPackageAction.execute = _wasm_epa_execute
         log.debug("conda-emscripten: ExtractPackageAction.execute patched (WASM extractor)")
 
+        # The build-time subprocess stub (patch 001) raises RuntimeError,
+        # which causes conda's transaction to roll back.  Replace both
+        # subprocess entry points with silent no-ops that return success.
+        import conda.gateways.subprocess as _sp
+
+        def _noop_any_subprocess(args, prefix, env=None, cwd=None):
+            log.debug("conda-emscripten: skipping subprocess: %s", args)
+            return "", "", 0
+
+        def _noop_subprocess_call(
+            command, env=None, path=None, stdin=None,
+            raise_on_error=True, capture_output=True,
+        ):
+            log.debug("conda-emscripten: skipping subprocess_call: %s", command)
+            return _sp.Response("", "", 0)
+
+        _sp.any_subprocess = _noop_any_subprocess
+        _sp.subprocess_call = _noop_subprocess_call
+        log.debug("conda-emscripten: subprocess patched (no-op)")
+
     except ImportError:
         pass  # conda not installed; patches not needed
