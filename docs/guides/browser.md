@@ -28,23 +28,32 @@ work — `install`, `list`, `remove`, `search`, `info`, etc.
 ```
 Browser tab
   └── JupyterLite (main thread)
-       └── cx-jupyterlite (rewrites bare "conda" → "%cx")
-       └── xeus-python kernel (WebWorker)
-            └── Python 3.13 (WASM/Emscripten)
-                 └── conda (real, compiled to WASM)
-                      └── cx-wasm plugins (Rust → WASM)
-                           ├── solver: rattler/resolvo
-                           ├── repodata: sharded fetch
-                           └── extractor: .conda/.tar.bz2 → MEMFS
+       └── cx-jupyterlite extension (rewrites bare "conda" → "%cx")
+            └── xeus-python kernel (WebWorker)
+                 └── Python 3.13 (WASM/Emscripten)
+                      └── conda (real conda, compiled to WASM)
+                           └── cx-wasm plugins (Rust → WASM)
+                                ├── solver: rattler/resolvo (replaces libsolv)
+                                ├── repodata: sharded CEP-16 fetch (msgpack.zst)
+                                └── extractor: streaming .conda/.tar.bz2 → MEMFS
 ```
 
 When you run `%conda install lz4`:
 
-1. The magic parses the command, auto-injects `--yes`, snapshots `.so` files
-2. Runtime patches are applied for MEMFS limitations (no `seek()`, no `subprocess`)
-3. Real conda CLI runs — `CxWasmSolver` delegates to cx-wasm's Rust solver
-4. Packages are downloaded (sync XHR), extracted (cx-wasm Rust extractor), and linked
-5. New `.so` files are loaded via `ctypes.CDLL(RTLD_GLOBAL)` so C extensions work
+1. The `%conda` magic parses the command, auto-injects `--yes`, and snapshots
+   existing `.so` files in the prefix
+2. On first use, `_bootstrap_prefix()` creates `conda-meta/`, `.condarc`, and
+   sets environment variables (`CONDA_ROOT_PREFIX`, `CONDA_SUBDIR`, etc.)
+3. Runtime patches are applied for Emscripten's MEMFS limitations (no `seek()`,
+   no `subprocess`, no `fcntl.lockf`)
+4. `conda.cli.main.main("install", "lz4", "--yes")` runs — real conda
+5. The `CxWasmSolver` delegates solving to cx-wasm's Rust resolvo solver via
+   the JS bridge
+6. Packages are downloaded via sync XHR (patched `download_inner` avoids `seek()`)
+7. Archives are extracted by cx-wasm's Rust extractor (with `Uint8Array` conversion
+   for `wasm-bindgen` compatibility)
+8. After the command completes, newly installed `.so` files are found and loaded
+   via `ctypes.CDLL` with `RTLD_GLOBAL` so C extensions work immediately
 
 ## Packages
 
