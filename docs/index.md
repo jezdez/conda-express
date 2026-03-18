@@ -164,10 +164,12 @@ Build-time and runtime settings.
 Design decisions and internals.
 :::
 
-:::{grid-item-card} {octicon}`globe` Live demo
-:link: https://jezdez.github.io/conda-express/demo/lab/index.html
+:::{grid-item-card} {octicon}`globe` conda in the browser
+:link: guides/browser
+:link-type: doc
 
-Try conda in the browser — `%cx install` in a JupyterLite notebook.
+Real conda running in WebAssembly — `%conda install lz4` in a JupyterLite notebook,
+no server required. [Try the live demo →](https://jezdez.github.io/conda-express/demo/lab/index.html)
 :::
 
 ::::::
@@ -183,6 +185,7 @@ quickstart
 :hidden:
 :caption: How-to guides
 
+guides/browser
 guides/custom-builds
 ```
 

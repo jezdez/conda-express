@@ -123,6 +123,26 @@ See the [GitHub Action reference](reference/github-action.md) for inputs,
 outputs, and behavior. For a step-by-step walkthrough, see the
 [custom builds guide](guides/custom-builds.md).
 
+## conda in the browser (cx-wasm)
+
+cx-wasm compiles the same rattler-based solver and package extractor to
+WebAssembly, enabling `conda install` to run entirely client-side in a
+[JupyterLite](https://jupyterlite.readthedocs.io/) notebook.
+
+```python
+%load_ext conda_emscripten
+%conda install lz4
+import lz4
+```
+
+This runs **real conda** — the actual Python package manager, not a
+reimplementation — with cx-wasm replacing the native-code bottlenecks via
+conda's plugin API. Packages with C extensions (like `lz4`) work after
+installation thanks to automatic shared library loading.
+
+See the {doc}`browser guide <guides/browser>` for details, or try the
+[live demo](https://jezdez.github.io/conda-express/demo/lab/index.html).
+
 ## Multi-platform support
 
 cx builds and tests on 5 platforms via GitHub Actions:
