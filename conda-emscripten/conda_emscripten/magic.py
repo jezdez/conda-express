@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 import os
 import sys
+import time
 
 log = logging.getLogger(__name__)
 
@@ -164,7 +165,10 @@ def cx_magic(line: str) -> None:
     except ImportError:
         pass
 
+    t_total = time.perf_counter()
+
     if not _patches_applied:
+        t0 = time.perf_counter()
         _bootstrap_prefix()
 
         from .patches import patch_conda_internals, patch_urllib3
@@ -172,6 +176,7 @@ def cx_magic(line: str) -> None:
         patch_urllib3()
         patch_conda_internals()
         _patches_applied = True
+        print(f"[cx-timing] patches:        {time.perf_counter() - t0:.2f}s")
 
     if _run_command is None:
         try:
@@ -187,12 +192,22 @@ def cx_magic(line: str) -> None:
 
     is_mutating = command in _MUTATING
     prefix = sys.prefix
-    before_libs = _find_shared_libs(prefix) if is_mutating else None
 
+    t0 = time.perf_counter()
+    before_libs = _find_shared_libs(prefix) if is_mutating else None
+    if is_mutating:
+        print(f"[cx-timing] lib-scan:       {time.perf_counter() - t0:.2f}s")
+
+    t0 = time.perf_counter()
     _run_command(command, *args)
+    print(f"[cx-timing] conda:         {time.perf_counter() - t0:.2f}s")
 
     if is_mutating and before_libs is not None:
+        t0 = time.perf_counter()
         _load_new_shared_libs(before_libs, prefix)
+        print(f"[cx-timing] shared-libs:   {time.perf_counter() - t0:.2f}s")
+
+    print(f"[cx-timing] total:         {time.perf_counter() - t_total:.2f}s")
 
 
 def register(ip=None) -> None:

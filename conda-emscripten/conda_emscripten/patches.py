@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import sys
+import time
 
 log = logging.getLogger(__name__)
 
@@ -64,15 +65,23 @@ def patch_urllib3() -> None:
     log.debug("conda-emscripten: urllib3 patched (sync XHR)")
 
 
+_conda_internals_patched = False
+
+
 def patch_conda_internals() -> None:
     """Stub conda internals that break under Emscripten MEMFS.
 
     These are belt-and-suspenders runtime patches; the conda recipe already
     applies equivalent patches at build time (patches/007 and 008).  Kept here
     as a fallback for unpatched conda builds.
+
+    Idempotent — safe to call from both the ``%cx`` magic and the
+    ``conda_pre_commands`` plugin hook.
     """
-    if sys.platform != "emscripten":
+    global _conda_internals_patched
+    if sys.platform != "emscripten" or _conda_internals_patched:
         return
+    _conda_internals_patched = True
     try:
         from conda.core import solve as _solve
 
@@ -104,6 +113,7 @@ def patch_conda_internals() -> None:
 
             from conda.base.context import context as _ctx
 
+            t0 = time.perf_counter()
             timeout = (
                 _ctx.remote_connect_timeout_secs,
                 _ctx.remote_read_timeout_secs,
@@ -134,6 +144,9 @@ def patch_conda_internals() -> None:
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(data)
 
+            pkg = url.rsplit("/", 1)[-1]
+            print(f"[cx-timing] download:       {time.perf_counter() - t0:.2f}s ({pkg})")
+
         _dl.download_inner = _memfs_download_inner
         log.debug("conda-emscripten: download_inner patched (no seek)")
 
@@ -161,6 +174,8 @@ def patch_conda_internals() -> None:
             from conda.models.records import PackageCacheRecord, PackageRecord
             from conda.common.url import has_platform
             from conda.gateways.disk.read import compute_sum
+
+            t0 = time.perf_counter()
 
             log.debug(
                 "conda-emscripten: extracting %s → %s (WASM)",
@@ -215,8 +230,35 @@ def patch_conda_internals() -> None:
             )
             target_package_cache.insert(package_cache_record)
 
+            pkg = basename(self.source_full_path)
+            print(f"[cx-timing] extract:        {time.perf_counter() - t0:.2f}s ({pkg})")
+
         ExtractPackageAction.execute = _wasm_epa_execute
         log.debug("conda-emscripten: ExtractPackageAction.execute patched (WASM extractor)")
+
+        # Timing wrappers for solve and transaction phases.
+        from .solver import CxWasmSolver
+        _orig_solve = CxWasmSolver.solve_final_state
+
+        def _timed_solve(self, *args, **kwargs):
+            t0 = time.perf_counter()
+            result = _orig_solve(self, *args, **kwargs)
+            print(f"[cx-timing] solve:          {time.perf_counter() - t0:.2f}s")
+            return result
+
+        CxWasmSolver.solve_final_state = _timed_solve
+
+        from conda.core.link import UnlinkLinkTransaction
+        _orig_txn_execute = UnlinkLinkTransaction.execute
+
+        def _timed_txn_execute(self):
+            t0 = time.perf_counter()
+            result = _orig_txn_execute(self)
+            print(f"[cx-timing] transaction:    {time.perf_counter() - t0:.2f}s")
+            return result
+
+        UnlinkLinkTransaction.execute = _timed_txn_execute
+        log.debug("conda-emscripten: timing wrappers installed")
 
         # The build-time subprocess stub (patch 001) raises RuntimeError,
         # which causes conda's transaction to roll back.  Replace both
