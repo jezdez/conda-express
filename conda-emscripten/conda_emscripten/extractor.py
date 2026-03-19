@@ -21,14 +21,14 @@ def extract_wasm(source_path, dest_dir):
     filename = os.path.basename(source_path)
 
     if not os.path.isfile(source_path):
-        raise FileNotFoundError(
-            f"extractor: source archive not found: {source_path}"
-        )
+        raise FileNotFoundError(f"extractor: source archive not found: {source_path}")
 
     file_size = os.path.getsize(source_path)
     log.info(
         "extractor: extracting %s (%d bytes) -> %s",
-        filename, file_size, dest_dir,
+        filename,
+        file_size,
+        dest_dir,
     )
 
     if file_size == 0:

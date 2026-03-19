@@ -120,7 +120,9 @@ def patch_conda_internals() -> None:
             )
             session = _dl.get_session(url)
             resp = session.get(
-                url, proxies=session.proxies, timeout=timeout,
+                url,
+                proxies=session.proxies,
+                timeout=timeout,
             )
             if log.isEnabledFor(logging.DEBUG):
                 log.debug(_dl.stringify(resp, content_max_len=256))
@@ -136,8 +138,11 @@ def patch_conda_internals() -> None:
                     from conda.exceptions import ChecksumMismatchError
 
                     raise ChecksumMismatchError(
-                        url, str(target_full_path),
-                        checksum_type, expected, actual,
+                        url,
+                        str(target_full_path),
+                        checksum_type,
+                        expected,
+                        actual,
                     )
 
             target = Path(target_full_path)
@@ -145,7 +150,9 @@ def patch_conda_internals() -> None:
             target.write_bytes(data)
 
             pkg = url.rsplit("/", 1)[-1]
-            print(f"[cx-timing] download:       {time.perf_counter() - t0:.2f}s ({pkg})")
+            print(
+                f"[cx-timing] download:       {time.perf_counter() - t0:.2f}s ({pkg})"
+            )
 
         _dl.download_inner = _memfs_download_inner
         log.debug("conda-emscripten: download_inner patched (no seek)")
@@ -190,9 +197,7 @@ def patch_conda_internals() -> None:
             try:
                 raw_index_json = read_index_json(self.target_full_path)
             except (OSError, _json.JSONDecodeError, FileNotFoundError):
-                print(
-                    f"ERROR: corrupt package tarball at {self.source_full_path}."
-                )
+                print(f"ERROR: corrupt package tarball at {self.source_full_path}.")
                 return
 
             if isinstance(self.record_or_spec, MatchSpec):
@@ -209,16 +214,24 @@ def patch_conda_internals() -> None:
                 size = getsize(self.source_full_path)
                 md5 = self.md5 or compute_sum(self.source_full_path, "md5")
                 repodata_record = PackageRecord.from_objects(
-                    raw_index_json, url=url, channel=channel,
-                    fn=fn, sha256=sha256, size=size, md5=md5,
+                    raw_index_json,
+                    url=url,
+                    channel=channel,
+                    fn=fn,
+                    sha256=sha256,
+                    size=size,
+                    md5=md5,
                 )
             else:
                 repodata_record = PackageRecord.from_objects(
-                    self.record_or_spec, raw_index_json,
+                    self.record_or_spec,
+                    raw_index_json,
                 )
 
             repodata_record_path = join(
-                self.target_full_path, "info", "repodata_record.json",
+                self.target_full_path,
+                "info",
+                "repodata_record.json",
             )
             write_as_json_to_file(repodata_record_path, repodata_record)
 
@@ -231,13 +244,18 @@ def patch_conda_internals() -> None:
             target_package_cache.insert(package_cache_record)
 
             pkg = basename(self.source_full_path)
-            print(f"[cx-timing] extract:        {time.perf_counter() - t0:.2f}s ({pkg})")
+            print(
+                f"[cx-timing] extract:        {time.perf_counter() - t0:.2f}s ({pkg})"
+            )
 
         ExtractPackageAction.execute = _wasm_epa_execute
-        log.debug("conda-emscripten: ExtractPackageAction.execute patched (WASM extractor)")
+        log.debug(
+            "conda-emscripten: ExtractPackageAction.execute patched (WASM extractor)"
+        )
 
         # Timing wrappers for solve and transaction phases.
         from .solver import CxWasmSolver
+
         _orig_solve = CxWasmSolver.solve_final_state
 
         def _timed_solve(self, *args, **kwargs):
@@ -249,6 +267,7 @@ def patch_conda_internals() -> None:
         CxWasmSolver.solve_final_state = _timed_solve
 
         from conda.core.link import UnlinkLinkTransaction
+
         _orig_txn_execute = UnlinkLinkTransaction.execute
 
         def _timed_txn_execute(self):
@@ -270,8 +289,12 @@ def patch_conda_internals() -> None:
             return "", "", 0
 
         def _noop_subprocess_call(
-            command, env=None, path=None, stdin=None,
-            raise_on_error=True, capture_output=True,
+            command,
+            env=None,
+            path=None,
+            stdin=None,
+            raise_on_error=True,
+            capture_output=True,
         ):
             log.debug("conda-emscripten: skipping subprocess_call: %s", command)
             return _sp.Response("", "", 0)

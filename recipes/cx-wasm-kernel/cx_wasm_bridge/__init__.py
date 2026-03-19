@@ -109,7 +109,8 @@ async def _load_cx():
         # `typeof x === 'string'` checks that fail on pyjs string proxies,
         # and Blob() needs a native JS Array with native JS String parts.
         js._cx_load_module = js.Function.new(
-            "jsText", "wasmData",
+            "jsText",
+            "wasmData",
             "var jsUrl = URL.createObjectURL("
             "  new Blob([String(jsText)], {type: 'text/javascript'}));"
             "var wasmUrl = URL.createObjectURL("
@@ -120,7 +121,7 @@ async def _load_cx():
             "    URL.revokeObjectURL(wasmUrl);"
             "    return m;"
             "  });"
-            "});"
+            "});",
         )
         _cx = await js._cx_load_module(js_text, wasm_data)
         log.info("cx-wasm-bridge: WASM module loaded")
@@ -197,10 +198,14 @@ _BRIDGE_JS = (
 )
 
 _DEFAULT_CHANNELS = [
-    {"url": "https://repo.prefix.dev/emscripten-forge-4x",
-     "subdirs": ["emscripten-wasm32", "noarch"]},
-    {"url": "https://conda.anaconda.org/conda-forge",
-     "subdirs": ["emscripten-wasm32", "noarch"]},
+    {
+        "url": "https://repo.prefix.dev/emscripten-forge-4x",
+        "subdirs": ["emscripten-wasm32", "noarch"],
+    },
+    {
+        "url": "https://conda.anaconda.org/conda-forge",
+        "subdirs": ["emscripten-wasm32", "noarch"],
+    },
 ]
 
 
@@ -238,7 +243,10 @@ async def setup() -> None:
         # parameters, JS gets the raw underlying objects and can assign
         # them to globalThis as native callables.
         js._cx_register_bridge = js.Function.new(
-            "cx", "fetchBin", "fetchText", _BRIDGE_JS,
+            "cx",
+            "fetchBin",
+            "fetchText",
+            _BRIDGE_JS,
         )
         js._cx_register_bridge(cx, js_fetch_binary, js_fetch_text)
 
@@ -300,10 +308,12 @@ async def _prefetch_installed() -> None:
                 break
             seen_names.update(new_names)
 
-            request = _json.dumps({
-                "channels": _DEFAULT_CHANNELS,
-                "seeds": new_names,
-            })
+            request = _json.dumps(
+                {
+                    "channels": _DEFAULT_CHANNELS,
+                    "seeds": new_names,
+                }
+            )
             urls_js = js.get_shard_urls(request)
             urls_json = str(js.JSON.stringify(urls_js))
             all_urls: list[str] = _json.loads(urls_json)
