@@ -47,8 +47,9 @@ The project also includes **cx-wasm**, a WebAssembly build of the same rattler-b
 | Feature | Status |
 |---|---|
 | cx-wasm crate (solver + extractor compiled to WASM) | Done |
-| Sharded repodata fetch in Rust (sync XHR callbacks) | Done |
+| Sharded repodata (CEP-16) fetch and decode in Rust | Done |
 | Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
+| Async shard prefetch at kernel startup | Done |
 | Streaming package extraction (`.conda` + `.tar.bz2`) | Done |
 | conda-emscripten plugin (solver, extractor, virtual packages) | Done |
 | `%cx` / `%conda` IPython magics (via `%load_ext conda_emscripten`) | Done |
@@ -149,8 +150,48 @@ After bootstrap, cx writes a `conda-meta/frozen` marker file per [CEP 22](https:
 
 cx-wasm compiles the same rattler-based solver and conda package extractor to `wasm32-unknown-unknown` via `wasm-pack`. In the browser, it runs inside a Web Worker (xeus-python kernel worker) and communicates with Python via pyjs. Real conda runs in WASM — this is not a reimplementation.
 
+#### Two-phase architecture: async fetch, sync solve
+
+Sharded repodata (CEP-16) requires fetching individual shards for each package name. In a Web Worker, only synchronous XHR is available during the solve phase (Python blocks the worker thread). Making hundreds of sequential sync XHR requests made solves take 10-12 seconds.
+
+The solution is a two-phase architecture that separates fetching (async, parallel) from solving (sync, pure computation):
+
+**Phase 1 — Async shard prefetch (kernel startup):**  
+During kernel initialization (before the user types anything), `cx_wasm_bridge.setup()` runs `_prefetch_installed()`. This performs a breadth-first traversal of the dependency graph:
+
+1. Collects seed package names from `conda-meta/` (installed packages)
+2. Calls `cx_get_shard_urls()` (Rust) to compute shard URLs from the cached index
+3. Fetches all shard URLs in parallel via JavaScript `fetch()` API (`_cx_prefetch_batch`)
+4. Decodes each fetched shard with `cx_decode_shard_deps()` (Rust) to extract dependency names
+5. Queues newly discovered dependencies for the next level
+6. Repeats until no new dependencies are found
+
+All fetched shards are stored in a JavaScript `Map` (`_cxPrefetchCache`) keyed by URL.
+
+**Phase 2 — Sync solve (user command):**  
+When the user runs `%conda install lz4`, the cx-wasm solver's sync XHR callback checks `_cxPrefetchCache` first. Since all shards for installed packages (and their transitive dependencies) were pre-fetched, the solve phase makes zero network requests — it runs as pure computation against cached data.
+
+This reduced solve time from **11.85s to 0.21s** (56x speedup).
+
+#### Command flow
+
 ```
-User types: %conda install lz4
+  KERNEL STARTUP (async, before user interaction)
+       |
+  cx_wasm_bridge.setup()
+       |
+       v
+  _prefetch_installed()  Dependency-graph traversal:
+       |                  - get shard URLs from Rust (cx_get_shard_urls)
+       |                  - parallel fetch via JS fetch() → _cxPrefetchCache
+       |                  - decode deps via Rust (cx_decode_shard_deps)
+       |                  - repeat until no new deps found
+       v
+  All repodata shards cached in JS Map (zero-copy on solve)
+
+  ─────────────────────────────────────────────────────────
+
+  USER COMMAND: %conda install lz4
        |
        v
   cx-jupyterlite         JupyterLite extension (main thread):
@@ -177,8 +218,8 @@ User types: %conda install lz4
   cx_wasm_bridge         Loads cx-wasm WASM via blob URLs, registers
        |                  js.fetch_and_solve + js.cx_extract_package
        v
-  cx-wasm (Rust/WASM)   gateway.rs: fetch repodata via sync XHR callbacks
-       |                  solve.rs: resolvo solver
+  cx-wasm (Rust/WASM)   gateway.rs: sync XHR reads from _cxPrefetchCache
+       |                  solve.rs: resolvo solver (pure computation)
        |                  extract.rs: streaming .conda/.tar.bz2 extraction
        v
   extractor.py           Calls js.cx_extract_package (Uint8Array conversion),
@@ -217,6 +258,17 @@ After a mutating conda command (`install`, `update`, `create`), newly installed 
 5. Retries failed loads once (handles dependency ordering)
 
 This enables packages with C extensions (like `lz4`) to work after runtime installation.
+
+#### Performance characteristics
+
+| Phase | Typical time | Notes |
+|---|---|---|
+| Prefetch (kernel startup) | ~2-4 s | Async, parallel; runs before user interaction |
+| Solve | ~0.2 s | Pure computation against cached shards |
+| Download + extract | ~0.3 s | Per-package, sequential sync XHR |
+| Transaction (link) | ~1.5 s | File copy in MEMFS |
+| Shared lib load | ~0.1 s | `ctypes.CDLL` + retry pass |
+| **Total (`%conda install lz4`)** | **~3.5 s** | |
 
 The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC and IndexedDB for caching the bootstrap filesystem snapshot (~50 MB). JupyterLite integration uses the same WASM module but loaded through the xeus-python kernel worker, with the `cx_wasm_bridge` Python package handling blob URL initialization.
 
@@ -259,8 +311,8 @@ conda-express/
       extract.rs        .conda and .tar.bz2 streaming extraction
       bootstrap.rs      Full bootstrap loop with progress callbacks
       solve.rs          resolvo-based solver with virtual package merging
-      gateway.rs        Combined fetch + solve (sync XHR callbacks)
-      sharded.rs        Sharded repodata fetch and decode
+      gateway.rs        Combined fetch + solve + shard URL computation
+      sharded.rs        CEP-16 sharded repodata: index/shard fetch, decode, dep extraction
     www/                Browser demo and Web Worker
       cx-worker.js      Web Worker (WASM init, pyjs, bootstrap, conda ops)
       cx-bootstrap.js   Comlink client (thin proxy to Worker)
@@ -288,7 +340,8 @@ conda-express/
     conda-emscripten/   Patched conda for emscripten (8 patches)
     conda-emscripten-plugin/  conda-emscripten plugin package
     cx-wasm-kernel/     WASM files + Python bridge for xeus-python
-      cx_wasm_bridge/   Loads cx-wasm via blob URLs, registers JS bridge
+      cx_wasm_bridge/   Loads cx-wasm via blob URLs, registers JS bridge,
+                        runs shard prefetch at startup
     frozendict-noarch/  frozendict 2.4.6 as noarch
 
   lite/                 JupyterLite demo site

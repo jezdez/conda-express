@@ -140,6 +140,11 @@ reimplementation — with cx-wasm replacing the native-code bottlenecks via
 conda's plugin API. Packages with C extensions (like `lz4`) work after
 installation thanks to automatic shared library loading.
 
+A shard prefetch runs at kernel startup, fetching all repodata shards
+in parallel via async JavaScript `fetch()`. This means the solve phase makes
+zero network requests — a typical `%conda install lz4` completes in ~3.5
+seconds.
+
 See the {doc}`browser guide <guides/browser>` for details, or try the
 [live demo](https://jezdez.github.io/conda-express/demo/lab/index.html).
 
