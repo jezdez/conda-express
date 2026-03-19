@@ -139,13 +139,7 @@ pub fn cx_fetch_and_solve(
 
     for ch in &req.channels {
         for sd in &ch.subdirs {
-            match fetch_repodata_records(
-                &ch.url,
-                sd,
-                &req.seed_names,
-                fetch_binary,
-                fetch_text,
-            ) {
+            match fetch_repodata_records(&ch.url, sd, &req.seed_names, fetch_binary, fetch_text) {
                 Ok(recs) => {
                     web_sys::console::log_1(
                         &format!(
@@ -201,6 +195,72 @@ pub fn cx_fetch_and_solve(
 
 fn solve_to_js(solution: &SolveSolution) -> Result<JsValue, JsValue> {
     serde_wasm_bindgen::to_value(solution)
+        .map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
+}
+
+#[derive(Deserialize)]
+struct GetShardUrlsRequest {
+    channels: Vec<ChannelInput>,
+    seeds: Vec<String>,
+}
+
+/// Compute shard URLs for a set of package names without fetching shard contents.
+///
+/// Fetches shard indices (one per channel/subdir, cached) and looks up each
+/// seed name to produce the corresponding shard URL.  Returns a deduplicated
+/// JSON array of URL strings suitable for parallel async prefetching from JS.
+#[wasm_bindgen]
+pub fn cx_get_shard_urls(
+    request: &str,
+    fetch_binary: &js_sys::Function,
+) -> Result<JsValue, JsValue> {
+    let req: GetShardUrlsRequest = serde_json::from_str(request)
+        .map_err(|e| CxWasmError::InvalidInput(format!("parsing get_shard_urls request: {e}")))?;
+
+    let mut urls: Vec<String> = Vec::new();
+
+    for ch in &req.channels {
+        let base = ch.url.trim_end_matches('/');
+        for subdir in &ch.subdirs {
+            let cache_key = format!("{base}/{subdir}");
+            let index =
+                match crate::sharded::get_or_fetch_index(&cache_key, base, subdir, fetch_binary) {
+                    Ok(idx) => idx,
+                    Err(e) => {
+                        web_sys::console::log_1(
+                            &format!("cx-wasm: no shard index for {cache_key}, skipping ({e})")
+                                .into(),
+                        );
+                        continue;
+                    }
+                };
+
+            let idx_url = crate::sharded::shard_index_url(base, subdir);
+            let shards_base =
+                crate::sharded::resolve_shards_base_url(&index.shards_base_url, &idx_url);
+
+            for seed in &req.seeds {
+                if let Some(hash) = index.shards.get(seed) {
+                    urls.push(format!("{shards_base}{hash}.msgpack.zst"));
+                }
+            }
+        }
+    }
+
+    urls.sort();
+    urls.dedup();
+
+    web_sys::console::log_1(
+        &format!(
+            "cx-wasm: computed {} shard URLs for {} seeds across {} channels",
+            urls.len(),
+            req.seeds.len(),
+            req.channels.len(),
+        )
+        .into(),
+    );
+
+    serde_wasm_bindgen::to_value(&urls)
         .map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
 }
 

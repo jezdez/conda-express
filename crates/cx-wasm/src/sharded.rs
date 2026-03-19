@@ -54,6 +54,19 @@ pub fn cx_clear_repodata_cache() {
     web_sys::console::log_1(&"cx-wasm: repodata cache cleared".into());
 }
 
+/// Decode raw (zstd+msgpack) shard bytes and return dependency package names.
+///
+/// Pure computation — no I/O, no caching.  Used by the Python shard prefetch
+/// loop to discover which shards to fetch next.
+#[wasm_bindgen]
+pub fn cx_decode_shard_deps(data: &[u8]) -> Result<JsValue, JsValue> {
+    let shard =
+        decompress_and_parse_shard(data, "prefetch").map_err(|e| -> JsValue { e.into() })?;
+    let names = shard_dep_names(&shard);
+    serde_wasm_bindgen::to_value(&names)
+        .map_err(|e| -> JsValue { CxWasmError::SerializeFailed(e.to_string()).into() })
+}
+
 fn get_cache_stats() -> (usize, usize) {
     let indices = INDEX_CACHE.with(|c| c.borrow().len());
     let shards = SHARD_CACHE.with(|c| c.borrow().len());
@@ -70,16 +83,15 @@ struct RawShardedRepodata {
 
 #[derive(Deserialize)]
 struct RawShardedSubdirInfo {
+    #[allow(dead_code)]
     base_url: String,
     shards_base_url: String,
 }
 
 #[derive(Clone)]
-struct DecodedShardIndex {
-    #[allow(dead_code)]
-    base_url: String,
-    shards_base_url: String,
-    shards: BTreeMap<String, String>,
+pub(crate) struct DecodedShardIndex {
+    pub(crate) shards_base_url: String,
+    pub(crate) shards: BTreeMap<String, String>,
 }
 
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>, CxWasmError> {
@@ -115,10 +127,15 @@ fn decode_shard_index(compressed: &[u8]) -> Result<DecodedShardIndex, CxWasmErro
         .collect();
 
     Ok(DecodedShardIndex {
-        base_url: index.info.base_url,
         shards_base_url: index.info.shards_base_url,
         shards,
     })
+}
+
+fn decompress_and_parse_shard(data: &[u8], label: &str) -> Result<Shard, CxWasmError> {
+    let decompressed = decompress_zstd(data)?;
+    rmp_serde::from_slice(&decompressed)
+        .map_err(|e| CxWasmError::RepodataParse(format!("msgpack decode shard for {label}: {e}")))
 }
 
 fn shard_dep_names(shard: &Shard) -> BTreeSet<String> {
@@ -158,7 +175,11 @@ fn call_fetch_text(cb: &js_sys::Function, url: &str) -> Result<String, CxWasmErr
         .ok_or_else(|| CxWasmError::FetchFailed(format!("{url}: response was not a string")))
 }
 
-fn resolve_shards_base_url(shards_base_url: &str, index_url: &str) -> String {
+pub(crate) fn shard_index_url(base: &str, subdir: &str) -> String {
+    format!("{base}/{subdir}/repodata_shards.msgpack.zst")
+}
+
+pub(crate) fn resolve_shards_base_url(shards_base_url: &str, index_url: &str) -> String {
     let mut base = shards_base_url.to_string();
 
     if base.is_empty() || !base.contains("://") {
@@ -174,7 +195,7 @@ fn resolve_shards_base_url(shards_base_url: &str, index_url: &str) -> String {
     base
 }
 
-fn get_or_fetch_index(
+pub(crate) fn get_or_fetch_index(
     cache_key: &str,
     base: &str,
     subdir: &str,
@@ -186,8 +207,8 @@ fn get_or_fetch_index(
         return Ok(index);
     }
 
-    let index_url = format!("{base}/{subdir}/repodata_shards.msgpack.zst");
-    let index_bytes = call_fetch_binary(fetch_binary, &index_url)?;
+    let idx_url = shard_index_url(base, subdir);
+    let index_bytes = call_fetch_binary(fetch_binary, &idx_url)?;
     let index = Rc::new(decode_shard_index(&index_bytes)?);
 
     INDEX_CACHE.with(|c| {
@@ -219,9 +240,7 @@ fn get_or_fetch_shard(
 
     let shard_bytes = call_fetch_binary(fetch_binary, shard_url)
         .map_err(|e| CxWasmError::FetchFailed(format!("shard {name}: {e}")))?;
-    let decompressed = decompress_zstd(&shard_bytes)?;
-    let shard: Shard = rmp_serde::from_slice(&decompressed)
-        .map_err(|e| CxWasmError::RepodataParse(format!("msgpack decode shard for {name}: {e}")))?;
+    let shard = decompress_and_parse_shard(&shard_bytes, name)?;
 
     let dep_names = shard_dep_names(&shard);
 
@@ -234,7 +253,7 @@ fn get_or_fetch_shard(
             .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}")))?;
         records.push(rattler_conda_types::RepoDataRecord {
             package_record: rec.clone(),
-            identifier: id.clone().into(),
+            identifier: id.clone(),
             url,
             channel: Some(channel_url.to_string()),
         });
@@ -300,9 +319,8 @@ fn parse_repodata_text(
         .into_iter()
         .chain(repo.conda_packages.into_iter())
     {
-        let url = url::Url::parse(&format!("{base_url}{id}")).map_err(|e| {
-            CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}"))
-        })?;
+        let url = url::Url::parse(&format!("{base_url}{id}"))
+            .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {id}: {e}")))?;
         records.push(rattler_conda_types::RepoDataRecord {
             package_record: pkg,
             identifier: id,
@@ -323,8 +341,8 @@ fn fetch_sharded_records(
     let cache_key = format!("{base}/{subdir}");
     let index = get_or_fetch_index(&cache_key, base, subdir, fetch_binary)?;
 
-    let index_url = format!("{base}/{subdir}/repodata_shards.msgpack.zst");
-    let shards_base = resolve_shards_base_url(&index.shards_base_url, &index_url);
+    let idx_url = shard_index_url(base, subdir);
+    let shards_base = resolve_shards_base_url(&index.shards_base_url, &idx_url);
     let channel_url = base.to_string();
 
     let mut seen: BTreeSet<String> = BTreeSet::new();
