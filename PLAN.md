@@ -177,7 +177,11 @@ cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, 
 
 ### Architecture
 
-1. **cx-wasm crate** (`crates/cx-wasm/`) — Rust crate compiled to `wasm32-unknown-unknown` via `wasm-pack`. Exports `cx_fetch_and_solve` (combined repodata fetch + resolvo solve using sync XHR callbacks) and `cx_extract_package` (streaming `.conda`/`.tar.bz2` extraction).
+1. **cx-wasm crate** (`crates/cx-wasm/`) — Rust crate compiled to `wasm32-unknown-unknown` via `wasm-pack`. Exports:
+   - `cx_fetch_and_solve` — combined repodata fetch + resolvo solve. Reads shards from the JS prefetch cache when available, falling back to sync XHR.
+   - `cx_extract_package` — streaming `.conda`/`.tar.bz2` extraction to MEMFS.
+   - `cx_get_shard_urls` — computes shard URLs for a set of package names (used by the shard prefetch).
+   - `cx_decode_shard_deps` — decodes raw zstd+msgpack shard bytes and extracts dependency package names (used by the shard prefetch).
 
 2. **conda-emscripten plugin** (`conda-emscripten/`) — Python conda plugin providing:
    - `CxWasmSolver` (`CONDA_SOLVER=cx-wasm`) — delegates to `js.fetch_and_solve`, round-trips solutions through JSON
@@ -190,19 +194,35 @@ cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, 
 
 3. **cx-jupyterlite** (`cx-jupyterlite/`) — TypeScript JupyterLab federated extension that intercepts `execute_request` messages on the main thread and rewrites bare `conda` commands to `%cx` so the IPython magic handles them. Also catches `%conda` and `!conda` forms.
 
-4. **cx-wasm-kernel** (`recipes/cx-wasm-kernel/`) — conda package that places the WASM files and `cx_wasm_bridge` Python module into a xeus-python kernel prefix. The bridge loads WASM via blob URLs and registers JS bridge functions on the global scope using `js.Function.new()` to avoid pyjs proxy wrapping.
+4. **cx-wasm-kernel** (`recipes/cx-wasm-kernel/`) — conda package that places the WASM files and `cx_wasm_bridge` Python module into a xeus-python kernel prefix. The bridge:
+   - Loads WASM via blob URLs and registers JS bridge functions on the global scope using `js.Function.new()` to avoid pyjs proxy wrapping
+   - Runs an **async shard prefetch** at startup — traverses the dependency graph of installed packages, fetching all repodata shards in parallel via JavaScript `fetch()` into a JS-side `Map` cache
+   - The prefetch uses Rust functions (`cx_get_shard_urls`, `cx_decode_shard_deps`) for efficient URL computation and dependency extraction
 
 5. **JupyterLite demo** (`lite/`) — builds a static JupyterLite site with xeus-python + the above packages. `lite/build.py --with-local` includes locally-built packages and builds cx-jupyterlite; `lite/build.py` uses public channels only.
 
 6. **Web Worker demo** (`crates/cx-wasm/www/`) — standalone browser demo using Comlink for RPC, IndexedDB for caching (~50 MB bootstrap cache), and pyjs for Python execution.
+
+### Performance: two-phase fetch/solve
+
+Sharded repodata (CEP-16) requires fetching an individual shard for each package name. In a Web Worker, only synchronous XHR is available during the solve phase (Python blocks the worker thread). Making hundreds of sequential sync XHR requests originally caused solves to take 10-12 seconds.
+
+The solution separates fetching from solving:
+
+- **Phase 1 (async, kernel startup):** `_prefetch_installed()` traverses the dependency graph level by level, fetching all repodata shards in parallel via async `fetch()` and caching them in a JavaScript `Map`.
+- **Phase 2 (sync, user command):** When the solver requests shards, it reads from the cache. No network requests during the solve.
+
+Result: solve time dropped from **11.85s to 0.21s** (56x speedup). Total `%conda install lz4` time is ~3.5 seconds.
 
 ### Status
 
 | Feature | Status |
 |---|---|
 | cx-wasm crate (solver + extractor to WASM) | Done |
-| Sharded repodata fetch in Rust (sync XHR callbacks) | Done |
+| Sharded repodata (CEP-16) fetch and decode in Rust | Done |
 | Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
+| Async shard prefetch at kernel startup | Done |
+| Shard dependency extraction (`cx_decode_shard_deps`) | Done |
 | Streaming package extraction (`.conda` + `.tar.bz2`) | Done |
 | conda-emscripten plugin (solver, extractor, vpkgs, magic) | Done |
 | `%conda` / `%cx` IPython magics (via `%load_ext conda_emscripten`) | Done |
@@ -214,6 +234,7 @@ cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, 
 | GitHub Pages deployment (docs + `/demo/`) | Done |
 | Web Worker architecture (Comlink, IndexedDB) | Done |
 | Submit packages to emscripten-forge | Not started |
+| PyPI wheel support (repodata v3 / conda-pypi) | Research complete |
 | npm package (`@conda-express/web`) | Not started (deprioritized) |
 
 ### Pending: emscripten-forge publishing
@@ -226,6 +247,82 @@ cx-wasm compiles the rattler-based solver and package extractor to WebAssembly, 
 | `frozendict` | noarch | 2.4.6 pure Python (may already exist on emscripten-forge) |
 
 Once published, `lite/environment.yml` can add these as dependencies, eliminating the need for `--with-local` builds and simplifying the GitHub Pages CI.
+
+### Future: PyPI wheel support via conda-pypi (repodata v3)
+
+The [conda-pypi](https://github.com/conda/conda-pypi) plugin teaches conda how to install Python wheels (`.whl` files) by registering a `CondaPackageExtractor` hook. A companion project, [conda-pypi-test](https://github.com/conda-incubator/conda-pypi-test), provides a development conda channel that indexes ~500K pure Python wheels from PyPI. Together, these would allow `conda install requests` to install the wheel directly from PyPI in the browser -- extending cx-wasm beyond emscripten-forge packages.
+
+#### conda-pypi-test channel
+
+- URL: `https://github.com/conda-incubator/conda-pypi-test/releases/download`
+- Indexes ~500K pure Python wheels (`-none-any.whl` only) from PyPI, latest version per package
+- Not sharded -- plain `repodata.json` (+ `.zst` compressed variant)
+- Only `noarch` packages; uses the [grayskull PyPI-to-conda mapping](https://raw.githubusercontent.com/regro/cf-graph-countyfair/master/mappings/pypi/grayskull_pypi_mapping.json) for name normalization
+- Each entry has a `url` field pointing directly to PyPI (e.g., `https://files.pythonhosted.org/.../requests-2.32.3-py3-none-any.whl`); the channel itself does not host wheel files
+- Repodata is generated by `generate.py` which fetches package metadata from PyPI's JSON API, converts dependencies using grayskull mapping, and outputs conda-compatible repodata
+- A `blocklist.txt` excludes packages that shadow conda names or bundle native code despite being marked noarch
+
+#### Repodata v3 format (in progress)
+
+The wheel entries are transitioning to a new `v3` top-level key in repodata, defined by three draft CEPs:
+
+- [CEP 111](https://github.com/conda/ceps/pull/111): Conditional dependencies, extras, and flags
+- [CEP 145](https://github.com/conda/ceps/pull/145): Repodata wheel support
+- [CEP 146](https://github.com/conda/ceps/pull/146): Backwards-compatible repodata update strategy
+
+Timeline of implementation:
+
+| Date | Component | Change |
+|------|-----------|--------|
+| Feb 26, 2026 | `rattler_conda_types` v0.43.5 | Added `ExperimentalV3Packages` struct with `v3` key and `whl` sub-key. **Removed** old `packages.whl` key ([PR #2093](https://github.com/conda/rattler/pull/2093)) |
+| Mar 9, 2026 | py-rattler v0.23.0 | Exposes v3 support to Python. Changed conditional syntax from `; if` to `when` key ([PR #2007](https://github.com/conda/rattler/pull/2007)) |
+| Mar 17, 2026 | conda-pypi [PR #273](https://github.com/conda/conda-pypi/pull/273) | Merged. Updates plugin to generate v3 repodata with `extra_depends` and `[when="..."]` conditionals |
+| Pending | conda-pypi-test [PR #19](https://github.com/conda-incubator/conda-pypi-test/pull/19) | Blocked on conda-pypi release ([#277](https://github.com/conda/conda-pypi/issues/277)). Updates `generate.py` to put entries under `v3.whl` |
+
+The v3 repodata format puts wheel records under `v3.whl` with `WhlPackageRecord` entries that include a `url` field (absolute PyPI URL or channel-relative path):
+
+```json
+{
+  "packages": { },
+  "packages.conda": { },
+  "v3": {
+    "whl": {
+      "requests-2.32.3-py3_none_any_0": {
+        "url": "https://files.pythonhosted.org/.../requests-2.32.3-py3-none-any.whl",
+        "name": "requests",
+        "version": "2.32.3",
+        "build": "py3_none_any_0",
+        "depends": ["charset-normalizer>=2,<4", "python"],
+        "extra_depends": { "socks": ["pysocks>=1.5.6,!=1.5.7"] },
+        "subdir": "noarch",
+        "noarch": "python"
+      }
+    }
+  }
+}
+```
+
+#### conda-pypi plugin structure
+
+| Hook | Function | WASM-compatible |
+|------|----------|:---:|
+| `conda_package_extractors` | Registers `.whl` extractor using pure-Python `installer` lib. Extracts wheels and creates conda metadata (`info/index.json`, `info/paths.json`, `info/link.json`) | Yes |
+| `conda_subcommands` | `conda pypi` subcommand (invokes pip via subprocess) | No |
+| `conda_post_commands` | Post-install hooks (runs pip via subprocess) | No |
+
+Only the extractor hook is needed for WASM. The `installer` library is pure Python and should work in Emscripten. The subprocess-dependent hooks would be neutralized by the existing subprocess no-op patch.
+
+#### cx-wasm compatibility analysis
+
+cx-wasm already uses `rattler_conda_types` v0.43.5, so the Rust deserialization layer supports the `v3.whl` format. The `RepoData.into_repo_data_records()` method in rattler already handles `WhlPackageRecord` correctly, converting URLs and creating proper `RepoDataRecord` entries.
+
+Gaps to bridge:
+
+1. **Repodata parsing in cx-wasm**: `parse_repodata_text` in `sharded.rs` only iterates `repo.packages` + `repo.conda_packages`. It ignores `experimental_v3` entirely. Needs to also chain `experimental_v3.whl` records, converting `WhlPackageRecord` URLs into `RepoDataRecord` entries.
+2. **Absolute download URLs**: `WhlPackageRecord` entries have `url` pointing to PyPI (`https://files.pythonhosted.org/...`), not a channel-relative path. The download logic in `_memfs_download_inner` already handles arbitrary URLs, but the transaction/extractor pipeline needs to recognize `.whl` file extensions.
+3. **Repodata size**: ~500K packages in a single `repodata.json` is very large. Sync XHR for a file this big would be extremely slow. Options: use `.zst` compression, subset the repodata, or wait for sharded repodata support on the channel.
+4. **Wheel extraction**: The conda-pypi extractor hook and `installer` library need to be available in the JupyterLite environment. Both are noarch/pure Python packages.
+5. **Defensive patching**: The conda-pypi `post_command` hook calls `run_pip_install` (subprocess). The existing subprocess no-op patch should prevent errors, but the post_command hook may still attempt to run and could log confusing errors. A targeted patch to disable conda-pypi's post_command hooks in WASM would be cleaner.
 
 ---
 
@@ -264,6 +361,7 @@ All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for th
 | Homebrew formula (same-repo tap) | Done |
 | Installer scripts (get-cx.sh, get-cx.ps1) | Done |
 | cx-wasm crate (browser solver + extractor) | Done |
+| Async shard prefetch (two-phase fetch/solve) | Done |
 | conda-emscripten plugin (solver, extractor, magics, patches) | Done |
 | cx-jupyterlite extension (conda command interception) | Done |
 | Shared library loading for C extensions | Done |
@@ -272,6 +370,7 @@ All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for th
 | Include conda-tasks in default package set | Blocked (needs conda-forge feedstock) |
 | Include conda-workspaces in default package set | Blocked (needs conda-forge feedstock for conda-workspaces; conda-lockfiles already on conda-forge) |
 | Submit cx-wasm packages to emscripten-forge | Not started |
+| PyPI wheel support (repodata v3 / conda-pypi) | Not started |
 | Homebrew-core submission | Not started (needs adoption first) |
 | conda-forge feedstock for cx | Not started |
 | conda-self pluggable updater backend | Not started |
