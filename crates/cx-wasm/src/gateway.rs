@@ -4,6 +4,8 @@
 //! the parsed records directly into the solver, and returns a solution — all
 //! without intermediate JSON serialization between Rust and JS/Python.
 
+use std::collections::BTreeSet;
+
 use rattler_conda_types::MatchSpec;
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
@@ -172,6 +174,65 @@ pub fn cx_fetch_and_solve(
         .into());
     }
 
+    // Resolve cross-channel transitive dependencies.
+    //
+    // Channels form a unified priority list, but the per-channel shard
+    // traversal only follows deps within its own shard index.  A package
+    // on channel A may depend on a noarch package that only exists on
+    // channel B.  After the initial pass we identify dependency names
+    // that have no records yet and fetch their shards from all channels.
+    const MAX_CROSS_CHANNEL_PASSES: usize = 5;
+    for pass in 0..MAX_CROSS_CHANNEL_PASSES {
+        let missing = compute_missing_deps(&all_records);
+        if missing.is_empty() {
+            break;
+        }
+
+        web_sys::console::log_1(
+            &format!(
+                "cx-wasm: cross-channel pass {}: resolving {} deps ({:?})",
+                pass + 1,
+                missing.len(),
+                &missing[..missing.len().min(10)],
+            )
+            .into(),
+        );
+
+        let mut found_new = false;
+        for ch in &req.channels {
+            let base = ch.url.trim_end_matches('/');
+            for sd in &ch.subdirs {
+                let base_url = format!("{base}/{sd}/");
+                match crate::sharded::fetch_sharded_records(
+                    base,
+                    sd,
+                    &missing,
+                    fetch_binary,
+                    &base_url,
+                ) {
+                    Ok(recs) if !recs.is_empty() => {
+                        web_sys::console::log_1(
+                            &format!(
+                                "cx-wasm: resolved {} cross-channel records from {}/{}",
+                                recs.len(),
+                                ch.url,
+                                sd,
+                            )
+                            .into(),
+                        );
+                        all_records.push(recs);
+                        found_new = true;
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !found_new {
+            break;
+        }
+    }
+
     let locked_packages = parse_installed(&req.installed)?;
 
     let platform_str = req.platform.as_deref().unwrap_or("emscripten-wasm32");
@@ -262,6 +323,32 @@ pub fn cx_get_shard_urls(
 
     serde_wasm_bindgen::to_value(&urls)
         .map_err(|e| CxWasmError::SerializeFailed(e.to_string()).into())
+}
+
+/// Find dependency names that appear in records' `depends` but have no
+/// corresponding package records yet.  Virtual packages (names starting
+/// with `__`) are excluded since they are provided by the runtime, not
+/// by any channel.
+fn compute_missing_deps(all_records: &[Vec<rattler_conda_types::RepoDataRecord>]) -> Vec<String> {
+    let mut names_with_records: BTreeSet<String> = BTreeSet::new();
+    let mut all_dep_names: BTreeSet<String> = BTreeSet::new();
+
+    for recs in all_records {
+        for rec in recs {
+            names_with_records.insert(rec.package_record.name.as_normalized().to_string());
+            for dep in &rec.package_record.depends {
+                if let Some(name) = dep.split_whitespace().next() {
+                    all_dep_names.insert(name.to_string());
+                }
+            }
+        }
+    }
+
+    all_dep_names
+        .difference(&names_with_records)
+        .filter(|name| !name.starts_with("__"))
+        .cloned()
+        .collect()
 }
 
 fn parse_installed(

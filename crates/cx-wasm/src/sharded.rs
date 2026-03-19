@@ -331,7 +331,7 @@ fn parse_repodata_text(
     Ok(records)
 }
 
-fn fetch_sharded_records(
+pub(crate) fn fetch_sharded_records(
     base: &str,
     subdir: &str,
     seeds: &[String],
