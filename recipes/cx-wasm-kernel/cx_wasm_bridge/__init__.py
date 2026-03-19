@@ -29,22 +29,14 @@ _setup_done = False  # True once js.fetch_and_solve etc. are registered
 # when the Python handle is garbage collected.
 _bridge_refs: list = []
 
-_load_lock: asyncio.Lock | None = None
-_setup_lock: asyncio.Lock | None = None
+_locks: dict[str, asyncio.Lock] = {}
 
 
-def _get_load_lock() -> asyncio.Lock:
-    global _load_lock
-    if _load_lock is None:
-        _load_lock = asyncio.Lock()
-    return _load_lock
-
-
-def _get_setup_lock() -> asyncio.Lock:
-    global _setup_lock
-    if _setup_lock is None:
-        _setup_lock = asyncio.Lock()
-    return _setup_lock
+def _get_lock(name: str) -> asyncio.Lock:
+    """Return a named asyncio.Lock, creating it on first access."""
+    if name not in _locks:
+        _locks[name] = asyncio.Lock()
+    return _locks[name]
 
 
 def is_ready() -> bool:
@@ -83,7 +75,7 @@ async def _load_cx():
     if _cx is not None:
         return _cx
 
-    async with _get_load_lock():
+    async with _get_lock("load"):
         if _cx is not None:  # another coroutine finished while we waited
             return _cx
 
@@ -135,6 +127,83 @@ async def _load_cx():
         return _cx
 
 
+_BRIDGE_JS = (
+    "globalThis._cxPrefetchCache = new Map();"
+    "globalThis._cxPrefetchHits = 0;"
+    "globalThis._cxSyncFetchBinary = fetchBin;"
+    "globalThis.sync_fetch_binary = function(url) {"
+    "  url = String(url);"
+    "  var c = globalThis._cxPrefetchCache.get(url);"
+    "  if (c) {"
+    "    globalThis._cxPrefetchCache.delete(url);"
+    "    globalThis._cxPrefetchHits++;"
+    "    return c;"
+    "  }"
+    "  return globalThis._cxSyncFetchBinary(url);"
+    "};"
+    "globalThis.sync_fetch_text = fetchText;"
+    "globalThis._cx_solve_raw = cx.cx_fetch_and_solve;"
+    "globalThis.fetch_and_solve = function(request) {"
+    "  globalThis._cxPrefetchHits = 0;"
+    "  var result = globalThis._cx_solve_raw("
+    "    String(request), globalThis.sync_fetch_binary, globalThis.sync_fetch_text);"
+    "  console.warn('cx-wasm: solve used ' + globalThis._cxPrefetchHits"
+    "    + ' prefetch cache hits, ' + globalThis._cxPrefetchCache.size + ' still cached');"
+    "  return result;"
+    "};"
+    "globalThis._cx_extract_raw = cx.cx_extract_package;"
+    "globalThis.cx_extract_package = function(bytes, filename, onFile) {"
+    "  return globalThis._cx_extract_raw(bytes, String(filename), onFile);"
+    "};"
+    "globalThis._cx_get_shard_urls_raw = cx.cx_get_shard_urls;"
+    "globalThis.get_shard_urls = function(request) {"
+    "  return globalThis._cx_get_shard_urls_raw("
+    "    String(request), globalThis.sync_fetch_binary);"
+    "};"
+    "globalThis.decode_shard_deps = function(data) {"
+    "  return cx.cx_decode_shard_deps(data);"
+    "};"
+    "globalThis.clear_repodata_cache = function() {"
+    "  return cx.cx_clear_repodata_cache();"
+    "};"
+    "globalThis._cx_prefetch_batch = function(urlsOrJson) {"
+    "  var urls = typeof urlsOrJson === 'string'"
+    "    ? JSON.parse(urlsOrJson) : Array.from(urlsOrJson);"
+    "  if (!urls || !urls.length) return Promise.resolve();"
+    "  var n = urls.length, done = 0;"
+    "  console.warn('cx-wasm: prefetching ' + n + ' shards');"
+    "  return new Promise(function(resolve) {"
+    "    for (var i = 0; i < n; i++) {"
+    "      (function(url) {"
+    "        fetch(url)"
+    "        .then(function(r) { return r.arrayBuffer(); })"
+    "        .then(function(buf) {"
+    "          globalThis._cxPrefetchCache.set(url, new Uint8Array(buf));"
+    "        })"
+    "        .catch(function(e) {"
+    "          console.warn('cx-wasm: prefetch fail ' + url.slice(-50) + ': ' + e);"
+    "        })"
+    "        .finally(function() {"
+    "          if (++done >= n) {"
+    "            console.warn('cx-wasm: prefetch done, '"
+    "              + globalThis._cxPrefetchCache.size + ' cached');"
+    "            resolve();"
+    "          }"
+    "        });"
+    "      })(urls[i]);"
+    "    }"
+    "  });"
+    "};"
+)
+
+_DEFAULT_CHANNELS = [
+    {"url": "https://repo.prefix.dev/emscripten-forge-4x",
+     "subdirs": ["emscripten-wasm32", "noarch"]},
+    {"url": "https://conda.anaconda.org/conda-forge",
+     "subdirs": ["emscripten-wasm32", "noarch"]},
+]
+
+
 async def setup() -> None:
     """Load cx-wasm and register bridge functions on the JS global scope.
 
@@ -145,7 +214,7 @@ async def setup() -> None:
     if _setup_done:
         return
 
-    async with _get_setup_lock():
+    async with _get_lock("setup"):
         if _setup_done:
             return
 
@@ -169,26 +238,104 @@ async def setup() -> None:
         # parameters, JS gets the raw underlying objects and can assign
         # them to globalThis as native callables.
         js._cx_register_bridge = js.Function.new(
-            "cx", "fetchBin", "fetchText",
-            "globalThis.sync_fetch_binary = fetchBin;"
-            "globalThis.sync_fetch_text = fetchText;"
-            "globalThis._cx_solve_raw = cx.cx_fetch_and_solve;"
-            "globalThis.fetch_and_solve = function(request) {"
-            "  return globalThis._cx_solve_raw("
-            "    String(request),"
-            "    globalThis.sync_fetch_binary,"
-            "    globalThis.sync_fetch_text"
-            "  );"
-            "};"
-            "globalThis._cx_extract_raw = cx.cx_extract_package;"
-            "globalThis.cx_extract_package = function(bytes, filename, onFile) {"
-            "  return globalThis._cx_extract_raw(bytes, String(filename), onFile);"
-            "};"
+            "cx", "fetchBin", "fetchText", _BRIDGE_JS,
         )
         js._cx_register_bridge(cx, js_fetch_binary, js_fetch_text)
 
         _setup_done = True
         log.info("cx-wasm-bridge: js.fetch_and_solve registered")
+
+        await _prefetch_installed()
+
+
+async def _prefetch_installed() -> None:
+    """Pre-warm the shard cache by traversing installed package dependencies level by level.
+
+    Runs in the async ``setup()`` context.  For each level:
+    1. Compute shard URLs for the current set of package names (Rust, cached indices).
+    2. Fetch all shards in parallel using async ``fetch()`` from JS.
+    3. Decode each shard (Rust, pure computation) to discover dependency names.
+    4. Repeat with newly discovered names until no new dependencies remain.
+
+    By the time the user runs ``%conda install``, every shard in the transitive
+    dependency closure is already in ``_cxPrefetchCache``.  The solver's
+    ``sync_fetch_binary`` returns cached data instantly — zero network I/O.
+    """
+    import json as _json  # noqa: PLC0415
+
+    import js  # noqa: PLC0415
+
+    conda_meta = os.path.join(sys.prefix, "conda-meta")
+    if not os.path.isdir(conda_meta):
+        return
+
+    seeds: set[str] = set()
+    for fn in os.listdir(conda_meta):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(conda_meta, fn)) as f:
+                data = _json.load(f)
+            name = data.get("name")
+            if name:
+                seeds.add(name)
+        except Exception:  # noqa: BLE001
+            pass
+
+    if not seeds:
+        return
+
+    try:
+        print(f"[cx-prefetch] starting for {len(seeds)} installed packages")
+
+        seen_names: set[str] = set()
+        queue = sorted(seeds)
+        seen_urls: set[str] = set()
+        level = 0
+        total_fetched = 0
+
+        while queue:
+            new_names = [n for n in queue if n not in seen_names]
+            if not new_names:
+                break
+            seen_names.update(new_names)
+
+            request = _json.dumps({
+                "channels": _DEFAULT_CHANNELS,
+                "seeds": new_names,
+            })
+            urls_js = js.get_shard_urls(request)
+            urls_json = str(js.JSON.stringify(urls_js))
+            all_urls: list[str] = _json.loads(urls_json)
+
+            new_urls = [u for u in all_urls if u not in seen_urls]
+            seen_urls.update(new_urls)
+
+            if not new_urls:
+                break
+
+            print(f"[cx-prefetch] level {level}: {len(new_urls)} shards")
+            await js._cx_prefetch_batch(_json.dumps(new_urls))
+            total_fetched += len(new_urls)
+
+            next_names: set[str] = set()
+            for url in new_urls:
+                shard_bytes = js._cxPrefetchCache.get(url)
+                if not shard_bytes:
+                    continue
+                deps_js = js.decode_shard_deps(shard_bytes)
+                deps = _json.loads(str(js.JSON.stringify(deps_js)))
+                next_names.update(deps)
+
+            queue = sorted(next_names - seen_names)
+            level += 1
+
+        print(f"[cx-prefetch] done: {total_fetched} shards across {level} levels")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[cx-prefetch] FAILED: {type(exc).__name__}: {exc}")
+        import traceback  # noqa: PLC0415
+
+        traceback.print_exc()
 
 
 async def _setup_background() -> None:
