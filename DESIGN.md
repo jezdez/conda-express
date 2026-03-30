@@ -512,4 +512,4 @@ The repo root contains a composite GitHub Action that lets other repos build cus
 
 ## Future work
 
-See [PLAN.md](https://github.com/jezdez/conda-express/blob/main/PLAN.md) for the full roadmap, including the conda-self updater plugin design, homebrew-core submission, conda-forge feedstock, and upstream work.
+See [PLAN.md](https://github.com/jezdez/conda-express/blob/main/PLAN.md) for the full roadmap, including the conda-self updater plugin design, offline bootstrap from a bundled payload (PKG / MSI, [#11](https://github.com/jezdez/conda-express/issues/11)), homebrew-core submission, conda-forge feedstock, and upstream work.

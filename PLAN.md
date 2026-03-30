@@ -18,6 +18,7 @@
 | conda-forge feedstock for cx | Not started | [#6] |
 | conda-self pluggable updater backend | Not started | [#4] |
 | Homebrew-core submission | Not started (needs adoption) | [#7] |
+| Offline bootstrap from bundled payload (PKG / MSI / local channel) | Not started | [#11] |
 
 ### Phase 2: Production polish
 
@@ -44,6 +45,7 @@ These improve conda's ecosystem health but are **not required** for cx:
 [#7]: https://github.com/jezdez/conda-express/issues/7
 [#9]: https://github.com/jezdez/conda-express/issues/9
 [#10]: https://github.com/jezdez/conda-express/issues/10
+[#11]: https://github.com/jezdez/conda-express/issues/11
 
 ---
 
@@ -209,9 +211,17 @@ Once published, `lite/environment.yml` can reference these as dependencies, elim
 
 ---
 
+### Offline bootstrap from bundled payload (PKG / MSI) ([#11])
+
+Native installers (macOS **PKG**, Windows **MSI**) can ship `cx` together with a **pre-downloaded set** of conda packages (and lockfile / repodata as needed). Bootstrap would install from **local paths** only—no network on first run—reusing the same embedded rattler lockfile and `Installer` path as today.
+
+This targets air-gapped or policy-restricted environments and vendors who want signed PKG/MSI plus a reproducible payload while keeping one cross-platform bootstrapper. Design work: CLI flags or env vars for a local channel root or package cache, documented packager workflow, and CI examples. See the issue for full scope.
+
+---
+
 ## Open risks
 
-- **Requires network on first run**: No offline-first option without pre-populating a package cache in the binary (adds size).
+- **Requires network on first run**: No offline-first option without a bundled payload or pre-populated cache ([#11]); embedding packages in the binary trades size for offline use.
 - **conda-self hook design**: Needs buy-in from conda-self maintainers ([#4]).
 - **conda-index dependency**: conda-pypi depends on conda-index — needs PyPI availability verification.
 - **menuinst on Windows**: `initialize.py` imports `menuinst.knownfolders`/`menuinst.winshortcut` behind `if on_win:` — needs a try/except guard (upstream).
