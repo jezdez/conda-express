@@ -204,11 +204,13 @@ configuration
 
 features
 design
+background
 ```
 
 ```{toctree}
 :hidden:
 :caption: Project
 
+plan
 changelog
 ```

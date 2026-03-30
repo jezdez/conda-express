@@ -465,7 +465,6 @@ Default prefix: `~/.cx`
 
 | Plugin | Purpose | Blocker |
 |---|---|---|
-| [conda-tasks](https://github.com/conda-incubator/conda-tasks) | pixi-inspired task runner (`conda task`, `ct`) | Needs conda-forge feedstock |
 | [conda-workspaces](https://github.com/conda-incubator/conda-workspaces) | Multi-environment workspace management (`conda workspace`, `cw`) | Needs conda-forge feedstock (dep: conda-lockfiles is already on conda-forge) |
 
 ## Lockfile compatibility
