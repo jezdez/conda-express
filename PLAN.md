@@ -90,7 +90,7 @@ Not required for cx, but valuable for conda's long-term health.
 
 ---
 
-## 5. Self-Update via conda-self (pluggable backend)
+## 5. Self-Update via conda-self (pluggable backend) ([#4](https://github.com/jezdez/conda-express/issues/4))
 
 ### Design principle
 
@@ -237,7 +237,7 @@ Result: solve time dropped from **11.85s to 0.21s** (56x speedup). Total `%conda
 | PyPI wheel support (repodata v3 / conda-pypi) | Research complete |
 | npm package (`@conda-express/web`) | Not started (deprioritized) |
 
-### Pending: emscripten-forge publishing
+### Pending: emscripten-forge publishing ([#2](https://github.com/jezdez/conda-express/issues/2))
 
 | Package | Type | Notes |
 |---|---|---|
@@ -248,7 +248,7 @@ Result: solve time dropped from **11.85s to 0.21s** (56x speedup). Total `%conda
 
 Once published, `lite/environment.yml` can add these as dependencies, eliminating the need for `--with-local` builds and simplifying the GitHub Pages CI.
 
-### Future: PyPI wheel support via conda-pypi (repodata v3)
+### Future: PyPI wheel support via conda-pypi (repodata v3) ([#3](https://github.com/jezdez/conda-express/issues/3))
 
 The [conda-pypi](https://github.com/conda/conda-pypi) plugin teaches conda how to install Python wheels (`.whl` files) by registering a `CondaPackageExtractor` hook. A companion project, [conda-pypi-test](https://github.com/conda-incubator/conda-pypi-test), provides a development conda channel that indexes ~500K pure Python wheels from PyPI. Together, these would allow `conda install requests` to install the wheel directly from PyPI in the browser -- extending cx-wasm beyond emscripten-forge packages.
 
@@ -367,22 +367,32 @@ All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for th
 | Shared library loading for C extensions | Done |
 | MEMFS compatibility patches (download, extract, subprocess) | Done |
 | JupyterLite demo + GitHub Pages deployment | Done |
-| Include conda-tasks in default package set | Blocked (needs conda-forge feedstock) |
-| Include conda-workspaces in default package set | Blocked (needs conda-forge feedstock for conda-workspaces; conda-lockfiles already on conda-forge) |
-| Submit cx-wasm packages to emscripten-forge | Not started |
-| PyPI wheel support (repodata v3 / conda-pypi) | Not started |
-| Homebrew-core submission | Not started (needs adoption first) |
-| conda-forge feedstock for cx | Not started |
-| conda-self pluggable updater backend | Not started |
+| ~~Include conda-tasks in default package set~~ | ~~Removed (conda-tasks archived)~~ |
+| Include conda-workspaces in default package set ([#9]) | Blocked (needs conda-forge feedstock for conda-workspaces; conda-lockfiles already on conda-forge) |
+| Submit cx-wasm packages to emscripten-forge ([#2]) | Not started |
+| PyPI wheel support (repodata v3 / conda-pypi) ([#3]) | Not started |
+| Homebrew-core submission ([#7]) | Not started (needs adoption first) |
+| conda-forge feedstock for cx ([#6]) | Not started |
+| conda-self pluggable updater backend ([#4]) | Not started |
+
+[#2]: https://github.com/jezdez/conda-express/issues/2
+[#3]: https://github.com/jezdez/conda-express/issues/3
+[#4]: https://github.com/jezdez/conda-express/issues/4
+[#5]: https://github.com/jezdez/conda-express/issues/5
+[#6]: https://github.com/jezdez/conda-express/issues/6
+[#7]: https://github.com/jezdez/conda-express/issues/7
+[#8]: https://github.com/jezdez/conda-express/issues/8
+[#9]: https://github.com/jezdez/conda-express/issues/9
+[#10]: https://github.com/jezdez/conda-express/issues/10
 
 ### Phase 2: Production polish
 
 | Task | Status |
 |---|---|
 | Documentation (Sphinx, Diataxis structure) | Done |
-| Explore crate name transfer for `cx` on crates.io | Not started |
+| Explore crate name transfer for `cx` on crates.io ([#10]) | Not started |
 
-### Upstream work (nice to have -- independent of cx)
+### Upstream work (nice to have -- independent of cx) ([#5](https://github.com/jezdez/conda-express/issues/5))
 
 These improve conda's ecosystem health but are **not required** for cx:
 
