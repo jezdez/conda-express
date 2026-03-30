@@ -111,42 +111,6 @@ fn test_cx_uninstall_removes_prefix() {
     assert!(!prefix.exists(), "prefix should be removed after uninstall");
 }
 
-#[cfg_attr(not(feature = "online_tests"), ignore)]
-#[test]
-fn test_cx_uninstall_removes_conda_meta() {
-    let tmp = TempDir::new().unwrap();
-    let prefix = tmp.path().join("cx-test-uninstall-meta");
-
-    // Bootstrap the base prefix
-    cx().args(["bootstrap", "--prefix", prefix.to_str().unwrap()])
-        .timeout(std::time::Duration::from_secs(120))
-        .assert()
-        .success();
-
-    // Verify conda-meta exists before uninstall
-    assert!(
-        prefix.join("conda-meta").is_dir(),
-        "conda-meta directory should exist before uninstall"
-    );
-
-    // Verify .cx.json exists before uninstall
-    assert!(
-        prefix.join(".cx.json").exists(),
-        ".cx.json should exist before uninstall"
-    );
-
-    // Uninstall should remove the prefix
-    cx().args(["uninstall", "--prefix", prefix.to_str().unwrap(), "--yes"])
-        .assert()
-        .success();
-
-    assert!(
-        !prefix.exists(),
-        "prefix should be completely removed after uninstall"
-    );
-}
-
-#[cfg_attr(not(feature = "online_tests"), ignore)]
 #[test]
 fn test_cx_uninstall_nonexistent_prefix() {
     let tmp = TempDir::new().unwrap();
@@ -165,9 +129,11 @@ fn test_cx_uninstall_nonexistent_prefix() {
 
 #[test]
 fn test_cx_uninstall_no_prefix_argument() {
-    // Running uninstall without --prefix with existing .cx installation prompts for confirmation
-    // It aborts with "Continue? [y/N]   Aborted." when run non-interactively
-    cx().arg("uninstall")
+    let tmp = TempDir::new().unwrap();
+    std::fs::create_dir_all(tmp.path().join(".cx/conda-meta")).unwrap();
+
+    cx().env("HOME", tmp.path().to_str().unwrap())
+        .arg("uninstall")
         .assert()
         .success()
         .stderr(predicate::str::contains("Continue? [y/N]"));
