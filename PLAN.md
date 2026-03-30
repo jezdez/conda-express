@@ -18,7 +18,7 @@
 | conda-forge feedstock for cx | Not started | [#6] |
 | conda-self pluggable updater backend | Not started | [#4] |
 | Homebrew-core submission | Not started (needs adoption) | [#7] |
-| Offline bootstrap from bundled payload (PKG / MSI / local channel) | Not started | [#11] |
+| Offline bootstrap from bundled payload (PKG / MSI / local channel) | Done | [#11] |
 
 ### Phase 2: Production polish
 
@@ -221,7 +221,7 @@ This targets air-gapped or policy-restricted environments and vendors who want s
 
 ## Open risks
 
-- **Requires network on first run**: No offline-first option without a bundled payload or pre-populated cache ([#11]); embedding packages in the binary trades size for offline use.
+- **Requires network on first run**: Addressed by `--payload` / `--offline` flags ([#11]); packaging workflows can bundle archives for air-gapped bootstrap.
 - **conda-self hook design**: Needs buy-in from conda-self maintainers ([#4]).
 - **conda-index dependency**: conda-pypi depends on conda-index — needs PyPI availability verification.
 - **menuinst on Windows**: `initialize.py` imports `menuinst.knownfolders`/`menuinst.winshortcut` behind `if on_win:` — needs a try/except guard (upstream).

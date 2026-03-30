@@ -43,6 +43,8 @@ All options work as environment variables on both platforms:
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip running `cx bootstrap` |
+| `CX_PAYLOAD` | *(unset)* | Directory of package archives for offline bootstrap |
+| `CX_OFFLINE` | *(unset)* | Set to disable network during bootstrap |
 
 Unix example:
 
@@ -104,6 +106,13 @@ attestations and SBOMs.
 
 ```bash
 docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express create -n myenv python=3.12
+```
+
+A pre-bootstrapped `cxz` image is also available — conda is already installed,
+no bootstrap step needed:
+
+```bash
+docker run --rm ghcr.io/jezdez/conda-express:latest-cxz create -n myenv python=3.12
 ```
 ::::
 

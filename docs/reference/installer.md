@@ -61,6 +61,8 @@ All options are set via environment variables and work on both platforms.
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `0.1.3`) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to any value to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip running `cx bootstrap` after install |
+| `CX_PAYLOAD` | *(unset)* | Directory of `.conda`/`.tar.bz2` archives for offline bootstrap (passed to `cx bootstrap --payload`) |
+| `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap (passed to `cx bootstrap --offline`) |
 
 ### Examples
 

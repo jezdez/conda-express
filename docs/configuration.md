@@ -103,12 +103,19 @@ For custom builds without editing `pixi.toml` (e.g. via the
 
 Empty values are ignored (the `pixi.toml` defaults are used).
 
+| Variable | Overrides | Format |
+|---|---|---|
+| `CX_EMBED_PAYLOAD` | *(none)* | Set to `1` to download and embed all locked packages into the binary (produces `cxz`) |
+
 ```bash
 # Build with extra packages baked in
 CX_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy" pixi run build
 
 # Build with a different channel
 CX_CHANNELS="conda-forge, bioconda" pixi run build
+
+# Build cxz (self-contained binary with embedded payload)
+CX_EMBED_PAYLOAD=1 pixi run build
 ```
 
 When overrides are active:
@@ -116,6 +123,22 @@ When overrides are active:
 - The checked-in `cx.lock` is skipped (a fresh solve is performed)
 - The lockfile cache still works based on a hash of the config + overrides
 - The repo-root `cx.lock` is **not** overwritten (the solve is one-off)
+
+### Runtime environment variables
+
+These environment variables control bootstrap behavior at runtime. They are
+particularly useful in native installer post-install scripts (macOS PKG,
+Windows MSI) and CI pipelines.
+
+| Variable | Effect |
+|---|---|
+| `CX_PAYLOAD` | Directory of `.conda` / `.tar.bz2` archives to pre-populate the package cache from (equivalent to `--payload`) |
+| `CX_OFFLINE` | Disable network access during bootstrap when set to any truthy value (equivalent to `--offline`). Values `0` and `false` are treated as unset |
+
+```bash
+# Native installer post-install script example
+CX_PAYLOAD=/Library/Application\ Support/cx/packages CX_OFFLINE=1 cx bootstrap
+```
 
 ## Default prefix
 

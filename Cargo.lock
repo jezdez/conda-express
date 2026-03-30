@@ -541,12 +541,14 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
+ "tar",
  "temp-env",
  "tempfile",
  "tokio",
  "toml",
  "tracing",
  "tracing-subscriber",
+ "zstd",
 ]
 
 [[package]]

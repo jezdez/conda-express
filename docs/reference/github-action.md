@@ -35,13 +35,19 @@ uses: jezdez/conda-express@<ref>
 `ref` {bdg-secondary}`optional` {bdg-info}`default: main`
 : Git ref of conda-express to build from (tag, branch, or SHA).
 
+`embed-payload` {bdg-secondary}`optional` {bdg-info}`default: "false"`
+: Embed all locked package archives into the binary for fully offline
+  bootstrap. Increases binary size by ~50 MB. The output binary is named
+  `cxz-<target>` instead of `cx-<target>`.
+
 ### Outputs
 
 `binary-path`
-: Absolute path to the built cx binary on the runner.
+: Absolute path to the built binary on the runner.
 
 `asset-name`
-: Platform-qualified asset name (e.g. `cx-aarch64-apple-darwin`).
+: Platform-qualified asset name (e.g. `cx-aarch64-apple-darwin` or
+  `cxz-aarch64-apple-darwin` when `embed-payload` is `"true"`).
 
 ### What it does
 
@@ -96,3 +102,4 @@ variables. These are the same variables you can set when
 | `packages` | `CX_PACKAGES` | Replaces `[tool.cx].packages` |
 | `channels` | `CX_CHANNELS` | Replaces `[tool.cx].channels` |
 | `exclude` | `CX_EXCLUDE` | Replaces `[tool.cx].exclude` |
+| `embed-payload` | `CX_EMBED_PAYLOAD` | Downloads and embeds all locked packages (binary renamed to `cxz`) |

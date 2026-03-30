@@ -2,7 +2,7 @@
 
 A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
-cx replaces the miniconda/constructor installation pattern with a ~17 MB static binary that bootstraps a fully functional conda environment in seconds.
+cx replaces the miniconda/constructor installation pattern with a ~7 MB static binary that bootstraps a fully functional conda environment in seconds.
 
 ## Install
 
@@ -100,7 +100,7 @@ Bootstrap a full conda environment in ~3–5 seconds from an embedded lockfile. 
 :link: features
 :link-type: doc
 
-~17 MB single binary. Installs 86 packages instead of 113 by excluding unnecessary native dependencies.
+~7 MB single binary. Installs 86 packages instead of 113 by excluding unnecessary native dependencies.
 :::
 
 :::{grid-item-card} {octicon}`rocket` Modern

@@ -5,7 +5,13 @@
 //! content-hash to cache the lockfile: if the config hasn't changed since
 //! the last build, the solve is skipped entirely.
 
-use std::{collections::HashMap, env, path::PathBuf, sync::Arc, time::Instant};
+use std::{
+    collections::HashMap,
+    env,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Instant,
+};
 
 #[path = "src/exclude.rs"]
 mod exclude;
@@ -13,6 +19,7 @@ mod exclude;
 use rattler::{default_cache_dir, package_cache::PackageCache};
 use rattler_conda_types::{
     Channel, ChannelConfig, GenericVirtualPackage, MatchSpec, ParseMatchSpecOptions, Platform,
+    RepoDataRecord,
 };
 use rattler_lock::{CondaPackageData, LockFileBuilder};
 use rattler_networking::AuthenticationMiddleware;
@@ -48,6 +55,7 @@ fn main() {
     let checked_in_lock = manifest_dir.join("cx.lock");
     let lock_path = out_dir.join("cx.lock");
     let hash_path = out_dir.join("cx.lock.hash");
+    let payload_path = out_dir.join("payload.tar.zst");
 
     println!("cargo:rerun-if-changed=cx.lock");
 
@@ -58,6 +66,9 @@ fn main() {
     println!("cargo:rerun-if-env-changed=CX_CHANNELS");
     println!("cargo:rerun-if-env-changed=CX_EXCLUDE");
     println!("cargo:rerun-if-env-changed=CX_PLATFORM");
+    println!("cargo:rerun-if-env-changed=CX_EMBED_PAYLOAD");
+
+    let embed_payload = env::var("CX_EMBED_PAYLOAD").ok().is_some_and(|v| v == "1");
 
     let env_packages = env::var("CX_PACKAGES").ok().filter(|v| !v.is_empty());
     let env_channels = env::var("CX_CHANNELS").ok().filter(|v| !v.is_empty());
@@ -122,7 +133,8 @@ fn main() {
     // Fast path: use a checked-in cx.lock from the repo root if it exists
     // and the config hash matches. This avoids the network solve entirely.
     // Skipped when env var overrides are active (different package set).
-    if !has_env_overrides && checked_in_lock.exists() {
+    // Also skipped when CX_EMBED_PAYLOAD=1 (need the solve results to download packages).
+    if !has_env_overrides && !embed_payload && checked_in_lock.exists() {
         let checked_in_hash_path = manifest_dir.join("cx.lock.hash");
         if checked_in_hash_path.exists() {
             let stored_hash = std::fs::read_to_string(&checked_in_hash_path).unwrap_or_default();
@@ -130,17 +142,19 @@ fn main() {
                 eprintln!("cx: using checked-in cx.lock, skipping solve");
                 std::fs::copy(&checked_in_lock, &lock_path).expect("failed to copy cx.lock");
                 std::fs::write(&hash_path, &input_hash).expect("failed to write hash");
+                ensure_payload_file(&payload_path, false);
                 return;
             }
         }
     }
 
     // Second fast path: OUT_DIR cached lockfile from a previous build.
-    // Also skipped when env var overrides are active.
-    if !has_env_overrides && lock_path.exists() && hash_path.exists() {
+    // Also skipped when env var overrides are active or payload embedding is requested.
+    if !has_env_overrides && !embed_payload && lock_path.exists() && hash_path.exists() {
         let stored_hash = std::fs::read_to_string(&hash_path).unwrap_or_default();
         if stored_hash.trim() == input_hash {
             eprintln!("cx: lockfile is fresh, skipping solve");
+            ensure_payload_file(&payload_path, false);
             return;
         }
     }
@@ -152,7 +166,7 @@ fn main() {
         .build()
         .expect("failed to create tokio runtime");
 
-    let lock_content = runtime
+    let (lock_content, solved_records) = runtime
         .block_on(solve_and_lock(&config.tool.cx, target_platform))
         .expect("cx: failed to solve");
 
@@ -174,13 +188,144 @@ fn main() {
     } else {
         eprintln!("cx: lockfile written to {}", lock_path.display());
     }
+
+    if embed_payload {
+        runtime
+            .block_on(download_and_bundle_payload(&solved_records, &payload_path))
+            .expect("cx: failed to download/bundle payload");
+    } else {
+        ensure_payload_file(&payload_path, false);
+    }
 }
 
-/// Fetch repodata, solve, filter exclusions, and produce a lockfile string.
+/// Write an empty payload file when CX_EMBED_PAYLOAD is not set, so
+/// `include_bytes!` always has a valid target.
+fn ensure_payload_file(path: &Path, force_empty: bool) {
+    if force_empty || !path.exists() {
+        std::fs::write(path, b"").expect("failed to write empty payload.tar.zst");
+    }
+}
+
+/// Download all solved package archives and bundle them into a
+/// zstd-compressed tar archive for embedding.
+async fn download_and_bundle_payload(
+    records: &[RepoDataRecord],
+    payload_path: &Path,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let raw_client = reqwest::Client::builder().no_gzip().build()?;
+    let client = reqwest_middleware::ClientBuilder::new(raw_client.clone())
+        .with_arc(Arc::new(AuthenticationMiddleware::from_env_and_defaults()?))
+        .with(rattler_networking::OciMiddleware::new(raw_client))
+        .build();
+
+    let start = Instant::now();
+    let payload_dir = payload_path
+        .parent()
+        .expect("payload path has parent")
+        .join("payload");
+    std::fs::create_dir_all(&payload_dir)?;
+
+    eprintln!(
+        "cx: downloading {} packages for embedded payload...",
+        records.len()
+    );
+
+    for record in records {
+        let archive_name = record
+            .url
+            .path_segments()
+            .and_then(|mut s| s.next_back())
+            .unwrap_or("unknown");
+
+        let dest = payload_dir.join(archive_name);
+
+        if dest.exists() {
+            if let Some(ref expected) = record.package_record.sha256 {
+                let data = std::fs::read(&dest)
+                    .map_err(|e| format!("failed to read {}: {e}", dest.display()))?;
+                let actual = Sha256::digest(&data);
+                if actual != *expected {
+                    eprintln!("cx: SHA256 mismatch for {archive_name}, re-downloading");
+                    std::fs::remove_file(&dest)
+                        .map_err(|e| format!("failed to remove {}: {e}", dest.display()))?;
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+        }
+
+        let response = client
+            .get(record.url.clone())
+            .send()
+            .await
+            .map_err(|e| format!("failed to fetch {archive_name}: {e}"))?;
+
+        let status = response.status();
+        if !status.is_success() {
+            return Err(format!("HTTP {status} fetching {archive_name}").into());
+        }
+
+        let bytes = response
+            .bytes()
+            .await
+            .map_err(|e| format!("failed to read {archive_name}: {e}"))?;
+
+        if let Some(ref expected) = record.package_record.sha256 {
+            let actual = Sha256::digest(&bytes);
+            if actual != *expected {
+                return Err(format!("SHA256 mismatch for {archive_name}").into());
+            }
+        }
+
+        std::fs::write(&dest, &bytes)
+            .map_err(|e| format!("failed to write {}: {e}", dest.display()))?;
+    }
+
+    eprintln!(
+        "cx: downloaded {} packages in {:.1}s, bundling...",
+        records.len(),
+        start.elapsed().as_secs_f64()
+    );
+
+    let bundle_start = Instant::now();
+    let out_file = std::fs::File::create(payload_path)?;
+    // Level 1: .conda archives are already zstd-compressed internally,
+    // so the outer layer is just for bundling — minimal CPU, near-zero gain
+    // from higher levels on pre-compressed data.
+    let zstd_encoder = zstd::Encoder::new(out_file, 1)?;
+    let mut tar_builder = tar::Builder::new(zstd_encoder);
+
+    for entry in std::fs::read_dir(&payload_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() {
+            let name = path.file_name().unwrap();
+            tar_builder.append_path_with_name(&path, name)?;
+        }
+    }
+
+    let zstd_encoder = tar_builder.into_inner()?;
+    zstd_encoder.finish()?;
+
+    let payload_size = std::fs::metadata(payload_path)?.len();
+    eprintln!(
+        "cx: payload.tar.zst = {:.1} MB ({} packages, bundled in {:.1}s)",
+        payload_size as f64 / 1_048_576.0,
+        records.len(),
+        bundle_start.elapsed().as_secs_f64()
+    );
+
+    Ok(())
+}
+
+/// Fetch repodata, solve, filter exclusions, and produce a lockfile string
+/// along with the solved records (for payload embedding).
 async fn solve_and_lock(
     config: &CxConfig,
     platform: Platform,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<(String, Vec<RepoDataRecord>), Box<dyn std::error::Error>> {
     let channel_config = ChannelConfig::default_with_root_dir(env::current_dir()?);
 
     let match_specs: Vec<MatchSpec> = config
@@ -293,5 +438,5 @@ async fn solve_and_lock(
     }
 
     let lock_file = builder.finish();
-    Ok(lock_file.render_to_string()?)
+    Ok((lock_file.render_to_string()?, required_packages))
 }
