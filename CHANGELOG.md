@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2 (2026-03-30)
+
+### Fixes
+
+- Fix file ownership in `Dockerfile.cxz`: use `--chown=nonroot:nonroot` when copying the bootstrapped prefix so the nonroot user in the distroless image can read `conda-meta/` files.
+
 ## 0.5.1 (2026-03-30)
 
 ### Fixes

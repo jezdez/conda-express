@@ -9,6 +9,6 @@ RUN HOME=/home/nonroot /usr/local/bin/cxz bootstrap
 
 # Stage 2: copy the bootstrapped prefix into distroless
 FROM gcr.io/distroless/cc-debian12:nonroot@sha256:7e5b8df2f4d36f5599ef4ab856d7d444922531709becb03f3368c6d797d0a5eb
-COPY --from=bootstrap /home/nonroot/.cx /home/nonroot/.cx
+COPY --from=bootstrap --chown=nonroot:nonroot /home/nonroot/.cx /home/nonroot/.cx
 COPY --from=bootstrap /usr/local/bin/cxz /usr/local/bin/cxz
 ENTRYPOINT ["/usr/local/bin/cxz"]
