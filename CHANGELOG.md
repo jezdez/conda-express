@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4.0 (2026-03-31)
+
+### Features
+
+- **cx-wasm** — WebAssembly build of the rattler solver and package extractor for use in the browser (`crates/cx-wasm/`).
+- **conda-emscripten** — conda plugin for Emscripten: `CxWasmSolver` (`CONDA_SOLVER=cx-wasm`), WASM extraction, `%cx` / `%conda` IPython magics, MEMFS-oriented patches (downloads, subprocess no-op, extractor), shared-library loading for C extensions after install.
+- **cx-jupyterlite** — JupyterLite federated extension rewrites bare `conda` cell commands so the kernel magics handle them.
+- **cx-wasm-kernel** — conda recipe packaging WASM artifacts and `cx_wasm_bridge` (async repodata shard prefetch at kernel startup for fast solves).
+- **JupyterLite demo** (`lite/`) — static site with xeus-python; demo notebooks under `lite/files/notebooks/demos/`; GitHub Pages deploy at `/demo/`.
+- **Async shard prefetch** — two-phase fetch (parallel `fetch()` at startup) + sync solve; large solve-time improvement when using sharded repodata (CEP-16).
+- **Docker** — minimal multi-arch images on GHCR for `cx` in containers.
+- **Docs** — browser/WASM guide, Diátaxis-aligned docs updates, DESIGN/PLAN refresh for WASM; **Background & rationale** page; **Implementation plan** and changelog included in Sphinx; GitHub issue templates (`type::feature`, epic, bug).
+
+### Fixes
+
+- cx-wasm / conda-emscripten: cross-channel transitive dependency resolution, pyjs coercion, repodata URL derivation, session-level shard caching, and related install-path fixes.
+- Demo notebooks: WASM-friendly examples (e.g. `lz4`, `np.linalg.eigh`), runtime `conda install` where appropriate, scipy in kernel env.
+
+### Notes
+
+- Default embedded stack still uses **conda-rattler-solver** and excludes **conda-libmamba-solver**; lockfile updated in step with conda-forge pins (e.g. conda-rattler-solver / py-rattler bumps as recorded in commits).
+
 ## 0.3.1 (2026-03-06)
 
 ### Fixes
@@ -13,7 +35,7 @@
 
 ## 0.3.0 (2026-03-06)
 
-w
+_No changelog entry was added for this release._
 
 ## 0.2.0
 
