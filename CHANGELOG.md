@@ -1,5 +1,44 @@
 # Changelog
 
+## 0.5.0 (2026-03-30)
+
+### Features
+
+- **Offline bootstrap** — New `--payload DIR` and `--offline` flags for `cx bootstrap` enable fully air-gapped installations from pre-downloaded `.conda` / `.tar.bz2` archives. Also available via `CX_PAYLOAD` and `CX_OFFLINE` environment variables for use in native installer post-install scripts (macOS PKG, Windows MSI) and CI pipelines.
+- **Self-contained binary (`cxz`)** — Build with `CX_EMBED_PAYLOAD=1` to bundle all locked package archives directly into the binary. One ~60 MB file, zero network access — drop it anywhere and run `cxz bootstrap`. Auto-detects the embedded payload at runtime; all other `cx` flags and subcommands work identically.
+- **Docker cxz image** — Pre-bootstrapped multi-arch Docker image built on `gcr.io/distroless/cc-debian12:nonroot`, published alongside the existing `cx` image on GHCR.
+- **GitHub Action `embed-payload` input** — Build `cxz` binaries via the Action or reusable workflow with `embed-payload: "true"`.
+- **Release profile optimizations** — `lto = "fat"`, `codegen-units = 1`, `opt-level = "z"` reduce the `cx` binary from ~17 MB to ~7 MB.
+
+### Improvements
+
+- SHA256 verification of all packages downloaded during `cxz` build, with automatic re-download on checksum mismatch.
+- Embedded payload temp directory is cleaned up after extraction.
+- New `lockfile_records()` helper deduplicates lockfile parsing across `from_lockfile`, `from_lockfile_with_payload`, and `from_lockfile_offline`.
+- `cx status` shows `cxz` as the binary name and embedded payload size when applicable.
+- Use idiomatic `&Path` instead of `&PathBuf` in build script function signatures.
+
+### Tests
+
+- Parameterized `CX_OFFLINE` env var parsing tests (7 truthy/falsy cases).
+- `CX_PAYLOAD` env var forwarding test.
+- `cx status` binary name and version output test.
+- `--offline --no-lock` rejection and bad `--payload` directory tests.
+- Online-gated integration tests for full offline and payload bootstrap workflows.
+
+### Docs
+
+- CLI reference for `--payload`, `--offline`, and `cxz bootstrap` examples.
+- Configuration reference for `CX_PAYLOAD`, `CX_OFFLINE`, and `CX_EMBED_PAYLOAD`.
+- Features page with `cxz` section and ASCII architecture diagram.
+- Custom builds guide for building `cxz` locally, via GitHub Action, and via reusable workflow.
+- Docker quickstart tab for the pre-bootstrapped `cxz` image.
+
+### CI
+
+- `cxz` build and smoke test in CI (Linux x86_64).
+- Release workflow: `cxz` build matrix (Linux, macOS, Windows), pre-bootstrapped Docker image build and push.
+
 ## 0.4.1 (2026-03-30)
 
 ### Fixes
