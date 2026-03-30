@@ -2,7 +2,7 @@
 
 ## Single-binary bootstrapper
 
-cx is a single ~17 MB static binary written in Rust. It requires no Python,
+cx is a single ~7 MB static binary written in Rust. It requires no Python,
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
 
@@ -92,6 +92,61 @@ Or skip the lockfile entirely for a live solve:
 ```bash
 cx bootstrap --no-lock
 ```
+
+## Offline bootstrap
+
+cx supports fully offline, air-gapped bootstrap from a local directory of
+package archives or from a previously populated package cache. This enables
+deployment in restricted-network environments and native installers
+(macOS PKG, Windows MSI) that bundle cx alongside a package payload.
+
+Two flags control this behavior:
+
+- `--payload DIR` points to a directory of `.conda` / `.tar.bz2` archives.
+  cx pre-populates the rattler package cache from this directory, then
+  installs from cache. Without `--offline`, missing packages fall back to
+  network download.
+- `--offline` disables all network access. All packages must be available
+  locally (in the cache or payload). Incompatible with `--no-lock`.
+
+```bash
+# Re-use packages from a previous bootstrap (no network)
+cx bootstrap --prefix /opt/conda --offline
+
+# Install from a bundled payload directory (fully air-gapped)
+cx bootstrap --payload ./packages/ --offline
+```
+
+Both flags can also be set via the `CX_PAYLOAD` and `CX_OFFLINE` environment
+variables, making them easy to use from native installer post-install scripts.
+
+## Self-contained binary (cxz)
+
+`cxz` takes offline bootstrap one step further: it embeds the package archives
+themselves into the binary. One ~60 MB file, zero network access, drop it
+anywhere.
+
+```
+cx (7 MB)                 cxz (60 MB)
+┌──────────────┐          ┌──────────────┐
+│  cx binary   │          │  cxz binary  │
+│  (7 MB)      │          │  (7 MB)      │
+├──────────────┤          ├──────────────┤
+│  lockfile    │          │  lockfile    │
+│  (39 KB)     │          │  (39 KB)     │
+│              │          ├──────────────┤
+│              │          │  payload.tar │
+│              │          │  (~50 MB)    │
+└──────────────┘          └──────────────┘
+```
+
+`cxz` is the same codebase as `cx`, built with `CX_EMBED_PAYLOAD=1`. It
+detects its embedded payload automatically and behaves as if `--payload
+--offline` were passed. All other flags and subcommands work identically.
+
+It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
+Docker image. See the [custom builds guide](guides/custom-builds.md) for
+build instructions.
 
 ## Uninstall (`cx uninstall`)
 

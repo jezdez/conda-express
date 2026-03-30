@@ -15,7 +15,7 @@ mod install;
 use cli::{Cli, Command, LockSource};
 use commands::{
     bootstrap, default_prefix, ensure_bootstrapped, is_bootstrapped, print_disabled_init,
-    print_disabled_shell_command, status, uninstall,
+    print_disabled_shell_command, status, uninstall, validate_bootstrap_flags,
 };
 use config::embedded_config;
 
@@ -60,6 +60,8 @@ async fn async_main() -> miette::Result<()> {
                     no_exclude,
                     no_lock,
                     lockfile,
+                    payload,
+                    offline,
                 }) => {
                     let prefix = prefix.map(Ok).unwrap_or_else(default_prefix)?;
                     let excludes = if no_exclude {
@@ -74,8 +76,32 @@ async fn async_main() -> miette::Result<()> {
                     } else {
                         LockSource::Embedded
                     };
-                    return bootstrap(&prefix, force, channel, package, &excludes, lock_source)
-                        .await;
+
+                    let payload = payload.or_else(|| {
+                        env::var("CX_PAYLOAD")
+                            .ok()
+                            .filter(|v| !v.is_empty())
+                            .map(std::path::PathBuf::from)
+                    });
+                    let offline = offline
+                        || env::var("CX_OFFLINE")
+                            .ok()
+                            .filter(|v| !v.is_empty())
+                            .is_some_and(|v| v != "0" && v.to_lowercase() != "false");
+
+                    validate_bootstrap_flags(offline, no_lock, &payload)?;
+
+                    return bootstrap(
+                        &prefix,
+                        force,
+                        channel,
+                        package,
+                        &excludes,
+                        lock_source,
+                        payload,
+                        offline,
+                    )
+                    .await;
                 }
                 Some(Command::Status { prefix }) => {
                     let prefix = prefix.map(Ok).unwrap_or_else(default_prefix)?;

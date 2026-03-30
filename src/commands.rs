@@ -35,12 +35,36 @@ pub(crate) async fn ensure_bootstrapped(prefix: &Path) -> miette::Result<()> {
             None,
             &cfg.exclude,
             LockSource::Embedded,
+            None,
+            false,
         )
         .await?;
     }
     Ok(())
 }
 
+pub(crate) fn validate_bootstrap_flags(
+    offline: bool,
+    no_lock: bool,
+    payload: &Option<std::path::PathBuf>,
+) -> miette::Result<()> {
+    if offline && no_lock {
+        return Err(miette::miette!(
+            "--offline and --no-lock are incompatible (offline mode requires a lockfile)"
+        ));
+    }
+    if let Some(dir) = payload
+        && !dir.is_dir()
+    {
+        return Err(miette::miette!(
+            "--payload path is not a directory: {}",
+            dir.display()
+        ));
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn bootstrap(
     prefix: &Path,
     force: bool,
@@ -48,6 +72,8 @@ pub(crate) async fn bootstrap(
     extra_packages: Option<Vec<String>>,
     excludes: &[String],
     lock_source: LockSource,
+    payload: Option<std::path::PathBuf>,
+    offline: bool,
 ) -> miette::Result<()> {
     if is_bootstrapped(prefix) && !force {
         eprintln!(
@@ -85,6 +111,9 @@ pub(crate) async fn bootstrap(
     if !excludes.is_empty() {
         eprintln!("   Exclude:  {}", excludes.join(", "));
     }
+    if offline {
+        eprintln!("   Mode:     offline");
+    }
 
     let lock_content = match &lock_source {
         LockSource::Embedded => {
@@ -108,10 +137,33 @@ pub(crate) async fn bootstrap(
         }
     };
 
-    match &lock_content {
-        Some(content) => install::from_lockfile(prefix, content, excludes).await?,
-        None => install::from_solve(prefix, &channels, &specs, excludes).await?,
-    };
+    if let Some(ref payload_dir) = payload {
+        let content = lock_content.ok_or_else(|| {
+            miette::miette!("--payload requires a lockfile (embedded or --lockfile)")
+        })?;
+        eprintln!("   Payload:  {}", payload_dir.display());
+        install::from_lockfile_with_payload(prefix, &content, excludes, payload_dir, offline)
+            .await?;
+    } else if let Some(embedded_dir) = install::extract_embedded_payload()? {
+        let content =
+            lock_content.ok_or_else(|| miette::miette!("embedded payload requires a lockfile"))?;
+        eprintln!("   Payload:  embedded");
+        let result =
+            install::from_lockfile_with_payload(prefix, &content, excludes, &embedded_dir, true)
+                .await;
+        let _ = std::fs::remove_dir_all(&embedded_dir);
+        result?;
+    } else if offline {
+        let content = lock_content.ok_or_else(|| {
+            miette::miette!("--offline requires a lockfile (embedded or --lockfile)")
+        })?;
+        install::from_lockfile_offline(prefix, &content, excludes).await?;
+    } else {
+        match &lock_content {
+            Some(content) => install::from_lockfile(prefix, content, excludes).await?,
+            None => install::from_solve(prefix, &channels, &specs, excludes).await?,
+        };
+    }
 
     write_condarc(prefix)?;
     write_frozen(prefix)?;
@@ -136,12 +188,20 @@ pub(crate) fn status(prefix: &Path) -> miette::Result<()> {
 
     let meta = read_metadata(prefix)?;
 
-    println!("cx {}", env!("CARGO_PKG_VERSION"));
+    let payload = crate::config::EMBEDDED_PAYLOAD;
+    let binary_name = if payload.is_empty() { "cx" } else { "cxz" };
+    println!("{} {}", binary_name, env!("CARGO_PKG_VERSION"));
     println!("  prefix:   {}", prefix.display());
     println!("  channels: {}", meta.channels.join(", "));
     println!("  packages: {}", meta.packages.join(", "));
     if !meta.excludes.is_empty() {
         println!("  excludes: {}", meta.excludes.join(", "));
+    }
+    if !payload.is_empty() {
+        println!(
+            "  payload:  embedded ({:.1} MB)",
+            payload.len() as f64 / 1_048_576.0
+        );
     }
 
     let installed = PrefixRecord::collect_from_prefix::<PrefixRecord>(prefix).into_diagnostic()?;
@@ -355,6 +415,7 @@ pub(crate) fn print_disabled_init() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rstest::rstest;
     use tempfile::TempDir;
 
     #[test]
@@ -499,5 +560,42 @@ mod tests {
 
         let result = std::fs::read_to_string(&bashrc).unwrap();
         assert_eq!(result, original, "file should be unchanged when no match");
+    }
+
+    #[rstest]
+    #[case::offline_no_lock(true, true, false, "incompatible")]
+    #[case::payload_missing_dir(false, false, true, "not a directory")]
+    fn test_validate_bootstrap_flags(
+        #[case] offline: bool,
+        #[case] no_lock: bool,
+        #[case] bad_payload_path: bool,
+        #[case] expected_err_contains: &str,
+    ) {
+        let payload = if bad_payload_path {
+            Some(std::path::PathBuf::from("/nonexistent/payload/dir"))
+        } else {
+            None
+        };
+        let result = validate_bootstrap_flags(offline, no_lock, &payload);
+        assert!(result.is_err(), "should fail validation");
+        let err = result.unwrap_err().to_string();
+        assert!(
+            err.contains(expected_err_contains),
+            "error should contain '{expected_err_contains}', got: {err}"
+        );
+    }
+
+    #[test]
+    fn test_validate_bootstrap_flags_valid_payload() {
+        let tmp = TempDir::new().unwrap();
+        let payload = Some(tmp.path().to_path_buf());
+        let result = validate_bootstrap_flags(false, false, &payload);
+        assert!(result.is_ok(), "valid payload dir should pass validation");
+    }
+
+    #[test]
+    fn test_validate_bootstrap_flags_no_flags() {
+        let result = validate_bootstrap_flags(false, false, &None);
+        assert!(result.is_ok(), "no flags should pass validation");
     }
 }

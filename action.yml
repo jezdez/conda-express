@@ -31,6 +31,12 @@ inputs:
     description: "Git ref of conda-express to build from (tag, branch, or SHA)."
     required: false
     default: "main"
+  embed-payload:
+    description: >
+      Embed package archives into the binary for offline bootstrap
+      (increases size by ~50 MB). The output binary is named cxz instead of cx.
+    required: false
+    default: "false"
 
 outputs:
   binary-path:
@@ -67,6 +73,7 @@ runs:
         CX_PACKAGES: ${{ inputs.packages }}
         CX_CHANNELS: ${{ inputs.channels }}
         CX_EXCLUDE: ${{ inputs.exclude }}
+        CX_EMBED_PAYLOAD: ${{ inputs.embed-payload == 'true' && '1' || '' }}
       working-directory: .cx-build
       run: pixi run build
 
@@ -75,12 +82,18 @@ runs:
       shell: bash
       run: |
         TARGET="$(rustc -vV | grep '^host:' | cut -d' ' -f2)"
+        EMBED="${{ inputs.embed-payload }}"
+        if [[ "$EMBED" == "true" ]]; then
+          PREFIX="cxz"
+        else
+          PREFIX="cx"
+        fi
         if [[ "$TARGET" == *"windows"* ]]; then
           BIN_NAME="cx.exe"
-          ASSET_NAME="cx-${TARGET}.exe"
+          ASSET_NAME="${PREFIX}-${TARGET}.exe"
         else
           BIN_NAME="cx"
-          ASSET_NAME="cx-${TARGET}"
+          ASSET_NAME="${PREFIX}-${TARGET}"
         fi
         BINARY_PATH="${GITHUB_WORKSPACE}/${ASSET_NAME}"
         cp ".cx-build/target/release/${BIN_NAME}" "${BINARY_PATH}"

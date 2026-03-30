@@ -1,0 +1,14 @@
+# Pre-bootstrapped cxz image: conda is already installed, no network needed.
+# Stage 1: bootstrap in a minimal container with shell support.
+# Set HOME to match the nonroot user in the final stage so the prefix
+# lands at /home/nonroot/.cx (where default_prefix() will look for it).
+FROM debian:bookworm-slim AS bootstrap
+ARG TARGETARCH
+COPY cxz-linux-${TARGETARCH} /usr/local/bin/cxz
+RUN HOME=/home/nonroot /usr/local/bin/cxz bootstrap
+
+# Stage 2: copy the bootstrapped prefix into distroless
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:7e5b8df2f4d36f5599ef4ab856d7d444922531709becb03f3368c6d797d0a5eb
+COPY --from=bootstrap /home/nonroot/.cx /home/nonroot/.cx
+COPY --from=bootstrap /usr/local/bin/cxz /usr/local/bin/cxz
+ENTRYPOINT ["/usr/local/bin/cxz"]

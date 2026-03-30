@@ -59,6 +59,20 @@ jobs:
           "$BIN" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
           "$BIN" status --prefix "$RUNNER_TEMP/cx-smoke"
 
+      - name: Build cxz (embedded payload)
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        env:
+          CX_EMBED_PAYLOAD: "1"
+        run: pixi run build
+
+      - name: Smoke test cxz
+        if: matrix.target == 'x86_64-unknown-linux-gnu'
+        shell: bash
+        run: |
+          cp target/release/cx cxz
+          ./cxz bootstrap --prefix "$RUNNER_TEMP/cxz-smoke"
+          ./cxz status --prefix "$RUNNER_TEMP/cxz-smoke"
+
       - name: Stage binary
         shell: bash
         run: |

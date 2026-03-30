@@ -76,6 +76,15 @@ pub enum Command {
         /// Use an external lockfile instead of the embedded one
         #[clap(long)]
         lockfile: Option<PathBuf>,
+
+        /// Directory containing pre-downloaded .conda / .tar.bz2 package archives
+        /// for offline installation
+        #[clap(long)]
+        payload: Option<PathBuf>,
+
+        /// Disable network access (install only from cache or --payload)
+        #[clap(long)]
+        offline: bool,
     },
 
     /// Print cx status (prefix, channels, packages, excludes)
@@ -116,6 +125,7 @@ pub enum LockSource {
 mod tests {
     use super::*;
     use assert_matches::assert_matches;
+    use rstest::rstest;
 
     #[test]
     fn test_parse_bootstrap_defaults() {
@@ -131,6 +141,8 @@ mod tests {
                 no_exclude: false,
                 no_lock: false,
                 lockfile: None,
+                payload: None,
+                offline: false,
             })
         );
     }
@@ -280,5 +292,30 @@ mod tests {
     fn test_parse_no_args() {
         let cli = Cli::parse_from(["cx"]);
         assert!(cli.command.is_none(), "bare `cx` should have no command");
+    }
+
+    #[rstest]
+    #[case::payload_only(&["cx", "bootstrap", "--payload", "/tmp/pkgs"], Some("/tmp/pkgs"), false)]
+    #[case::offline_only(&["cx", "bootstrap", "--offline"], None, true)]
+    #[case::both(&["cx", "bootstrap", "--payload", "/p", "--offline"], Some("/p"), true)]
+    #[case::defaults(&["cx", "bootstrap"], None, false)]
+    fn test_parse_bootstrap_offline_flags(
+        #[case] args: &[&str],
+        #[case] expected_payload: Option<&str>,
+        #[case] expected_offline: bool,
+    ) {
+        let cli = Cli::parse_from(args);
+        match cli.command {
+            Some(Command::Bootstrap {
+                payload, offline, ..
+            }) => {
+                assert_eq!(
+                    payload.as_deref(),
+                    expected_payload.map(std::path::Path::new)
+                );
+                assert_eq!(offline, expected_offline);
+            }
+            other => panic!("expected Bootstrap, got {other:?}"),
+        }
     }
 }
