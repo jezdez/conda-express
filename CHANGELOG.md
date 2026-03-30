@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1 (2026-03-30)
+
+### Fixes
+
+- Allow `cxz` binaries through `docker/.dockerignore` so the `docker-cxz-images` release job can copy them into the build context.
+
+### Docs
+
+- Update binary size estimates across all documentation to match actual 0.5.0 release artifacts: `cx` 7-11 MB (platform-dependent), `cxz` 50-95 MB, payload increase 40-85 MB.
+
 ## 0.5.0 (2026-03-30)
 
 ### Features
