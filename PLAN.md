@@ -1,6 +1,6 @@
 # conda-express (cx): Implementation Plan
 
-> For architecture, current features, and file structure see [DESIGN.md](DESIGN.md).
+> For architecture, current features, and file structure see [DESIGN.md](docs/design.md).
 >
 > For ecosystem context, prior art, and rationale see the [Background & rationale](https://jezdez.github.io/conda-express/background/) docs page.
 
@@ -53,7 +53,7 @@ These improve conda's ecosystem health but are **not required** for cx:
 
 ### Phase 0: cx Rust prototype
 
-All core functionality implemented and tested. See [DESIGN.md](DESIGN.md) for the full feature table and architecture.
+All core functionality implemented and tested. See [DESIGN.md](docs/design.md) for the full feature table and architecture.
 
 ### Phase 1: Ecosystem integration (completed items)
 
