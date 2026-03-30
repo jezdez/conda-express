@@ -170,6 +170,9 @@ jobs:
           VERSION="${TAG_NAME#v}"
           FORMULA="Formula/cx.rb"
 
+          # Tags omit the "v" prefix; GitHub asset URLs are .../releases/download/<tag>/...
+          sed -i 's|releases/download/v#{version}|releases/download/#{version}|g' "$FORMULA"
+
           read_sha() { awk '{print $1}' "checksums/cx-${1}.sha256"; }
 
           export CX_VERSION="$VERSION"
