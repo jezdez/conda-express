@@ -138,14 +138,12 @@ fn test_cx_uninstall_interactive_prompt_declined() {
     let prefix = tmp.path().join("cx-uninstall-interactive");
     std::fs::create_dir_all(prefix.join("conda-meta")).unwrap();
 
-    cx()
-        .args(["uninstall", "--prefix", prefix.to_str().unwrap()])
+    cx().args(["uninstall", "--prefix", prefix.to_str().unwrap()])
         .write_stdin("n\n")
         .assert()
         .success()
         .stderr(
-            predicate::str::contains("Continue? [y/N]")
-                .and(predicate::str::contains("Aborted.")),
+            predicate::str::contains("Continue? [y/N]").and(predicate::str::contains("Aborted.")),
         );
 
     assert!(
@@ -160,15 +158,13 @@ fn test_cx_uninstall_default_prefix_respects_home() {
     let tmp = TempDir::new().unwrap();
     std::fs::create_dir_all(tmp.path().join(".cx/conda-meta")).unwrap();
 
-    cx()
-        .env("HOME", tmp.path().as_os_str())
+    cx().env("HOME", tmp.path().as_os_str())
         .arg("uninstall")
         .write_stdin("n\n")
         .assert()
         .success()
         .stderr(
-            predicate::str::contains("Continue? [y/N]")
-                .and(predicate::str::contains("Aborted.")),
+            predicate::str::contains("Continue? [y/N]").and(predicate::str::contains("Aborted.")),
         );
 
     assert!(tmp.path().join(".cx").exists());
