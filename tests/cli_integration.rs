@@ -132,8 +132,13 @@ fn test_cx_uninstall_no_prefix_argument() {
     let tmp = TempDir::new().unwrap();
     std::fs::create_dir_all(tmp.path().join(".cx/conda-meta")).unwrap();
 
-    cx().env("HOME", tmp.path().to_str().unwrap())
-        .arg("uninstall")
+    let home = tmp.path().to_str().unwrap();
+    let mut cmd = cx();
+    cmd.env("HOME", home);
+    // `dirs::home_dir()` uses USERPROFILE on Windows, not HOME.
+    #[cfg(windows)]
+    cmd.env("USERPROFILE", home);
+    cmd.arg("uninstall")
         .assert()
         .success()
         .stderr(predicate::str::contains("Continue? [y/N]"));
