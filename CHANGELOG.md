@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1 (2026-03-30)
+
+### Fixes
+
+- **cx create / cx env create** — Avoid piping conda stdout when stdin is a TTY and `-y` / `--yes` is not set. Conda prints confirmation prompts to stdout without a trailing newline, then reads stdin; line-oriented output filtering blocked the prompt and made input appear swallowed. Activation-hint filtering still runs for non-interactive use (`-y` / `--yes`) or when stdin is not a terminal.
+- Add unix integration test reproducing conda's stdout/stdin prompt pattern (`BufRead::read_line` and `lines()`).
+
+### Tests
+
+- **Uninstall integration tests** — Use explicit `--prefix` for the interactive uninstall test on Windows (`dirs` 6 resolves home via known-folder profile, not `HOME` / `USERPROFILE`). Parametrize status vs uninstall missing-prefix cases with rstest; add a unix-only test for default prefix when `HOME` points at a synthetic layout.
+
 ## 0.4.0 (2026-03-31)
 
 ### Features
