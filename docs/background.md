@@ -12,7 +12,7 @@ running a platform-specific installer, and leaves users with a heavyweight base
 environment that includes the `conda-libmamba-solver` and its 27 exclusive
 native dependencies (libsolv, libarchive, libcurl, spdlog, etc.).
 
-cx takes a different approach: a single ~7 MB Rust binary that bootstraps a
+cx takes a different approach: a single Rust binary (7-11 MB) that bootstraps a
 minimal conda installation in seconds using an embedded lockfile. No Python
 required to start; no installer framework; no shell profile modifications.
 
@@ -49,7 +49,7 @@ cx is distributed on PyPI using the same technique as
    the Rust binary and packages it into a wheel's `scripts/` directory
 2. A tiny Python wrapper (`python/conda_express/`) ships alongside with
    `find_cx_bin()` and `__main__.py` for `python -m conda_express`
-3. Pre-built platform wheels (~7 MB each) are uploaded to PyPI for every target
+3. Pre-built platform wheels (7-11 MB each) are uploaded to PyPI for every target
 4. An sdist fallback builds from source if no wheel is available
 
 ### Comparison: cx on PyPI vs. conda on PyPI
@@ -57,7 +57,7 @@ cx is distributed on PyPI using the same technique as
 | Dimension | cx on PyPI (maturin wheel) | conda on PyPI (Python wheel) |
 |---|---|---|
 | Upstream changes needed | None | pycosat optional, menuinst optional, solver plugin publishing |
-| What ships | Single Rust binary (~7 MB wheel) | conda + all deps as Python wheels |
+| What ships | Single Rust binary (7-11 MB wheel) | conda + all deps as Python wheels |
 | Solver | rattler (compiled in) + conda-rattler-solver (from conda-forge) | conda-rattler-solver (from PyPI, needs py-rattler) |
 | conda-forge packages | Full access (bootstraps a real conda env) | Limited to what's on PyPI |
 | Install experience | `pip install conda-express && cx bootstrap` | `pip install conda` |

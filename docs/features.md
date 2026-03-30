@@ -2,7 +2,7 @@
 
 ## Single-binary bootstrapper
 
-cx is a single ~7 MB static binary written in Rust. It requires no Python,
+cx is a single static binary (7-11 MB depending on platform) written in Rust. It requires no Python,
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
 
@@ -123,20 +123,20 @@ variables, making them easy to use from native installer post-install scripts.
 ## Self-contained binary (cxz)
 
 `cxz` takes offline bootstrap one step further: it embeds the package archives
-themselves into the binary. One ~60 MB file, zero network access, drop it
+themselves into the binary. One 50-95 MB file (varies by platform), zero network access, drop it
 anywhere.
 
 ```
-cx (7 MB)                 cxz (60 MB)
+cx (7-11 MB)              cxz (50-95 MB)
 ┌──────────────┐          ┌──────────────┐
 │  cx binary   │          │  cxz binary  │
-│  (7 MB)      │          │  (7 MB)      │
+│  (7-11 MB)   │          │  (7-11 MB)   │
 ├──────────────┤          ├──────────────┤
 │  lockfile    │          │  lockfile    │
 │  (39 KB)     │          │  (39 KB)     │
 │              │          ├──────────────┤
 │              │          │  payload.tar │
-│              │          │  (~50 MB)    │
+│              │          │  (varies)    │
 └──────────────┘          └──────────────┘
 ```
 

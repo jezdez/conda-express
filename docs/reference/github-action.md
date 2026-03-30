@@ -37,7 +37,7 @@ uses: jezdez/conda-express@<ref>
 
 `embed-payload` {bdg-secondary}`optional` {bdg-info}`default: "false"`
 : Embed all locked package archives into the binary for fully offline
-  bootstrap. Increases binary size by ~50 MB. The output binary is named
+  bootstrap. Increases binary size by 40-85 MB (varies by platform). The output binary is named
   `cxz-<target>` instead of `cx-<target>`.
 
 ### Outputs

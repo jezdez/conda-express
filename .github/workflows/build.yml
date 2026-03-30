@@ -39,7 +39,7 @@ on:
       embed-payload:
         description: >
           Embed package archives into the binary for offline bootstrap
-          (increases size by ~50 MB). The output binary is named cxz instead of cx.
+          (increases size by 40-85 MB depending on platform). The output binary is named cxz instead of cx.
         required: false
         type: string
         default: "false"

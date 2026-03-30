@@ -5,10 +5,10 @@
 ### Features
 
 - **Offline bootstrap** — New `--payload DIR` and `--offline` flags for `cx bootstrap` enable fully air-gapped installations from pre-downloaded `.conda` / `.tar.bz2` archives. Also available via `CX_PAYLOAD` and `CX_OFFLINE` environment variables for use in native installer post-install scripts (macOS PKG, Windows MSI) and CI pipelines.
-- **Self-contained binary (`cxz`)** — Build with `CX_EMBED_PAYLOAD=1` to bundle all locked package archives directly into the binary. One ~60 MB file, zero network access — drop it anywhere and run `cxz bootstrap`. Auto-detects the embedded payload at runtime; all other `cx` flags and subcommands work identically.
+- **Self-contained binary (`cxz`)** — Build with `CX_EMBED_PAYLOAD=1` to bundle all locked package archives directly into the binary. One 50-95 MB file (varies by platform), zero network access — drop it anywhere and run `cxz bootstrap`. Auto-detects the embedded payload at runtime; all other `cx` flags and subcommands work identically.
 - **Docker cxz image** — Pre-bootstrapped multi-arch Docker image built on `gcr.io/distroless/cc-debian12:nonroot`, published alongside the existing `cx` image on GHCR.
 - **GitHub Action `embed-payload` input** — Build `cxz` binaries via the Action or reusable workflow with `embed-payload: "true"`.
-- **Release profile optimizations** — `lto = "fat"`, `codegen-units = 1`, `opt-level = "z"` reduce the `cx` binary from ~17 MB to ~7 MB.
+- **Release profile optimizations** — `lto = "fat"`, `codegen-units = 1`, `opt-level = "z"` reduce the `cx` binary from ~17 MB to 7-11 MB (varies by platform).
 
 ### Improvements
 

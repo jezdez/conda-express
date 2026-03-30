@@ -151,7 +151,7 @@ found locally.
 ## Building cxz (self-contained binary)
 
 `cxz` is a variant of `cx` that embeds all package archives directly into the
-binary. The result is a single ~60 MB file that bootstraps conda with zero
+binary. The result is a single 50-95 MB file (varies by platform) that bootstraps conda with zero
 network access — drop it on any machine and run `cxz bootstrap`.
 
 ### Building locally
