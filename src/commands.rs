@@ -169,6 +169,8 @@ pub(crate) async fn bootstrap(
     write_frozen(prefix)?;
     write_metadata(prefix, &channels, &specs, excludes)?;
 
+    compile_python_bytecode(prefix);
+
     eprintln!(
         "\n{} conda bootstrapped successfully!",
         console::style("✔").green().bold()
@@ -178,6 +180,35 @@ pub(crate) async fn bootstrap(
     eprintln!("   Use `cx <conda-args>` to run conda commands.");
 
     Ok(())
+}
+
+fn compile_python_bytecode(prefix: &Path) {
+    let python = prefix.join("bin").join("python");
+    if !python.exists() {
+        return;
+    }
+
+    eprintln!(
+        "{} Compiling Python bytecode...",
+        console::style(">>").cyan().bold(),
+    );
+
+    let result = std::process::Command::new(&python)
+        .args(["-m", "compileall", "-q", "-j", "0"])
+        .arg(prefix.join("lib"))
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+
+    match result {
+        Ok(s) if s.success() => {}
+        _ => {
+            eprintln!(
+                "   {} bytecode compilation finished with errors (non-fatal)",
+                console::style("!").yellow(),
+            );
+        }
+    }
 }
 
 pub(crate) fn status(prefix: &Path) -> miette::Result<()> {
