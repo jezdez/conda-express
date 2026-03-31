@@ -188,17 +188,15 @@ fn compile_python_bytecode(prefix: &Path) {
         return;
     }
 
-    eprintln!(
-        "{} Compiling Python bytecode...",
-        console::style(">>").cyan().bold(),
-    );
-
-    let result = std::process::Command::new(&python)
-        .args(["-m", "compileall", "-q", "-j", "0"])
-        .arg(prefix.join("lib"))
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
+    let lib_dir = prefix.join("lib");
+    let result = install::wrap_spinner("compiling Python bytecode", move || {
+        std::process::Command::new(&python)
+            .args(["-m", "compileall", "-q", "-j", "0"])
+            .arg(&lib_dir)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+    });
 
     match result {
         Ok(s) if s.success() => {}
