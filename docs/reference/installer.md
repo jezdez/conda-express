@@ -64,6 +64,12 @@ All options are set via environment variables and work on both platforms.
 | `CX_PAYLOAD` | *(unset)* | Directory of `.conda`/`.tar.bz2` archives for offline bootstrap (passed to `cx bootstrap --payload`) |
 | `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap (passed to `cx bootstrap --offline`) |
 
+:::{tip}
+For fully air-gapped deployments, consider using `cxz` instead of `cx` with
+`CX_PAYLOAD` / `CX_OFFLINE`. The `cxz` binary embeds all packages directly
+and requires no separate payload directory. See {doc}`../features` for details.
+:::
+
 ### Examples
 
 Install a specific version:

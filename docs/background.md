@@ -16,6 +16,11 @@ cx takes a different approach: a single Rust binary (7-11 MB) that bootstraps a
 minimal conda installation in seconds using an embedded lockfile. No Python
 required to start; no installer framework; no shell profile modifications.
 
+For air-gapped or restricted-network environments, `cxz` goes further: it
+embeds all locked package archives directly into the binary (50-95 MB depending
+on platform). One file, zero network access — `cxz bootstrap` installs conda
+entirely from the embedded payload. See {ref}`Self-contained binary (cxz) <features:Self-contained binary (cxz)>` for details.
+
 ## conda-rattler-solver
 
 The [conda-rattler-solver](https://github.com/jaimergp/conda-rattler-solver)
@@ -153,4 +158,7 @@ binary embedding Python and conda together.
 The rattler approach installs conda as a real conda package into a real
 prefix — `__file__`, `sys.prefix`, all filesystem paths work normally.
 cx doesn't embed Python or conda into the binary; it bootstraps them into
-a standard prefix on first run.
+a standard prefix on first run. The `cxz` variant embeds the compressed
+package *archives* (not an unpacked Python), so the installed prefix is
+still a normal conda environment — just sourced from the binary instead
+of the network.

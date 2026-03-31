@@ -2,7 +2,7 @@
 
 A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
-cx replaces the miniconda/constructor installation pattern with a single static binary (7-11 MB depending on platform) that bootstraps a fully functional conda environment in seconds.
+cx replaces the miniconda/constructor installation pattern with a single static binary (7-11 MB depending on platform) that bootstraps a fully functional conda environment in seconds. For air-gapped environments, the self-contained `cxz` variant (50-95 MB) embeds all packages directly in the binary.
 
 ## Install
 
@@ -115,6 +115,13 @@ Uses conda-rattler-solver (resolvo) instead of libmamba. conda-spawn for activat
 :link-type: doc
 
 One binary, one command. No Python, no installer, no shell modifications required.
+:::
+
+:::{grid-item-card} {octicon}`cloud-offline` Air-gapped
+:link: features
+:link-type: doc
+
+`cxz` embeds all packages in a single 50-95 MB binary. Drop it anywhere, run `cxz bootstrap` — zero network access.
 :::
 
 ::::::

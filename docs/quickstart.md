@@ -65,15 +65,16 @@ $Env:CX_VERSION = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1
 Download the binary for your platform from the
 [latest release](https://github.com/jezdez/conda-express/releases/latest):
 
-| Platform | File |
-|---|---|
-| Linux x86_64 | `cx-x86_64-unknown-linux-gnu` |
-| Linux ARM64 | `cx-aarch64-unknown-linux-gnu` |
-| macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` |
-| macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
-| Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
+| Platform | cx (7-11 MB) | cxz (50-95 MB) |
+|---|---|---|
+| Linux x86_64 | `cx-x86_64-unknown-linux-gnu` | `cxz-x86_64-unknown-linux-gnu` |
+| Linux ARM64 | `cx-aarch64-unknown-linux-gnu` | `cxz-aarch64-unknown-linux-gnu` |
+| macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` | `cxz-x86_64-apple-darwin` |
+| macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` | `cxz-aarch64-apple-darwin` |
+| Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` | `cxz-x86_64-pc-windows-msvc.exe` |
 
-Each file has a matching `.sha256` checksum.
+Each file has a matching `.sha256` checksum. `cxz` is the self-contained
+variant with all packages embedded — see {doc}`features` for details.
 
 After downloading, make it executable and move it to your `PATH`:
 
