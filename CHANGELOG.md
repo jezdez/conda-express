@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.3 (2026-03-31)
+
+### Fixes
+
+- Add `channels: [conda-forge]` to the generated `.condarc`. conda 25.x requires `channels` to be set explicitly — `default_channels` alone is not sufficient, causing `NoChannelsConfiguredError` on commands like `conda create`.
+
+### Docs
+
+- Fix `features.md` ASCII diagram: payload size was unlabeled, cx binary label was duplicated in the cxz column.
+- Add air-gapped/cxz card to `index.md` landing page and mention cxz in the intro.
+- Add cxz context to `background.md` rationale sections.
+- Add cxz binaries to `quickstart.md` release download table.
+- Add cxz tip to `installer.md` offline options.
+
 ## 0.5.2 (2026-03-30)
 
 ### Fixes
