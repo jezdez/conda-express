@@ -7,7 +7,13 @@ Hide
 Type `export PS1="$DEMO_PS1" && mkdir -p /tmp/.demo-home && echo 'PS1="$ "' > /tmp/.demo-home/.bash_profile && export HOME=/tmp/.demo-home`
 Enter
 Wait /\$/
-Type `export PATH="$PWD/target/release:$HOME/.cx/condabin:$PATH" && cx bootstrap --force 2>/dev/null`
+Type `export PATH="$PWD/target/release:$HOME/.cx/condabin:$PATH"`
+Enter
+Wait /\$/
+Type `cx bootstrap --force 2>/dev/null`
+Enter
+Wait /\$/
+Type `rm -rf /tmp/cx-ws-warm && mkdir -p /tmp/cx-ws-warm && cd /tmp/cx-ws-warm && cx workspace init --name warm 2>/dev/null && cx workspace add "python>=3.12" numpy 2>/dev/null && cx workspace install 2>/dev/null && rm -rf /tmp/cx-ws-warm`
 Enter
 Wait /\$/
 Type "rm -rf /tmp/cx-ws-demo && mkdir -p /tmp/cx-ws-demo && cd /tmp/cx-ws-demo"

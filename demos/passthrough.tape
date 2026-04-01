@@ -7,7 +7,10 @@ Hide
 Type `export PS1="$DEMO_PS1" && mkdir -p /tmp/.demo-home && echo 'PS1="$ "' > /tmp/.demo-home/.bash_profile && export HOME=/tmp/.demo-home`
 Enter
 Wait /\$/
-Type `export PATH="$PWD/target/release:$HOME/.cx/condabin:$PATH" && cx bootstrap --force 2>/dev/null`
+Type `export PATH="$PWD/target/release:$HOME/.cx/condabin:$PATH"`
+Enter
+Wait /\$/
+Type `cx bootstrap --force 2>/dev/null && cx create -n myenv python=3.12 pandas -y -q 2>/dev/null && cx remove -n myenv --all -y -q 2>/dev/null`
 Enter
 Wait /\$/
 Type "clear"
