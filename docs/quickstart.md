@@ -177,6 +177,8 @@ exit    # or Ctrl+D
 
 ## Use conda normally
 
+![cx delegates conda commands transparently](../demos/passthrough.gif)
+
 All conda commands work transparently through cx:
 
 ```bash

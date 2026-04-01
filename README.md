@@ -311,6 +311,8 @@ This will show what will be removed and ask for confirmation. Use `--yes` to ski
 
 ## Activation model
 
+![cx delegates conda commands transparently](demos/passthrough.gif)
+
 cx ships with conda-spawn instead of traditional `conda activate`. There is no need to run `conda init` or modify shell profiles.
 
 ```bash

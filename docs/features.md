@@ -87,6 +87,8 @@ for the full feature set.
 
 ## Frozen base prefix (CEP 22)
 
+![cx status, cx info, and cx env list](../demos/status.gif)
+
 After bootstrap, cx writes a `conda-meta/frozen` marker file per
 [CEP 22](https://conda.org/learn/ceps/cep-0022/). This protects the base
 prefix from accidental modification. Users should create named environments
