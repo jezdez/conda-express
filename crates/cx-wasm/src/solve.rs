@@ -191,7 +191,7 @@ pub(crate) fn solve_with_records(
         timeout: None,
         channel_priority,
         exclude_newer: None,
-        min_age: None,
+        dependency_overrides: Vec::new(),
         strategy,
     };
 
