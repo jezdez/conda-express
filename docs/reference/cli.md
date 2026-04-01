@@ -81,6 +81,8 @@ cxz bootstrap
 
 ## `cx status`
 
+![cx status, cx info, and cx env list](../../demos/status.gif)
+
 Print cx installation status (prefix, channels, packages, excludes).
 For conda's own info, use `cx info` which passes through to `conda info`.
 
@@ -249,6 +251,8 @@ cx help
 ---
 
 ## Pass-through commands
+
+![cx delegates conda commands transparently](../../demos/passthrough.gif)
 
 Any command not listed above is passed through to the installed `conda` binary.
 cx replaces its own process with `conda` using `execvp` (Unix) or

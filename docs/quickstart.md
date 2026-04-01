@@ -132,6 +132,8 @@ pixi run build
 
 ## Bootstrap
 
+![Bootstrap conda, create an environment, and activate it](../demos/quickstart.gif)
+
 If you used the installer script, bootstrap has already been run for you.
 Otherwise, run it manually:
 

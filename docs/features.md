@@ -2,6 +2,8 @@
 
 ## Single-binary bootstrapper
 
+![Bootstrap conda, create an environment, and activate it](../demos/quickstart.gif)
+
 cx is a single static binary (7-11 MB depending on platform) written in Rust. It requires no Python,
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
@@ -37,6 +39,8 @@ conda ecosystem, and ships as a pure Python package with
 [py-rattler](https://pypi.org/project/py-rattler/) wheels.
 
 ## conda-spawn activation
+
+![cx delegates conda commands transparently](../demos/passthrough.gif)
 
 cx ships with [conda-spawn](https://github.com/conda-incubator/conda-spawn)
 and disables traditional `conda activate`/`deactivate`/`init`. Instead:

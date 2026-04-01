@@ -13,6 +13,8 @@ cx replaces the miniconda/constructor installation pattern with a 7-11 MB static
 
 ## Quick start
 
+![Bootstrap conda, create an environment, and activate it](demos/quickstart.gif)
+
 ```bash
 # Bootstrap a conda installation (first run only, ~3–5 s)
 cx bootstrap
