@@ -15,3 +15,6 @@ cx-jupyterlite/lib/
 cx-jupyterlite/labextension/
 cx-jupyterlite/.yarn/
 cx-jupyterlite/tsconfig.tsbuildinfo
+
+# Demo recordings (regenerate with: pixi run demos)
+demos/*.mp4

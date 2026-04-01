@@ -59,6 +59,8 @@ cx shell myenv          # same as: conda spawn myenv
 
 ## conda-workspaces
 
+![Workspaces and tasks with cx](../demos/workspaces.gif)
+
 cx includes [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/),
 which adds project-scoped multi-environment workspace management and a built-in
 task runner to conda. After bootstrap, two new subcommands are available:
