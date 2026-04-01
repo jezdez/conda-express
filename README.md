@@ -185,6 +185,7 @@ packages = [
     "conda-spawn",
     "conda-pypi",
     "conda-self",
+    "conda-workspaces",
 ]
 exclude = ["conda-libmamba-solver"]
 ```
