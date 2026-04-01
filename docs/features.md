@@ -57,6 +57,28 @@ your `PATH`.
 cx shell myenv          # same as: conda spawn myenv
 ```
 
+## conda-workspaces
+
+cx includes [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/),
+which adds project-scoped multi-environment workspace management and a built-in
+task runner to conda. After bootstrap, two new subcommands are available:
+
+```bash
+# Initialize a workspace and install environments
+cx workspace init --name my-project
+cx workspace add python numpy
+cx workspace install
+
+# Define and run tasks
+cx task run test
+cx task list
+```
+
+conda-workspaces reads workspace manifests from `conda.toml`, `pixi.toml`, or
+`pyproject.toml` — making it compatible with existing pixi projects. See the
+[conda-workspaces documentation](https://conda-incubator.github.io/conda-workspaces/)
+for the full feature set.
+
 ## Frozen base prefix (CEP 22)
 
 After bootstrap, cx writes a `conda-meta/frozen` marker file per

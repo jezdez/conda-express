@@ -39,8 +39,9 @@ cx installs a minimal conda stack from conda-forge:
 | conda-spawn | Subprocess-based environment activation |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) | Multi-environment workspace and task management |
 
-The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default, reducing the install from 113 to 86 packages.
+The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default, reducing the install size significantly.
 
 ## Installation
 
