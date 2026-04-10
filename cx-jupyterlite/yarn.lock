@@ -2475,9 +2475,9 @@ __metadata:
   linkType: hard
 
 "lodash@npm:^4.17.20, lodash@npm:^4.17.21, lodash@npm:^4.17.4, lodash@npm:^4.7.0":
-  version: 4.17.23
-  resolution: "lodash@npm:4.17.23"
-  checksum: 7daad39758a72872e94651630fbb54ba76868f904211089721a64516ce865506a759d9ad3d8ff22a2a49a50a09db5d27c36f22762d21766e47e3ba918d6d7bab
+  version: 4.18.1
+  resolution: "lodash@npm:4.18.1"
+  checksum: bb5f5b49aad29614e709af02b64c56b0f8b78c6a81434a3c1ae527d2f0f78ca08f9d9fb22aa825a053876c9d2166e9c01f31c356014b5e2bdc0556c057433102
   languageName: node
   linkType: hard
 
@@ -3386,11 +3386,11 @@ __metadata:
 
 "typescript@patch:typescript@^6.0#~builtin<compat/typescript>":
   version: 6.0.2
-  resolution: "typescript@patch:typescript@npm%3A6.0.2#~builtin<compat/typescript>::version=6.0.2&hash=85af82"
+  resolution: "typescript@patch:typescript@npm%3A6.0.2#~builtin<compat/typescript>::version=6.0.2&hash=5786d5"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 71a55653741fb12e81e7002c501ce2e5847e6cb251bc868de981561c07de178efed8f799ffc69cff92e162ceb44b67d25d60e293170db229cc5081afefababe3
+  checksum: 9f29a9339aa66f5e13485c596c8d4d086fb95960f8be8a23ea6ef33afe61f7c465d330a6f77911bb8613f231c2ebf131763a82d277cefa61147b24af2073f0c4
   languageName: node
   linkType: hard
 
