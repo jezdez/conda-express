@@ -27,8 +27,8 @@
     "@jupyterlab/services": "^7.5.0",
     "@jupyterlite/apputils": "^0.7.0",
     "@jupyterlite/services": "^0.7.0",
-    "@jupyterlite/xeus": "^4.5.1",
-    "@jupyterlite/xeus-extension": "^4.5.1",
+    "@jupyterlite/xeus": "^4.5.2",
+    "@jupyterlite/xeus-extension": "^4.5.2",
     "@lumino/coreutils": "^2"
   },
   "devDependencies": {
