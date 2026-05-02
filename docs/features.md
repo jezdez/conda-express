@@ -70,7 +70,10 @@ which adds project-scoped multi-environment workspace management and a built-in
 task runner to conda. After bootstrap, two new subcommands are available:
 
 ```bash
-# Initialize a workspace and install environments
+# One-step bootstrap: init, add, install, and open a shell
+cx workspace quickstart --name my-project python numpy
+
+# Or step by step
 cx workspace init --name my-project
 cx workspace add python numpy
 cx workspace install
