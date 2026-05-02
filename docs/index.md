@@ -83,6 +83,7 @@ cx installs a minimal conda stack from conda-forge:
 | conda-spawn | Subprocess-based environment activation |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
+| conda-global | Global tool installation and PATH management |
 | conda-workspaces | Multi-environment workspace and task management |
 
 The `conda-libmamba-solver` and its 27 exclusive native dependencies are excluded by default, reducing the install size significantly.
