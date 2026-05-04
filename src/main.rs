@@ -50,6 +50,7 @@ async fn async_main() -> miette::Result<()> {
         Some("bootstrap") | Some("status") | Some("shell") | Some("uninstall") | Some("help")
         | Some("--help") | Some("-h") | Some("--version") | Some("-V") | None => {
             let cli = Cli::parse();
+            let verbosity = cli.verbosity();
             match cli.command {
                 Some(Command::Bootstrap {
                     force,
@@ -100,6 +101,7 @@ async fn async_main() -> miette::Result<()> {
                         lock_source,
                         payload,
                         offline,
+                        verbosity,
                     )
                     .await;
                 }
@@ -109,7 +111,7 @@ async fn async_main() -> miette::Result<()> {
                 }
                 Some(Command::Uninstall { prefix, yes }) => {
                     let prefix = prefix.map(Ok).unwrap_or_else(default_prefix)?;
-                    return uninstall(&prefix, yes);
+                    return uninstall(&prefix, yes, verbosity);
                 }
                 Some(Command::Shell { env }) => {
                     let prefix = default_prefix()?;

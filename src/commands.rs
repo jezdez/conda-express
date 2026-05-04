@@ -1,11 +1,12 @@
 //! Subcommand implementations and prefix helpers.
 
+use std::process::Stdio;
 use std::{env, path::Path};
 
 use miette::{Context, IntoDiagnostic};
 use rattler_conda_types::PrefixRecord;
 
-use crate::cli::LockSource;
+use crate::cli::{LockSource, Verbosity};
 use crate::config::{
     EMBEDDED_LOCK, embedded_config, read_metadata, write_condarc, write_frozen, write_metadata,
 };
@@ -37,6 +38,7 @@ pub(crate) async fn ensure_bootstrapped(prefix: &Path) -> miette::Result<()> {
             LockSource::Embedded,
             None,
             false,
+            Verbosity::Quiet,
         )
         .await?;
     }
@@ -74,6 +76,7 @@ pub(crate) async fn bootstrap(
     lock_source: LockSource,
     payload: Option<std::path::PathBuf>,
     offline: bool,
+    verbosity: Verbosity,
 ) -> miette::Result<()> {
     if is_bootstrapped(prefix) && !force {
         eprintln!(
@@ -101,24 +104,28 @@ pub(crate) async fn bootstrap(
         specs.extend(extra);
     }
 
-    eprintln!(
-        "{} Bootstrapping conda into {}",
-        console::style(">>").cyan().bold(),
-        prefix.display()
-    );
-    eprintln!("   Channels: {}", channels.join(", "));
-    eprintln!("   Packages: {}", specs.join(", "));
-    if !excludes.is_empty() {
-        eprintln!("   Exclude:  {}", excludes.join(", "));
-    }
-    if offline {
-        eprintln!("   Mode:     offline");
+    if verbosity != Verbosity::Quiet {
+        eprintln!(
+            "{} Bootstrapping conda into {}",
+            console::style(">>").cyan().bold(),
+            prefix.display()
+        );
+        eprintln!("   Channels: {}", channels.join(", "));
+        eprintln!("   Packages: {}", specs.join(", "));
+        if !excludes.is_empty() {
+            eprintln!("   Exclude:  {}", excludes.join(", "));
+        }
+        if offline {
+            eprintln!("   Mode:     offline");
+        }
     }
 
     let lock_content = match &lock_source {
         LockSource::Embedded => {
             if !EMBEDDED_LOCK.is_empty() {
-                eprintln!("   Using embedded lockfile");
+                if verbosity != Verbosity::Quiet {
+                    eprintln!("   Using embedded lockfile");
+                }
                 Some(EMBEDDED_LOCK.to_string())
             } else {
                 None
@@ -128,11 +135,15 @@ pub(crate) async fn bootstrap(
             let content = std::fs::read_to_string(path)
                 .into_diagnostic()
                 .context("failed to read lockfile")?;
-            eprintln!("   Using lockfile: {}", path.display());
+            if verbosity != Verbosity::Quiet {
+                eprintln!("   Using lockfile: {}", path.display());
+            }
             Some(content)
         }
         LockSource::None => {
-            eprintln!("   Live solve (lockfile disabled)");
+            if verbosity != Verbosity::Quiet {
+                eprintln!("   Live solve (lockfile disabled)");
+            }
             None
         }
     };
@@ -141,13 +152,17 @@ pub(crate) async fn bootstrap(
         let content = lock_content.ok_or_else(|| {
             miette::miette!("--payload requires a lockfile (embedded or --lockfile)")
         })?;
-        eprintln!("   Payload:  {}", payload_dir.display());
+        if verbosity != Verbosity::Quiet {
+            eprintln!("   Payload:  {}", payload_dir.display());
+        }
         install::from_lockfile_with_payload(prefix, &content, excludes, payload_dir, offline)
             .await?;
     } else if let Some(embedded_dir) = install::extract_embedded_payload()? {
         let content =
             lock_content.ok_or_else(|| miette::miette!("embedded payload requires a lockfile"))?;
-        eprintln!("   Payload:  embedded");
+        if verbosity != Verbosity::Quiet {
+            eprintln!("   Payload:  embedded");
+        }
         let result =
             install::from_lockfile_with_payload(prefix, &content, excludes, &embedded_dir, true)
                 .await;
@@ -171,13 +186,15 @@ pub(crate) async fn bootstrap(
 
     compile_python_bytecode(prefix);
 
-    eprintln!(
-        "\n{} conda bootstrapped successfully!",
-        console::style("✔").green().bold()
-    );
-    eprintln!("   Prefix: {}", prefix.display());
-    eprintln!("   Run `cx status` for details.");
-    eprintln!("   Use `cx <conda-args>` to run conda commands.");
+    if verbosity != Verbosity::Quiet {
+        eprintln!(
+            "\n{} conda bootstrapped successfully!",
+            console::style("✔").green().bold()
+        );
+        eprintln!("   Prefix: {}", prefix.display());
+        eprintln!("   Run `cx status` for details.");
+        eprintln!("   Use `cx <conda-args>` to run conda commands.");
+    }
 
     Ok(())
 }
@@ -249,7 +266,7 @@ pub(crate) fn status(prefix: &Path) -> miette::Result<()> {
     Ok(())
 }
 
-pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
+pub(crate) fn uninstall(prefix: &Path, yes: bool, verbosity: Verbosity) -> miette::Result<()> {
     if !is_bootstrapped(prefix) {
         eprintln!(
             "{} No conda installation found at {}",
@@ -308,11 +325,67 @@ pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
         }
     }
 
-    eprintln!(
-        "\n{} Removing conda prefix at {}",
-        console::style(">>").cyan().bold(),
-        prefix.display()
-    );
+    if !named_envs.is_empty() {
+        let conda = crate::exec::conda_binary(prefix);
+        for env_name in &named_envs {
+            if verbosity != Verbosity::Quiet {
+                eprintln!(
+                    "{} Removing environment: {}",
+                    console::style(">>").cyan().bold(),
+                    env_name
+                );
+            }
+            let output = std::process::Command::new(&conda)
+                .args(["remove", "--all", "-n", env_name, "-y", "--json"])
+                .env("CONDA_ROOT_PREFIX", prefix)
+                .stdout(Stdio::piped())
+                .stderr(Stdio::null())
+                .output();
+            match output {
+                Ok(out) if out.status.success() => {
+                    if verbosity == Verbosity::Verbose
+                        && let Ok(json) = serde_json::from_slice::<serde_json::Value>(&out.stdout)
+                        && let Some(actions) = json
+                            .get("actions")
+                            .and_then(|a| a.get("UNLINK"))
+                            .and_then(|u| u.as_array())
+                    {
+                        for pkg in actions {
+                            if let Some(name) = pkg.get("name").and_then(|n| n.as_str()) {
+                                let version =
+                                    pkg.get("version").and_then(|v| v.as_str()).unwrap_or("?");
+                                eprintln!("     - {name} {version}");
+                            }
+                        }
+                    }
+                }
+                Ok(out) => {
+                    eprintln!(
+                        "{} conda exited with {} for {} (will force-remove with prefix)",
+                        console::style("!").yellow().bold(),
+                        out.status,
+                        env_name
+                    );
+                }
+                Err(e) => {
+                    eprintln!(
+                        "{} Failed to run conda for {}: {} (will force-remove with prefix)",
+                        console::style("!").yellow().bold(),
+                        env_name,
+                        e
+                    );
+                }
+            }
+        }
+    }
+
+    if verbosity != Verbosity::Quiet {
+        eprintln!(
+            "\n{} Removing conda prefix at {}",
+            console::style(">>").cyan().bold(),
+            prefix.display()
+        );
+    }
     std::fs::remove_dir_all(prefix)
         .into_diagnostic()
         .context("failed to remove conda prefix")?;
@@ -320,11 +393,13 @@ pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
     if let Some(ref bin) = cx_binary
         && bin.exists()
     {
-        eprintln!(
-            "{} Removing cx binary at {}",
-            console::style(">>").cyan().bold(),
-            bin.display()
-        );
+        if verbosity != Verbosity::Quiet {
+            eprintln!(
+                "{} Removing cx binary at {}",
+                console::style(">>").cyan().bold(),
+                bin.display()
+            );
+        }
         std::fs::remove_file(bin)
             .into_diagnostic()
             .context("failed to remove cx binary")?;
@@ -332,10 +407,12 @@ pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
 
     remove_shell_path_entries(prefix);
 
-    eprintln!(
-        "\n{} cx has been uninstalled.",
-        console::style("✔").green().bold()
-    );
+    if verbosity != Verbosity::Quiet {
+        eprintln!(
+            "\n{} cx has been uninstalled.",
+            console::style("✔").green().bold()
+        );
+    }
 
     Ok(())
 }
@@ -508,7 +585,7 @@ mod tests {
     #[test]
     fn test_uninstall_not_bootstrapped() {
         let tmp = TempDir::new().unwrap();
-        let result = uninstall(tmp.path(), true);
+        let result = uninstall(tmp.path(), true, Verbosity::Normal);
         assert!(
             result.is_ok(),
             "uninstall on empty prefix should succeed with a no-op"

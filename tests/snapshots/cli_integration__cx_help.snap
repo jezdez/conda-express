@@ -7,7 +7,7 @@ cx (conda-express) is a lightweight, single-binary bootstrapper for conda.
 It installs a minimal conda environment from an embedded lockfile in seconds,
 uses conda-rattler-solver instead of libmamba, and conda-spawn for activation.
 
-Usage: cx [COMMAND]
+Usage: cx [OPTIONS] [COMMAND]
 
 Commands:
   bootstrap  Bootstrap a fresh conda installation into the prefix
@@ -17,6 +17,12 @@ Commands:
   help       Show this help message
 
 Options:
+  -v, --verbose
+          Increase output detail
+
+  -q, --quiet
+          Suppress non-essential output
+
   -h, --help
           Print help (see a summary with '-h')
 
