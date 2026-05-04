@@ -19,13 +19,13 @@ __metadata:
   resolution: "@conda-express/cx-jupyterlite@workspace:."
   dependencies:
     "@jupyterlab/application": ^4.5.0
-    "@jupyterlab/builder": ^4.5.0
-    "@jupyterlab/coreutils": ^6.5.0
+    "@jupyterlab/builder": ^4.5.7
+    "@jupyterlab/coreutils": ^6.5.7
     "@jupyterlab/services": ^7.5.0
     "@jupyterlite/apputils": ^0.7.0
     "@jupyterlite/services": ^0.7.0
-    "@jupyterlite/xeus": ^4.5.1
-    "@jupyterlite/xeus-extension": ^4.5.1
+    "@jupyterlite/xeus": ^4.5.2
+    "@jupyterlite/xeus-extension": ^4.5.2
     "@lumino/coreutils": ^2
     rimraf: ^6.1.3
     typescript: ^6.0
@@ -222,9 +222,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jupyterlab/builder@npm:^4.5.0":
-  version: 4.5.6
-  resolution: "@jupyterlab/builder@npm:4.5.6"
+"@jupyterlab/builder@npm:^4.5.7":
+  version: 4.5.7
+  resolution: "@jupyterlab/builder@npm:4.5.7"
   dependencies:
     "@lumino/algorithm": ^2.0.4
     "@lumino/application": ^2.4.8
@@ -259,7 +259,7 @@ __metadata:
     worker-loader: ^3.0.2
   bin:
     build-labextension: lib/build-labextension.js
-  checksum: ecb43e0e748cb53d1a6908a3c6b094f6214d60c4fb17503d6d6b2aeb09424d9a95eef74b61c1dbec10f7c6e42254c66513088d0c4713fbceb2712084a6cd4ab3
+  checksum: 4c5860fd44fd0c8c7c2cee8a21b9d5db361f90e30e4fe86da1debdaa8fac4660672107a577684b0a33e4e7a857f85a88671c8f7468ca2c0564e3bd8df38b5630
   languageName: node
   linkType: hard
 
@@ -298,6 +298,20 @@ __metadata:
     path-browserify: ^1.0.0
     url-parse: ~1.5.4
   checksum: e693f47d86dcff9762340d8a7df504b9b258a03785243b8aac8606321216efac9c965bbf4197abbcb1f175dade44d0f53f0a9ff70f14a16e5243fae3a5ef16cf
+  languageName: node
+  linkType: hard
+
+"@jupyterlab/coreutils@npm:^6.5.7":
+  version: 6.5.7
+  resolution: "@jupyterlab/coreutils@npm:6.5.7"
+  dependencies:
+    "@lumino/coreutils": ^2.2.2
+    "@lumino/disposable": ^2.1.5
+    "@lumino/signaling": ^2.1.5
+    minimist: ~1.2.0
+    path-browserify: ^1.0.0
+    url-parse: ~1.5.4
+  checksum: cf77491e064dfc8d4b0e3eb8bac80d755adf23de5f43e5a839294ba730be521ef81bfe884f995b366914750d99ed0d59bbed063980ae4f44886167045d7fcbe2
   languageName: node
   linkType: hard
 
@@ -636,9 +650,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@jupyterlite/xeus-core@npm:^4.5.1":
-  version: 4.5.1
-  resolution: "@jupyterlite/xeus-core@npm:4.5.1"
+"@jupyterlite/xeus-core@npm:^4.5.2":
+  version: 4.5.2
+  resolution: "@jupyterlite/xeus-core@npm:4.5.2"
   dependencies:
     "@emscripten-forge/mambajs-core": ^0.21.1
     "@jupyterlab/coreutils": ^6.5.0
@@ -646,39 +660,39 @@ __metadata:
     "@jupyterlite/services": ^0.7.0
     "@lumino/coreutils": ^2
     "@lumino/signaling": ^2
-  checksum: df44e4b3bbbc9ada885d220be45ae85f76faf4d0a82ffdc432c335e08e492080d550d744b41f1517244de09d5c6d9d48922f392df56de342668f16894cbb202d
+  checksum: 9b190cf09dd6b850ea902e09f34647410542a9a274db0aa0e62a1c93813c7b9f9b570805b3f86bbec5043070eadefc5110ffd57cf911f5937e6ec2b1b3c274ac
   languageName: node
   linkType: hard
 
-"@jupyterlite/xeus-extension@npm:^4.5.1":
-  version: 4.5.1
-  resolution: "@jupyterlite/xeus-extension@npm:4.5.1"
+"@jupyterlite/xeus-extension@npm:^4.5.2":
+  version: 4.5.2
+  resolution: "@jupyterlite/xeus-extension@npm:4.5.2"
   dependencies:
     "@jupyterlab/application": ^4.5.0
     "@jupyterlab/coreutils": ^6.5.0
     "@jupyterlab/logconsole": ^4.5.0
     "@jupyterlite/apputils": ^0.7.0
     "@jupyterlite/services": ^0.7.0
-    "@jupyterlite/xeus": ^4.5.1
+    "@jupyterlite/xeus": ^4.5.2
     "@lumino/coreutils": ^2
-  checksum: 981fd6ab37b68475f7f9b9c17028324672eba77c0a9ac7bc6ce5974c536bf100592b535952f2c3428f2a03221afb8a843a6b7f881f7b0bd9748ce5a7ac234cfe
+  checksum: 7064d200996474ba1927698c7385f95f195b02cb9b3bff481fffa0c189db7835311432b914debd64b7ce83579b0aab468de93702392c4e3dfdfa6f9fddd1e96a
   languageName: node
   linkType: hard
 
-"@jupyterlite/xeus@npm:^4.5.1":
-  version: 4.5.1
-  resolution: "@jupyterlite/xeus@npm:4.5.1"
+"@jupyterlite/xeus@npm:^4.5.2":
+  version: 4.5.2
+  resolution: "@jupyterlite/xeus@npm:4.5.2"
   dependencies:
     "@emscripten-forge/mambajs": ^0.21.1
     "@jupyterlab/coreutils": ^6.5.0
     "@jupyterlab/services": ^7.5.0
     "@jupyterlite/services": ^0.7.0
-    "@jupyterlite/xeus-core": ^4.5.1
+    "@jupyterlite/xeus-core": ^4.5.2
     "@lumino/coreutils": ^2
     "@lumino/signaling": ^2
     coincident: ^1.2.3
     comlink: ^4.4.1
-  checksum: d3ac50ff12e4d28931bff1cd314c3558b54499075613116f69f8e7902cea17693644781bd9e5f46f195102fe696204914f05b50b7ed2170c0b4a229926cbbec9
+  checksum: 43d37cb2a222c85e4c130a84a3f6c082d7b7da6af52065087fe9b534778eaf09b8ed561b6f878ebae8a057ddb87b22eb5709ec34ade9a7b79ce20b984c2744a3
   languageName: node
   linkType: hard
 
@@ -3375,22 +3389,22 @@ __metadata:
   linkType: hard
 
 "typescript@npm:^6.0":
-  version: 6.0.2
-  resolution: "typescript@npm:6.0.2"
+  version: 6.0.3
+  resolution: "typescript@npm:6.0.3"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: a95632e5e4f7b9e7d9e9e9b79b4f147b45181258e7cae4c9f9f2a24176aff688d25e798cddf78cc39cb95423c8c63b36fd4ed5ac4028d37667dcc62a1e89e9e7
+  checksum: c1182dfadf8a8cb22a4e32442715afef1af1b950ae635b1c52c27e0d7fb7a5e2607ed7c7c4079bba4163579250e02445fd8d46b09cbceda71ff72a5b7d69db61
   languageName: node
   linkType: hard
 
 "typescript@patch:typescript@^6.0#~builtin<compat/typescript>":
-  version: 6.0.2
-  resolution: "typescript@patch:typescript@npm%3A6.0.2#~builtin<compat/typescript>::version=6.0.2&hash=85af82"
+  version: 6.0.3
+  resolution: "typescript@patch:typescript@npm%3A6.0.3#~builtin<compat/typescript>::version=6.0.3&hash=5786d5"
   bin:
     tsc: bin/tsc
     tsserver: bin/tsserver
-  checksum: 71a55653741fb12e81e7002c501ce2e5847e6cb251bc868de981561c07de178efed8f799ffc69cff92e162ceb44b67d25d60e293170db229cc5081afefababe3
+  checksum: 238430fdcadd2ca8ec7179bc644b324dbe4d13d647efae95351f216c7d9645092c0d848a45bd5a27a3d9058e2466eb8d67f9d944e2a78fa32171eee2e2f8d11e
   languageName: node
   linkType: hard
 

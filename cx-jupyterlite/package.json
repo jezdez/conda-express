@@ -23,16 +23,16 @@
   },
   "dependencies": {
     "@jupyterlab/application": "^4.5.0",
-    "@jupyterlab/coreutils": "^6.5.0",
+    "@jupyterlab/coreutils": "^6.5.7",
     "@jupyterlab/services": "^7.5.0",
     "@jupyterlite/apputils": "^0.7.0",
     "@jupyterlite/services": "^0.7.0",
-    "@jupyterlite/xeus": "^4.5.1",
-    "@jupyterlite/xeus-extension": "^4.5.1",
+    "@jupyterlite/xeus": "^4.5.2",
+    "@jupyterlite/xeus-extension": "^4.5.2",
     "@lumino/coreutils": "^2"
   },
   "devDependencies": {
-    "@jupyterlab/builder": "^4.5.0",
+    "@jupyterlab/builder": "^4.5.7",
     "rimraf": "^6.1.3",
     "typescript": "^6.0"
   },
