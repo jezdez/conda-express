@@ -23,6 +23,13 @@ const AFTER_HELP: &str = "\x1b[1;4mQuick start:\x1b[0m
 
 \x1b[4mDocs:\x1b[0m https://jezdez.github.io/conda-express/";
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Verbosity {
+    Normal,
+    Verbose,
+    Quiet,
+}
+
 #[derive(Debug, Parser)]
 #[clap(
     name = "cx",
@@ -36,8 +43,28 @@ const AFTER_HELP: &str = "\x1b[1;4mQuick start:\x1b[0m
     allow_external_subcommands = true,
 )]
 pub struct Cli {
+    /// Increase output detail
+    #[clap(long, short, global = true)]
+    pub verbose: bool,
+
+    /// Suppress non-essential output
+    #[clap(long, short, global = true, conflicts_with = "verbose")]
+    pub quiet: bool,
+
     #[clap(subcommand)]
     pub command: Option<Command>,
+}
+
+impl Cli {
+    pub fn verbosity(&self) -> Verbosity {
+        if self.verbose {
+            Verbosity::Verbose
+        } else if self.quiet {
+            Verbosity::Quiet
+        } else {
+            Verbosity::Normal
+        }
+    }
 }
 
 #[derive(Debug, clap::Subcommand)]
@@ -317,5 +344,33 @@ mod tests {
             }
             other => panic!("expected Bootstrap, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn test_parse_verbose_bootstrap() {
+        let cli = Cli::parse_from(["cx", "-v", "bootstrap"]);
+        assert!(cli.verbose);
+        assert!(!cli.quiet);
+        assert_matches!(cli.command, Some(Command::Bootstrap { .. }));
+    }
+
+    #[test]
+    fn test_parse_quiet_uninstall() {
+        let cli = Cli::parse_from(["cx", "-q", "uninstall", "--yes"]);
+        assert!(!cli.verbose);
+        assert!(cli.quiet);
+        assert_matches!(cli.command, Some(Command::Uninstall { yes: true, .. }));
+    }
+
+    #[test]
+    fn test_verbosity_method() {
+        let cli = Cli::parse_from(["cx", "bootstrap"]);
+        assert_eq!(cli.verbosity(), Verbosity::Normal);
+
+        let cli = Cli::parse_from(["cx", "-v", "bootstrap"]);
+        assert_eq!(cli.verbosity(), Verbosity::Verbose);
+
+        let cli = Cli::parse_from(["cx", "-q", "bootstrap"]);
+        assert_eq!(cli.verbosity(), Verbosity::Quiet);
     }
 }

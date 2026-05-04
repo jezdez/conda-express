@@ -5,7 +5,7 @@ use std::{env, path::Path};
 use miette::{Context, IntoDiagnostic};
 use rattler_conda_types::PrefixRecord;
 
-use crate::cli::LockSource;
+use crate::cli::{LockSource, Verbosity};
 use crate::config::{
     EMBEDDED_LOCK, embedded_config, read_metadata, write_condarc, write_frozen, write_metadata,
 };
@@ -37,6 +37,7 @@ pub(crate) async fn ensure_bootstrapped(prefix: &Path) -> miette::Result<()> {
             LockSource::Embedded,
             None,
             false,
+            Verbosity::Quiet,
         )
         .await?;
     }
@@ -74,7 +75,10 @@ pub(crate) async fn bootstrap(
     lock_source: LockSource,
     payload: Option<std::path::PathBuf>,
     offline: bool,
+    verbosity: Verbosity,
 ) -> miette::Result<()> {
+    let quiet = verbosity == Verbosity::Quiet;
+
     if is_bootstrapped(prefix) && !force {
         eprintln!(
             "{} conda is already bootstrapped at {}",
@@ -101,24 +105,28 @@ pub(crate) async fn bootstrap(
         specs.extend(extra);
     }
 
-    eprintln!(
-        "{} Bootstrapping conda into {}",
-        console::style(">>").cyan().bold(),
-        prefix.display()
-    );
-    eprintln!("   Channels: {}", channels.join(", "));
-    eprintln!("   Packages: {}", specs.join(", "));
-    if !excludes.is_empty() {
-        eprintln!("   Exclude:  {}", excludes.join(", "));
-    }
-    if offline {
-        eprintln!("   Mode:     offline");
+    if !quiet {
+        eprintln!(
+            "{} Bootstrapping conda into {}",
+            console::style(">>").cyan().bold(),
+            prefix.display()
+        );
+        eprintln!("   Channels: {}", channels.join(", "));
+        eprintln!("   Packages: {}", specs.join(", "));
+        if !excludes.is_empty() {
+            eprintln!("   Exclude:  {}", excludes.join(", "));
+        }
+        if offline {
+            eprintln!("   Mode:     offline");
+        }
     }
 
     let lock_content = match &lock_source {
         LockSource::Embedded => {
             if !EMBEDDED_LOCK.is_empty() {
-                eprintln!("   Using embedded lockfile");
+                if !quiet {
+                    eprintln!("   Using embedded lockfile");
+                }
                 Some(EMBEDDED_LOCK.to_string())
             } else {
                 None
@@ -128,11 +136,15 @@ pub(crate) async fn bootstrap(
             let content = std::fs::read_to_string(path)
                 .into_diagnostic()
                 .context("failed to read lockfile")?;
-            eprintln!("   Using lockfile: {}", path.display());
+            if !quiet {
+                eprintln!("   Using lockfile: {}", path.display());
+            }
             Some(content)
         }
         LockSource::None => {
-            eprintln!("   Live solve (lockfile disabled)");
+            if !quiet {
+                eprintln!("   Live solve (lockfile disabled)");
+            }
             None
         }
     };
@@ -141,13 +153,17 @@ pub(crate) async fn bootstrap(
         let content = lock_content.ok_or_else(|| {
             miette::miette!("--payload requires a lockfile (embedded or --lockfile)")
         })?;
-        eprintln!("   Payload:  {}", payload_dir.display());
+        if !quiet {
+            eprintln!("   Payload:  {}", payload_dir.display());
+        }
         install::from_lockfile_with_payload(prefix, &content, excludes, payload_dir, offline)
             .await?;
     } else if let Some(embedded_dir) = install::extract_embedded_payload()? {
         let content =
             lock_content.ok_or_else(|| miette::miette!("embedded payload requires a lockfile"))?;
-        eprintln!("   Payload:  embedded");
+        if !quiet {
+            eprintln!("   Payload:  embedded");
+        }
         let result =
             install::from_lockfile_with_payload(prefix, &content, excludes, &embedded_dir, true)
                 .await;
@@ -171,13 +187,15 @@ pub(crate) async fn bootstrap(
 
     compile_python_bytecode(prefix);
 
-    eprintln!(
-        "\n{} conda bootstrapped successfully!",
-        console::style("✔").green().bold()
-    );
-    eprintln!("   Prefix: {}", prefix.display());
-    eprintln!("   Run `cx status` for details.");
-    eprintln!("   Use `cx <conda-args>` to run conda commands.");
+    if !quiet {
+        eprintln!(
+            "\n{} conda bootstrapped successfully!",
+            console::style("✔").green().bold()
+        );
+        eprintln!("   Prefix: {}", prefix.display());
+        eprintln!("   Run `cx status` for details.");
+        eprintln!("   Use `cx <conda-args>` to run conda commands.");
+    }
 
     Ok(())
 }
@@ -249,7 +267,9 @@ pub(crate) fn status(prefix: &Path) -> miette::Result<()> {
     Ok(())
 }
 
-pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
+pub(crate) fn uninstall(prefix: &Path, yes: bool, verbosity: Verbosity) -> miette::Result<()> {
+    let quiet = verbosity == Verbosity::Quiet;
+
     if !is_bootstrapped(prefix) {
         eprintln!(
             "{} No conda installation found at {}",
@@ -308,11 +328,13 @@ pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
         }
     }
 
-    eprintln!(
-        "\n{} Removing conda prefix at {}",
-        console::style(">>").cyan().bold(),
-        prefix.display()
-    );
+    if !quiet {
+        eprintln!(
+            "\n{} Removing conda prefix at {}",
+            console::style(">>").cyan().bold(),
+            prefix.display()
+        );
+    }
     std::fs::remove_dir_all(prefix)
         .into_diagnostic()
         .context("failed to remove conda prefix")?;
@@ -320,17 +342,19 @@ pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
     if let Some(ref bin) = cx_binary
         && bin.exists()
     {
-        eprintln!(
-            "{} Removing cx binary at {}",
-            console::style(">>").cyan().bold(),
-            bin.display()
-        );
+        if !quiet {
+            eprintln!(
+                "{} Removing cx binary at {}",
+                console::style(">>").cyan().bold(),
+                bin.display()
+            );
+        }
         std::fs::remove_file(bin)
             .into_diagnostic()
             .context("failed to remove cx binary")?;
     }
 
-    remove_shell_path_entries(prefix);
+    remove_shell_path_entries(prefix, quiet);
 
     eprintln!(
         "\n{} cx has been uninstalled.",
@@ -340,7 +364,7 @@ pub(crate) fn uninstall(prefix: &Path, yes: bool) -> miette::Result<()> {
     Ok(())
 }
 
-fn remove_shell_path_entries(prefix: &Path) {
+fn remove_shell_path_entries(prefix: &Path, quiet: bool) {
     let condabin_path = format!("export PATH=\"{}/condabin:$PATH\"", prefix.display());
     let install_dir = env::current_exe()
         .ok()
@@ -360,13 +384,14 @@ fn remove_shell_path_entries(prefix: &Path) {
         home.join(".config/fish/config.fish"),
     ];
 
-    clean_path_entries_from_profiles(&profiles, &condabin_path, install_path.as_deref());
+    clean_path_entries_from_profiles(&profiles, &condabin_path, install_path.as_deref(), quiet);
 }
 
 pub(crate) fn clean_path_entries_from_profiles(
     profiles: &[std::path::PathBuf],
     condabin_path: &str,
     install_path: Option<&str>,
+    quiet: bool,
 ) {
     for profile in profiles {
         if !profile.exists() {
@@ -391,7 +416,7 @@ pub(crate) fn clean_path_entries_from_profiles(
 
         if changed {
             let new_contents = filtered.join("\n");
-            if std::fs::write(profile, &new_contents).is_ok() {
+            if std::fs::write(profile, &new_contents).is_ok() && !quiet {
                 eprintln!(
                     "{} Cleaned PATH entry from {}",
                     console::style(">>").cyan().bold(),
@@ -444,6 +469,7 @@ pub(crate) fn print_disabled_init() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::cli::Verbosity;
     use rstest::rstest;
     use tempfile::TempDir;
 
@@ -508,7 +534,7 @@ mod tests {
     #[test]
     fn test_uninstall_not_bootstrapped() {
         let tmp = TempDir::new().unwrap();
-        let result = uninstall(tmp.path(), true);
+        let result = uninstall(tmp.path(), true, Verbosity::Normal);
         assert!(
             result.is_ok(),
             "uninstall on empty prefix should succeed with a no-op"
@@ -526,7 +552,7 @@ mod tests {
         )
         .unwrap();
 
-        clean_path_entries_from_profiles(std::slice::from_ref(&bashrc), condabin_line, None);
+        clean_path_entries_from_profiles(std::slice::from_ref(&bashrc), condabin_line, None, false);
 
         let result = std::fs::read_to_string(&bashrc).unwrap();
         assert!(
@@ -554,6 +580,7 @@ mod tests {
             std::slice::from_ref(&zshrc),
             "export PATH=\"/unused/condabin:$PATH\"",
             Some(install_line),
+            false,
         );
 
         let result = std::fs::read_to_string(&zshrc).unwrap();
@@ -571,7 +598,7 @@ mod tests {
     fn test_clean_path_entries_skips_missing_profiles() {
         let tmp = TempDir::new().unwrap();
         let missing = tmp.path().join("nonexistent");
-        clean_path_entries_from_profiles(&[missing], "whatever", None);
+        clean_path_entries_from_profiles(&[missing], "whatever", None, false);
     }
 
     #[test]
@@ -585,6 +612,7 @@ mod tests {
             std::slice::from_ref(&bashrc),
             "export PATH=\"/not/present:$PATH\"",
             None,
+            false,
         );
 
         let result = std::fs::read_to_string(&bashrc).unwrap();
