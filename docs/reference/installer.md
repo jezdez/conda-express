@@ -134,9 +134,12 @@ The easiest way to uninstall is the built-in command:
 cx uninstall
 ```
 
-This removes the conda prefix (including all named environments), the cx
-binary, and any PATH entries added by the installer. It will show what will
-be removed and ask for confirmation (use `--yes` to skip).
+This removes the conda prefix (including all named environments) and any
+PATH entries added by the installer. It will show what will be removed and
+ask for confirmation (use `--yes` to skip).
+
+After completion, cx prints a hint for removing the binary itself (e.g.
+`brew uninstall conda-express` for Homebrew installs).
 
 See {ref}`cx uninstall <cli-cx-uninstall>` for full details.
 
