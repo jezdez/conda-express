@@ -28,7 +28,7 @@ uses `conda-rattler-solver` instead, these are unnecessary.
 cx removes them via a post-solve transitive dependency pruning algorithm:
 after the solver produces a complete solution, cx identifies packages that are
 *exclusively* required by the excluded packages and removes them. This reduces
-the install from 113 to 86 packages.
+the install from ~125 to ~95 packages (varies by platform).
 
 ## conda-rattler-solver
 
@@ -187,7 +187,7 @@ cx (7-11 MB)              cxz (50-95 MB)
 │  (7-11 MB)   │          │  (7-11 MB)       │
 ├──────────────┤          ├──────────────────┤
 │  lockfile    │          │  lockfile        │
-│  (39 KB)     │          │  (39 KB)         │
+│  (~130 KB)   │          │  (~130 KB)       │
 │              │          ├──────────────────┤
 │              │          │  payload.tar.zst │
 │              │          │  (40-85 MB)      │

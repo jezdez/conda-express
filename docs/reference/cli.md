@@ -104,7 +104,7 @@ cx 0.1.0
   channels: conda-forge
   packages: python >=3.12, conda >=25.1, ...
   excludes: conda-libmamba-solver
-  installed: 86 packages
+  installed: 95 packages
   conda:    /Users/you/.cx/bin/conda
 ```
 :::

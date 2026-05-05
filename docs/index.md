@@ -80,11 +80,11 @@ cx installs a minimal conda stack from conda-forge:
 | python >= 3.12 | Runtime |
 | conda >= 25.1 | Package manager |
 | conda-rattler-solver | Rust-based solver (replaces libmamba) |
-| conda-spawn | Subprocess-based environment activation |
+| conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
 | conda-global | Global tool installation and PATH management |
-| conda-workspaces | Multi-environment workspace and task management |
+| conda-workspaces >= 0.4.0 | Multi-environment workspace and task management |
 
 The `conda-libmamba-solver` and its 27 exclusive native dependencies are excluded by default, reducing the install size significantly.
 
@@ -104,7 +104,7 @@ Bootstrap a full conda environment in ~3–5 seconds from an embedded lockfile. 
 :link: features
 :link-type: doc
 
-7-11 MB single binary. Installs 86 packages instead of 113 by excluding unnecessary native dependencies.
+7-11 MB single binary. Installs ~95 packages instead of ~125 by excluding unnecessary native dependencies.
 :::
 
 :::{grid-item-card} {octicon}`rocket` Modern
