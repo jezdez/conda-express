@@ -284,9 +284,9 @@ conda-express/
   action.yml            Composite GitHub Action for building custom cx binaries
   Formula/cx.rb         Homebrew formula (same-repo tap)
   pixi.lock             Locked dev + cx-env dependencies
-  build.rs              Compile-time solver and lockfile generator
+  build.rs              Copies cx.lock (and optional payload.tar.zst) into OUT_DIR for embedding
   cx.lock               rattler-lock v6 lockfile extracted from pixi.lock (checked in)
-  cx.lock.hash          Content hash of pixi.lock + pixi.toml for cache invalidation
+  cx.lock.hash          SHA-256 of pixi.toml for cx.lock cache invalidation
   CHANGELOG.md          Release changelog
   LICENSE               BSD 3-Clause
   README.md             User-facing documentation
@@ -300,12 +300,15 @@ conda-express/
     install.rs          Package installation (lockfile + live-solve paths)
     exec.rs             Process replacement (exec into installed conda)
     commands.rs         Bootstrap, status, uninstall implementations
-    exclude.rs          Post-solve package exclusion algorithm
 
-  crates/xtask/         Internal build tools (cx-build)
-    Cargo.toml          Workspace member (rattler_lock, clap)
+  crates/cx-build/      Internal build tools (binary: cx-build)
+    Cargo.toml          Workspace member (clap, rattler_lock, rattler_conda_types, reqwest, tokio, toml_edit)
     src/
-      main.rs           cx-build lock: extracts cx.lock from pixi.lock's cx-env environment
+      main.rs           Subcommands: prepare (extracts cx.lock from pixi.lock's
+                        cx-env environment + applies excludes), payload (downloads
+                        packages and bundles into payload.tar.zst for cxz), and
+                        configure (overrides cx-env packages/channels/exclude in
+                        pixi.toml for custom builds)
 
   crates/cx-wasm/       cx-wasm WASM crate
     Cargo.toml          Workspace member (rattler, wasm-bindgen, web-sys)
@@ -415,15 +418,16 @@ packages = [
     "python >=3.12",
     "conda >=25.1",
     "conda-rattler-solver",
-    "conda-spawn",
+    "conda-spawn >=0.1.0",
     "conda-pypi",
     "conda-self",
-    "conda-workspaces",
+    "conda-global",
+    "conda-workspaces >=0.4.0",
 ]
 exclude = ["conda-libmamba-solver"]
 ```
 
-Both `build.rs` (compile-time) and the runtime binary read from `pixi.toml`. Changing it triggers an automatic re-solve on the next `cargo build`.
+Both `cx-build prepare` (which regenerates `cx.lock` from `pixi.lock`) and the runtime binary read from `pixi.toml`. Changing it requires re-running `pixi run lock` (to refresh `pixi.lock`) and `cargo run -p cx-build -- prepare` (to refresh `cx.lock`).
 
 ### Build-time environment variable overrides
 
@@ -466,6 +470,7 @@ Default prefix: `~/.cx`
 | conda-spawn | Subprocess-based activation (replaces `conda activate`) |
 | conda-pypi | PyPI interoperability (install, solve, convert) |
 | conda-self | Base environment self-management |
+| conda-global | Global tool installation and PATH management |
 | [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) | Multi-environment workspace and task management |
 
 ## Lockfile compatibility
