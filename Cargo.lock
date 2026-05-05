@@ -4129,6 +4129,7 @@ dependencies = [
  "indexmap 2.14.0",
  "toml_datetime",
  "toml_parser",
+ "toml_writer",
  "winnow",
 ]
 
@@ -5264,6 +5265,7 @@ dependencies = [
  "tar",
  "tokio",
  "toml",
+ "toml_edit",
  "zstd",
 ]
 

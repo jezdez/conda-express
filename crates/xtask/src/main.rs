@@ -35,6 +35,25 @@ enum Command {
         #[arg(long)]
         root: Option<PathBuf>,
     },
+
+    /// Override cx-env packages/channels/exclude in pixi.toml for custom builds
+    Configure {
+        /// Comma-separated conda package specs (replaces [feature.cx-env.dependencies])
+        #[arg(long)]
+        packages: Option<String>,
+
+        /// Comma-separated conda channels (replaces [workspace].channels)
+        #[arg(long)]
+        channels: Option<String>,
+
+        /// Comma-separated packages to exclude at runtime (replaces [tool.cx].exclude)
+        #[arg(long)]
+        exclude: Option<String>,
+
+        /// Project root (default: auto-detect from Cargo workspace)
+        #[arg(long)]
+        root: Option<PathBuf>,
+    },
 }
 
 fn project_root(override_root: Option<&Path>) -> PathBuf {
@@ -270,10 +289,81 @@ async fn download_and_bundle(
     Ok(())
 }
 
+fn configure(
+    packages: Option<String>,
+    channels: Option<String>,
+    exclude: Option<String>,
+    root_override: Option<PathBuf>,
+) {
+    let root = project_root(root_override.as_deref());
+    let pixi_toml_path = root.join("pixi.toml");
+    let content = std::fs::read_to_string(&pixi_toml_path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", pixi_toml_path.display()));
+
+    let mut doc: toml_edit::DocumentMut = content
+        .parse()
+        .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_toml_path.display()));
+
+    if let Some(ref pkgs) = packages {
+        let specs: Vec<&str> = pkgs.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        let mut deps = toml_edit::Table::new();
+        for spec in &specs {
+            let (name, version) = match spec.split_once(' ') {
+                Some((n, v)) => (n.trim(), v.trim().to_string()),
+                None => (spec.trim(), "*".to_string()),
+            };
+            deps[name] = toml_edit::value(version);
+        }
+        doc["feature"]["cx-env"]["dependencies"] = toml_edit::Item::Table(deps);
+        eprintln!("configured {} custom packages", specs.len());
+
+        let mut tool_packages = toml_edit::Array::new();
+        for spec in &specs {
+            tool_packages.push(spec.to_string());
+        }
+        doc["tool"]["cx"]["packages"] = toml_edit::value(tool_packages);
+    }
+
+    if let Some(ref ch) = channels {
+        let channel_list: Vec<&str> = ch.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        let mut arr = toml_edit::Array::new();
+        for c in &channel_list {
+            arr.push(c.to_string());
+        }
+        doc["workspace"]["channels"] = toml_edit::value(arr);
+
+        let mut tool_channels = toml_edit::Array::new();
+        for c in &channel_list {
+            tool_channels.push(c.to_string());
+        }
+        doc["tool"]["cx"]["channels"] = toml_edit::value(tool_channels);
+        eprintln!("configured channels: {}", channel_list.join(", "));
+    }
+
+    if let Some(ref ex) = exclude {
+        let excludes: Vec<&str> = ex.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        let mut arr = toml_edit::Array::new();
+        for e in &excludes {
+            arr.push(e.to_string());
+        }
+        doc["tool"]["cx"]["exclude"] = toml_edit::value(arr);
+        eprintln!("configured excludes: {}", excludes.join(", "));
+    }
+
+    std::fs::write(&pixi_toml_path, doc.to_string())
+        .unwrap_or_else(|e| panic!("failed to write {}: {e}", pixi_toml_path.display()));
+}
+
 fn main() {
     let cli = Cli::parse();
     match cli.command {
         Command::GenLock { check, root } => gen_lock(check, root),
         Command::GenPayload { platform, root } => gen_payload(platform, root),
+        Command::Configure {
+            packages,
+            channels,
+            exclude,
+            root,
+        } => configure(packages, channels, exclude, root),
     }
 }
