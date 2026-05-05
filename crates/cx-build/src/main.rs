@@ -6,7 +6,7 @@ use rattler_lock::{LockFile, LockFileBuilder};
 use sha2::{Digest, Sha256};
 
 #[derive(Parser)]
-#[command(name = "xtask", about = "Internal build tools for conda-express")]
+#[command(name = "cx-build", about = "Internal build tools for conda-express")]
 struct Cli {
     #[command(subcommand)]
     command: Command,
@@ -96,16 +96,16 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
 
     if check {
         if !cx_lock_path.exists() {
-            eprintln!("cx.lock does not exist; run `cargo xtask gen-lock` to create it");
+            eprintln!("cx.lock does not exist; run `cargo run -p cx-build -- gen-lock` to create it");
             std::process::exit(1);
         }
         if !cx_hash_path.exists() {
-            eprintln!("cx.lock.hash does not exist; run `cargo xtask gen-lock` to create it");
+            eprintln!("cx.lock.hash does not exist; run `cargo run -p cx-build -- gen-lock` to create it");
             std::process::exit(1);
         }
         let stored_hash = std::fs::read_to_string(&cx_hash_path).unwrap_or_default();
         if stored_hash.trim() != input_hash {
-            eprintln!("cx.lock is stale (hash mismatch); run `cargo xtask gen-lock` to update");
+            eprintln!("cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- gen-lock` to update");
             std::process::exit(1);
         }
         eprintln!("cx.lock is up-to-date");

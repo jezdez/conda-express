@@ -1,5 +1,5 @@
 [workspace]
-members = [".", "crates/cx-wasm", "crates/xtask"]
+members = [".", "crates/cx-wasm", "crates/cx-build"]
 default-members = [".", "crates/cx-wasm"]
 
 [package]

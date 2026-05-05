@@ -1,5 +1,5 @@
 [package]
-name = "xtask"
+name = "cx-build"
 version = "0.1.0"
 edition = "2024"
 description = "Internal build tools for conda-express"

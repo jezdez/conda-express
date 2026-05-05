@@ -79,7 +79,7 @@ runs:
         if [ -n "${{ inputs.exclude }}" ]; then
           ARGS="$ARGS --exclude '${{ inputs.exclude }}'"
         fi
-        eval pixi run -- cargo run -p xtask -- configure $ARGS
+        eval pixi run -- cargo run -p cx-build -- configure $ARGS
         pixi lock
         pixi run gen-lock
 

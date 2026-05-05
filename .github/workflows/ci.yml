@@ -60,7 +60,7 @@ jobs:
       - name: Build cxz (embedded payload)
         if: matrix.target == 'x86_64-unknown-linux-gnu'
         run: |
-          pixi run -- cargo run -p xtask -- gen-payload
+          pixi run -- cargo run -p cx-build -- gen-payload
           CX_EMBED_PAYLOAD=1 pixi run build
 
       - name: Smoke test cxz
