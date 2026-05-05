@@ -682,6 +682,7 @@ dependencies = [
  "rattler_conda_types",
  "rattler_lock",
  "reqwest",
+ "serde",
  "sha2",
  "tar",
  "tokio",

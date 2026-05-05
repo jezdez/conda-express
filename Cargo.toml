@@ -10,10 +10,6 @@ description = "A lightweight, single-binary conda bootstrapper — powered by ra
 license = "BSD-3-Clause"
 readme = "README.md"
 
-[lib]
-name = "conda_express"
-path = "src/lib.rs"
-
 [[bin]]
 name = "cx"
 path = "src/main.rs"

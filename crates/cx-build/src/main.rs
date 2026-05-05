@@ -1,9 +1,26 @@
+use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
-use rattler_conda_types::Platform;
-use rattler_lock::{LockFile, LockFileBuilder};
+use rattler_conda_types::{PackageName, Platform};
+use rattler_lock::{CondaPackageData, LockFile, LockFileBuilder};
 use sha2::{Digest, Sha256};
+
+#[derive(serde::Deserialize)]
+struct PixiToml {
+    tool: ToolSection,
+}
+
+#[derive(serde::Deserialize)]
+struct ToolSection {
+    cx: CxConfig,
+}
+
+#[derive(serde::Deserialize)]
+struct CxConfig {
+    #[serde(default)]
+    exclude: Vec<String>,
+}
 
 #[derive(Parser)]
 #[command(name = "cx-build", about = "Internal build tools for conda-express")]
@@ -14,8 +31,8 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Extract cx.lock from pixi.lock's cx-env environment
-    Lock {
+    /// Extract cx.lock from pixi.lock's cx-env environment and apply exclude filters
+    Prepare {
         /// Only verify cx.lock is up-to-date; exit 1 if stale
         #[arg(long)]
         check: bool,
@@ -68,22 +85,12 @@ fn project_root(override_root: Option<&Path>) -> PathBuf {
         .to_path_buf()
 }
 
-fn gen_lock(check: bool, root_override: Option<PathBuf>) {
+fn prepare(check: bool, root_override: Option<PathBuf>) {
     let root = project_root(root_override.as_deref());
     let pixi_lock_path = root.join("pixi.lock");
     let cx_lock_path = root.join("cx.lock");
     let cx_hash_path = root.join("cx.lock.hash");
     let pixi_toml_path = root.join("pixi.toml");
-
-    let pixi_lock = LockFile::from_path(&pixi_lock_path)
-        .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_lock_path.display()));
-
-    let cx_env = pixi_lock.environment("cx-env").unwrap_or_else(|| {
-        panic!(
-            "cx-env environment not found in {}",
-            pixi_lock_path.display()
-        )
-    });
 
     let pixi_toml = std::fs::read_to_string(&pixi_toml_path)
         .unwrap_or_else(|e| panic!("failed to read {}: {e}", pixi_toml_path.display()));
@@ -96,19 +103,21 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
 
     if check {
         if !cx_lock_path.exists() {
-            eprintln!("cx.lock does not exist; run `cargo run -p cx-build -- lock` to create it");
+            eprintln!(
+                "cx.lock does not exist; run `cargo run -p cx-build -- prepare` to create it"
+            );
             std::process::exit(1);
         }
         if !cx_hash_path.exists() {
             eprintln!(
-                "cx.lock.hash does not exist; run `cargo run -p cx-build -- lock` to create it"
+                "cx.lock.hash does not exist; run `cargo run -p cx-build -- prepare` to create it"
             );
             std::process::exit(1);
         }
         let stored_hash = std::fs::read_to_string(&cx_hash_path).unwrap_or_default();
         if stored_hash.trim() != input_hash {
             eprintln!(
-                "cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- lock` to update"
+                "cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- prepare` to update"
             );
             std::process::exit(1);
         }
@@ -116,15 +125,50 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
         return;
     }
 
+    let config: PixiToml =
+        toml::from_str(&pixi_toml).expect("failed to parse [tool.cx] from pixi.toml");
+    let excludes = &config.tool.cx.exclude;
+
+    let pixi_lock = LockFile::from_path(&pixi_lock_path)
+        .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_lock_path.display()));
+
+    let cx_env = pixi_lock.environment("cx-env").unwrap_or_else(|| {
+        panic!(
+            "cx-env environment not found in {}",
+            pixi_lock_path.display()
+        )
+    });
+
     let mut builder = LockFileBuilder::new();
 
     if !cx_env.channels().is_empty() {
         builder.set_channels("default", cx_env.channels().iter().cloned());
     }
 
+    let mut total_packages = 0usize;
+    let mut total_excluded = 0usize;
+
     for (platform, packages) in cx_env.conda_packages_by_platform() {
-        for pkg in packages {
-            builder.add_conda_package("default", platform, pkg.clone());
+        let pkgs: Vec<_> = packages.cloned().collect();
+
+        let filtered = if excludes.is_empty() {
+            pkgs
+        } else {
+            let (kept, removed) = filter_excluded(&pkgs, excludes);
+            if !removed.is_empty() {
+                eprintln!(
+                    "  {platform}: excluded {} packages ({})",
+                    removed.len(),
+                    removed.join(", ")
+                );
+            }
+            total_excluded += removed.len();
+            kept
+        };
+
+        total_packages += filtered.len();
+        for pkg in filtered {
+            builder.add_conda_package("default", platform, pkg);
         }
     }
 
@@ -139,15 +183,81 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
         .unwrap_or_else(|e| panic!("failed to write {}: {e}", cx_hash_path.display()));
 
     let platforms: Vec<Platform> = cx_env.platforms().collect();
-    let pkg_count: usize = cx_env
-        .conda_packages_by_platform()
-        .map(|(_, pkgs)| pkgs.count())
-        .sum();
     eprintln!(
-        "wrote cx.lock: {} packages across {} platforms",
-        pkg_count,
-        platforms.len()
+        "wrote cx.lock: {} packages across {} platforms (excluded {})",
+        total_packages,
+        platforms.len(),
+        total_excluded
     );
+}
+
+/// Remove explicitly excluded packages and any transitive dependencies that
+/// are not required by any remaining package.
+fn filter_excluded(
+    packages: &[CondaPackageData],
+    excludes: &[String],
+) -> (Vec<CondaPackageData>, Vec<String>) {
+    let exclude_set: HashSet<&str> = excludes.iter().map(|s| s.as_str()).collect();
+
+    let pkg_names: Vec<String> = packages
+        .iter()
+        .map(|p| p.record().name.as_normalized().to_string())
+        .collect();
+    let name_to_idx: HashMap<&str, usize> = pkg_names
+        .iter()
+        .enumerate()
+        .map(|(i, n)| (n.as_str(), i))
+        .collect();
+
+    let n = packages.len();
+    let mut reverse_deps: Vec<HashSet<usize>> = vec![HashSet::new(); n];
+    for (i, pkg) in packages.iter().enumerate() {
+        for dep_str in &pkg.record().depends {
+            let dep_name = PackageName::from_matchspec_str_unchecked(dep_str);
+            if let Some(&dep_idx) = name_to_idx.get(dep_name.as_normalized()) {
+                reverse_deps[dep_idx].insert(i);
+            }
+        }
+    }
+
+    let mut removed: HashSet<usize> = HashSet::new();
+    let mut queue: Vec<usize> = Vec::new();
+    for (i, name) in pkg_names.iter().enumerate() {
+        if exclude_set.contains(name.as_str()) {
+            removed.insert(i);
+            queue.push(i);
+        }
+    }
+
+    while let Some(pkg_idx) = queue.pop() {
+        for dep_str in &packages[pkg_idx].record().depends {
+            let dep_name = PackageName::from_matchspec_str_unchecked(dep_str);
+            if let Some(&dep_idx) = name_to_idx.get(dep_name.as_normalized()) {
+                if removed.contains(&dep_idx) {
+                    continue;
+                }
+                let all_dependents_removed = reverse_deps[dep_idx]
+                    .iter()
+                    .all(|rdep| removed.contains(rdep));
+                if all_dependents_removed {
+                    removed.insert(dep_idx);
+                    queue.push(dep_idx);
+                }
+            }
+        }
+    }
+
+    let mut removed_names: Vec<String> = removed.iter().map(|&i| pkg_names[i].clone()).collect();
+    removed_names.sort();
+
+    let filtered: Vec<CondaPackageData> = packages
+        .iter()
+        .enumerate()
+        .filter(|(i, _)| !removed.contains(i))
+        .map(|(_, p)| p.clone())
+        .collect();
+
+    (filtered, removed_names)
 }
 
 fn gen_payload(platform_str: Option<String>, root_override: Option<PathBuf>) {
@@ -370,7 +480,7 @@ fn configure(
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::Lock { check, root } => gen_lock(check, root),
+        Command::Prepare { check, root } => prepare(check, root),
         Command::Payload { platform, root } => gen_payload(platform, root),
         Command::Configure {
             packages,
@@ -378,5 +488,115 @@ fn main() {
             exclude,
             root,
         } => configure(packages, channels, exclude, root),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rattler_conda_types::{PackageName, PackageRecord, VersionWithSource};
+    use rattler_lock::CondaPackageData;
+    use std::str::FromStr;
+
+    fn make_pkg(name: &str, depends: &[&str]) -> CondaPackageData {
+        let mut record = PackageRecord::new(
+            PackageName::new_unchecked(name),
+            VersionWithSource::from_str("1.0").unwrap(),
+            "0".to_string(),
+        );
+        record.depends = depends.iter().map(|d| d.to_string()).collect();
+        CondaPackageData::from(rattler_conda_types::RepoDataRecord {
+            package_record: record,
+            identifier: rattler_conda_types::package::DistArchiveIdentifier::from(
+                format!("{name}-1.0-0.conda")
+                    .parse::<rattler_conda_types::package::CondaArchiveIdentifier>()
+                    .unwrap(),
+            ),
+            url: format!("https://example.com/{name}-1.0-0.conda")
+                .parse()
+                .unwrap(),
+            channel: Some("test".to_string()),
+        })
+    }
+
+    #[test]
+    fn test_empty_excludes_returns_all() {
+        let packages = vec![make_pkg("a", &[]), make_pkg("b", &["a"])];
+        let (filtered, removed) = filter_excluded(&packages, &[]);
+        assert!(removed.is_empty());
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_exclude_single_leaf() {
+        let packages = vec![make_pkg("a", &[]), make_pkg("b", &[])];
+        let excludes = vec!["b".to_string()];
+        let (filtered, removed) = filter_excluded(&packages, &excludes);
+        assert_eq!(removed, vec!["b"]);
+        assert_eq!(filtered.len(), 1);
+    }
+
+    #[test]
+    fn test_exclude_with_transitive_deps() {
+        let packages = vec![
+            make_pkg("a", &["b"]),
+            make_pkg("b", &["c"]),
+            make_pkg("c", &[]),
+        ];
+        let excludes = vec!["a".to_string()];
+        let (filtered, removed) = filter_excluded(&packages, &excludes);
+        assert_eq!(removed, vec!["a", "b", "c"]);
+        assert!(filtered.is_empty());
+    }
+
+    #[test]
+    fn test_shared_dep_not_removed() {
+        let packages = vec![
+            make_pkg("a", &["c"]),
+            make_pkg("b", &["c"]),
+            make_pkg("c", &[]),
+        ];
+        let excludes = vec!["a".to_string()];
+        let (filtered, removed) = filter_excluded(&packages, &excludes);
+        assert_eq!(removed, vec!["a"]);
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_exclude_nonexistent_package() {
+        let packages = vec![make_pkg("a", &[]), make_pkg("b", &[])];
+        let excludes = vec!["nonexistent".to_string()];
+        let (filtered, removed) = filter_excluded(&packages, &excludes);
+        assert!(removed.is_empty());
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_diamond_dependency() {
+        let packages = vec![
+            make_pkg("a", &["c"]),
+            make_pkg("b", &["c"]),
+            make_pkg("c", &[]),
+            make_pkg("d", &["a"]),
+        ];
+        let excludes = vec!["d".to_string()];
+        let (filtered, removed) = filter_excluded(&packages, &excludes);
+        assert_eq!(removed, vec!["a", "d"]);
+        assert_eq!(filtered.len(), 2);
+    }
+
+    #[test]
+    fn test_multiple_simultaneous_excludes() {
+        let packages = vec![
+            make_pkg("a", &["shared"]),
+            make_pkg("b", &["only-b"]),
+            make_pkg("shared", &[]),
+            make_pkg("only-b", &[]),
+            make_pkg("keep", &[]),
+        ];
+        let excludes = vec!["a".to_string(), "b".to_string()];
+        let (filtered, removed) = filter_excluded(&packages, &excludes);
+        assert_eq!(removed, vec!["a", "b", "only-b", "shared"]);
+        assert_eq!(filtered.len(), 1);
     }
 }

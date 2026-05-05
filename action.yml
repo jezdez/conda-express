@@ -81,7 +81,7 @@ runs:
         fi
         eval pixi run -- cargo run -p cx-build -- configure $ARGS
         pixi lock
-        pixi run lock
+        pixi run prepare
 
     - name: Generate payload
       if: inputs.embed-payload == 'true'

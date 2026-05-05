@@ -14,8 +14,8 @@ sccache = ">=0.10"
 RUSTC_WRAPPER = "sccache"
 
 [tasks]
-lock = "cargo run -p cx-build -- lock"
-check-lock = "cargo run -p cx-build -- lock --check"
+prepare = "cargo run -p cx-build -- prepare"
+check-lock = "cargo run -p cx-build -- prepare --check"
 payload = "cargo run -p cx-build -- payload"
 build = "cargo build --release"
 build-debug = "cargo build"
