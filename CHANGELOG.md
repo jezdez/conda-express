@@ -1,5 +1,57 @@
 # Changelog
 
+## 0.6.0 (2026-05-06)
+
+### Features
+
+- **Slim `build.rs`** — Replace the 440-line `build.rs` (which compiled rattler, reqwest, tokio, etc. as build-dependencies) with a ~40-line script that copies pre-generated `cx.lock` and `payload.tar.zst` to `$OUT_DIR`. This eliminates ~292 duplicate crate compilations, roughly halving clean build time.
+- **`cx-build` crate** — New internal build tool (`crates/cx-build/`) with three subcommands:
+  - `prepare` — Extract `cx.lock` from `pixi.lock`'s `cx-env` environment and apply `[tool.cx].exclude` transitive dependency pruning.
+  - `payload` — Download packages from `cx.lock` and bundle into `payload.tar.zst` for `cxz` builds.
+  - `configure` — Override packages, channels, and exclusions in `pixi.toml` for custom builds (replaces `CX_PACKAGES`/`CX_CHANNELS`/`CX_EXCLUDE` env var overrides).
+- **`cx-env` pixi feature** — New `[feature.cx-env]` in `pixi.toml` that defines the bootstrap package set as a proper pixi environment, enabling `pixi lock` to solve dependencies instead of `build.rs`.
+- **`conda-global`** — Added to the default package set alongside existing conda plugins.
+- **`conda-workspaces >=0.4.0`** — Added to the default package set with version pin.
+- **sccache** — Local and CI build caching via `RUSTC_WRAPPER=sccache`.
+
+### Fixes
+
+- Stop self-deleting the `cx` binary on `cx uninstall` — now prints a hint for the user to remove it manually.
+- Clean subenvironment artifacts (envs, pkgs cache) on uninstall.
+- Precompile Python bytecode after bootstrap to avoid first-run `.pyc` compilation delays.
+- Remove unused `default_channels` from generated `.condarc`.
+- Pin `reqwest-middleware` and `sha2` versions to match rattler's transitive requirements.
+- Fix `getrandom` 0.3 usage in cx-wasm to match ahash's transitive dependency.
+- Fix JupyterLite `yarn.lock` TypeScript compatibility patch hash.
+
+### Build
+
+- Exclude filtering moved from runtime to build time: `src/exclude.rs` and `src/lib.rs` deleted; the `cx` binary trusts its pre-filtered `cx.lock`.
+- `--exclude`/`--no-exclude` CLI flags removed from `cx bootstrap`.
+- `action.yml` updated to use `cx-build configure` → `pixi lock` → `cx-build prepare` → `cargo build` pipeline.
+- `xtask` crate renamed to `cx-build`.
+
+### Docs
+
+- Updated `DESIGN.md`, `README.md`, `docs/configuration.md`, and `docs/index.md` to reflect `cx-build` rename, `conda-global` addition, and updated version pins.
+- Updated stale size and package count figures across all docs: lockfile 39 KB → ~130 KB, package counts 86/113 → ~95/~125, py-rattler wheel sizes ~28-31 MB → 13-33 MB.
+- Embedded remaining demo GIFs in docs and README.
+- Added VHS demos for conda-workspaces, quickstart, status, and passthrough.
+- Documented conda-workspaces in features, README, and index pages.
+
+### CI
+
+- Allow Codecov upload to fail on PRs.
+- Add `CHANGELOG.md` and `PLAN.md` to docs CI paths filter; drop release trigger from docs workflow.
+- Only deploy GitHub Pages from `main` branch.
+- Add Dependabot configuration for GitHub Actions, Cargo, npm, and pip.
+
+### Dependencies
+
+- Bump rattler ecosystem and other Rust dependencies.
+- Bump npm dependencies in cx-jupyterlite (lodash, postcss, brace-expansion, yaml).
+- Bump GitHub Actions to latest versions.
+
 ## 0.5.3 (2026-03-31)
 
 ### Fixes
