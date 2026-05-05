@@ -70,7 +70,10 @@ which adds project-scoped multi-environment workspace management and a built-in
 task runner to conda. After bootstrap, two new subcommands are available:
 
 ```bash
-# Initialize a workspace and install environments
+# One-step bootstrap: init, add, install, and open a shell
+cx workspace quickstart --name my-project python numpy
+
+# Or step by step
 cx workspace init --name my-project
 cx workspace add python numpy
 cx workspace install
@@ -83,6 +86,27 @@ cx task list
 conda-workspaces reads workspace manifests from `conda.toml`, `pixi.toml`, or
 `pyproject.toml` — making it compatible with existing pixi projects. See the
 [conda-workspaces documentation](https://conda-incubator.github.io/conda-workspaces/)
+for the full feature set.
+
+## conda-global
+
+cx includes [conda-global](https://conda-incubator.github.io/conda-global/),
+which adds global tool management to conda. Install CLI tools into isolated
+environments and expose them on your PATH — the same workflow as `pipx` or
+`pixi global`, without leaving the conda ecosystem:
+
+```bash
+# Install a tool globally
+cx global install ruff
+
+# List globally installed tools
+cx global list
+
+# Remove a globally installed tool
+cx global remove ruff
+```
+
+See the [conda-global documentation](https://conda-incubator.github.io/conda-global/)
 for the full feature set.
 
 ## Frozen base prefix (CEP 22)
