@@ -8,6 +8,10 @@ license = "BSD-3-Clause"
 [dependencies]
 rust = ">=1.85"
 cargo-llvm-cov = ">=0.6"
+sccache = ">=0.10"
+
+[activation.env]
+RUSTC_WRAPPER = "sccache"
 
 [tasks]
 build = "cargo build --release"
