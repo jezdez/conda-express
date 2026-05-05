@@ -98,7 +98,7 @@ jobs:
 
       - name: Build cxz (embedded payload)
         run: |
-          pixi run -- cargo run -p cx-build -- gen-payload
+          pixi run -- cargo run -p cx-build -- payload
           CX_EMBED_PAYLOAD=1 pixi run build
 
       - name: Stage binary and compute checksums

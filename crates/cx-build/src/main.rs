@@ -15,7 +15,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Command {
     /// Extract cx.lock from pixi.lock's cx-env environment
-    GenLock {
+    Lock {
         /// Only verify cx.lock is up-to-date; exit 1 if stale
         #[arg(long)]
         check: bool,
@@ -26,7 +26,7 @@ enum Command {
     },
 
     /// Download packages from cx.lock and bundle into payload.tar.zst
-    GenPayload {
+    Payload {
         /// Target platform (default: current)
         #[arg(long)]
         platform: Option<String>,
@@ -96,16 +96,16 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
 
     if check {
         if !cx_lock_path.exists() {
-            eprintln!("cx.lock does not exist; run `cargo run -p cx-build -- gen-lock` to create it");
+            eprintln!("cx.lock does not exist; run `cargo run -p cx-build -- lock` to create it");
             std::process::exit(1);
         }
         if !cx_hash_path.exists() {
-            eprintln!("cx.lock.hash does not exist; run `cargo run -p cx-build -- gen-lock` to create it");
+            eprintln!("cx.lock.hash does not exist; run `cargo run -p cx-build -- lock` to create it");
             std::process::exit(1);
         }
         let stored_hash = std::fs::read_to_string(&cx_hash_path).unwrap_or_default();
         if stored_hash.trim() != input_hash {
-            eprintln!("cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- gen-lock` to update");
+            eprintln!("cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- lock` to update");
             std::process::exit(1);
         }
         eprintln!("cx.lock is up-to-date");
@@ -357,8 +357,8 @@ fn configure(
 fn main() {
     let cli = Cli::parse();
     match cli.command {
-        Command::GenLock { check, root } => gen_lock(check, root),
-        Command::GenPayload { platform, root } => gen_payload(platform, root),
+        Command::Lock { check, root } => gen_lock(check, root),
+        Command::Payload { platform, root } => gen_payload(platform, root),
         Command::Configure {
             packages,
             channels,

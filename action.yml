@@ -81,13 +81,13 @@ runs:
         fi
         eval pixi run -- cargo run -p cx-build -- configure $ARGS
         pixi lock
-        pixi run gen-lock
+        pixi run lock
 
     - name: Generate payload
       if: inputs.embed-payload == 'true'
       shell: bash
       working-directory: .cx-build
-      run: pixi run gen-payload
+      run: pixi run payload
 
     - name: Build cx
       shell: bash
