@@ -273,7 +273,10 @@ mod tests {
             rattler_conda_types::ParseStrictness::Lenient,
         )
         .unwrap();
-        assert!(spec.name.is_some());
+        assert!(matches!(
+            spec.name,
+            rattler_conda_types::PackageNameMatcher::Exact(_)
+        ));
         assert!(format!("{}", spec).contains("numpy"));
     }
 
