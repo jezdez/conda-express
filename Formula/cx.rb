@@ -2,7 +2,7 @@ class Cx < Formula
   desc "Lightweight single-binary conda bootstrapper powered by rattler"
   homepage "https://github.com/jezdez/conda-express"
   license "BSD-3-Clause"
-  version "0.5.3"
+  version "0.6.0"
 
   on_macos do
     on_arm do
