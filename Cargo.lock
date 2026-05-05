@@ -568,7 +568,6 @@ dependencies = [
  "rstest",
  "serde",
  "serde_json",
- "sha2",
  "tar",
  "temp-env",
  "tempfile",
@@ -5260,8 +5259,12 @@ dependencies = [
  "clap",
  "rattler_conda_types",
  "rattler_lock",
+ "reqwest",
  "sha2",
+ "tar",
+ "tokio",
  "toml",
+ "zstd",
 ]
 
 [[package]]
