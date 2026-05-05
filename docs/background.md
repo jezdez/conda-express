@@ -28,7 +28,7 @@ project is the key enabler for cx's solver strategy:
 
 - Dependencies: only `conda >=25.5.0` + `py-rattler >=0.21.0`
 - [py-rattler](https://pypi.org/project/py-rattler/) is on PyPI with wheels
-  for all major platforms (~28-31 MB, statically-compiled Rust bindings)
+  for all major platforms (13-33 MB depending on platform, statically-compiled Rust bindings)
 - Uses [resolvo](https://github.com/mamba-org/resolvo), the fastest SAT solver
   in the conda ecosystem
 - Same solver used by [pixi](https://pixi.sh), under active development in the
@@ -42,8 +42,8 @@ project is the key enabler for cx's solver strategy:
 
 Because conda on conda-forge hard-depends on `conda-libmamba-solver`, cx
 uses a post-solve transitive dependency pruning algorithm to remove libmamba
-and its 27 exclusive dependencies, reducing the install from 113 to 86
-packages.
+and its exclusive dependencies, reducing the install from ~125 to ~95
+packages (varies by platform).
 
 ## PyPI distribution (the uv pattern)
 

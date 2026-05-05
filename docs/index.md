@@ -104,7 +104,7 @@ Bootstrap a full conda environment in ~3–5 seconds from an embedded lockfile. 
 :link: features
 :link-type: doc
 
-7-11 MB single binary. Installs 86 packages instead of 113 by excluding unnecessary native dependencies.
+7-11 MB single binary. Installs ~95 packages instead of ~125 by excluding unnecessary native dependencies.
 :::
 
 :::{grid-item-card} {octicon}`rocket` Modern
