@@ -48,9 +48,12 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
     let pixi_lock = LockFile::from_path(&pixi_lock_path)
         .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_lock_path.display()));
 
-    let cx_env = pixi_lock
-        .environment("cx-env")
-        .unwrap_or_else(|| panic!("cx-env environment not found in {}", pixi_lock_path.display()));
+    let cx_env = pixi_lock.environment("cx-env").unwrap_or_else(|| {
+        panic!(
+            "cx-env environment not found in {}",
+            pixi_lock_path.display()
+        )
+    });
 
     let pixi_toml = std::fs::read_to_string(&pixi_toml_path)
         .unwrap_or_else(|e| panic!("failed to read {}: {e}", pixi_toml_path.display()));
@@ -82,10 +85,7 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
     let mut builder = LockFileBuilder::new();
 
     if !cx_env.channels().is_empty() {
-        builder.set_channels(
-            "default",
-            cx_env.channels().iter().cloned(),
-        );
+        builder.set_channels("default", cx_env.channels().iter().cloned());
     }
 
     for (platform, packages) in cx_env.conda_packages_by_platform() {
