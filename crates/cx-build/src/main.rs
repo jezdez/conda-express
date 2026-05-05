@@ -100,12 +100,16 @@ fn gen_lock(check: bool, root_override: Option<PathBuf>) {
             std::process::exit(1);
         }
         if !cx_hash_path.exists() {
-            eprintln!("cx.lock.hash does not exist; run `cargo run -p cx-build -- lock` to create it");
+            eprintln!(
+                "cx.lock.hash does not exist; run `cargo run -p cx-build -- lock` to create it"
+            );
             std::process::exit(1);
         }
         let stored_hash = std::fs::read_to_string(&cx_hash_path).unwrap_or_default();
         if stored_hash.trim() != input_hash {
-            eprintln!("cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- lock` to update");
+            eprintln!(
+                "cx.lock is stale (hash mismatch); run `cargo run -p cx-build -- lock` to update"
+            );
             std::process::exit(1);
         }
         eprintln!("cx.lock is up-to-date");
@@ -178,10 +182,7 @@ fn gen_payload(platform_str: Option<String>, root_override: Option<PathBuf>) {
         );
     }
 
-    eprintln!(
-        "downloading {} packages for {platform}...",
-        packages.len()
-    );
+    eprintln!("downloading {} packages for {platform}...", packages.len());
 
     let rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
@@ -305,7 +306,11 @@ fn configure(
         .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_toml_path.display()));
 
     if let Some(ref pkgs) = packages {
-        let specs: Vec<&str> = pkgs.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        let specs: Vec<&str> = pkgs
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
         let mut deps = toml_edit::Table::new();
         for spec in &specs {
             let (name, version) = match spec.split_once(' ') {
@@ -325,7 +330,11 @@ fn configure(
     }
 
     if let Some(ref ch) = channels {
-        let channel_list: Vec<&str> = ch.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        let channel_list: Vec<&str> = ch
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
         let mut arr = toml_edit::Array::new();
         for c in &channel_list {
             arr.push(c.to_string());
@@ -341,7 +350,11 @@ fn configure(
     }
 
     if let Some(ref ex) = exclude {
-        let excludes: Vec<&str> = ex.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()).collect();
+        let excludes: Vec<&str> = ex
+            .split(',')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .collect();
         let mut arr = toml_edit::Array::new();
         for e in &excludes {
             arr.push(e.to_string());

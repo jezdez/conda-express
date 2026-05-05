@@ -26,9 +26,7 @@ fn main() {
     std::fs::copy(&cx_lock_src, &cx_lock_dst).expect("failed to copy cx.lock to OUT_DIR");
 
     let payload_dst = out_dir.join("payload.tar.zst");
-    let embed_payload = env::var("CX_EMBED_PAYLOAD")
-        .ok()
-        .is_some_and(|v| v == "1");
+    let embed_payload = env::var("CX_EMBED_PAYLOAD").ok().is_some_and(|v| v == "1");
 
     if embed_payload {
         let payload_src = manifest_dir.join("payload.tar.zst");
