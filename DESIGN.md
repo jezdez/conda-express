@@ -280,13 +280,13 @@ The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC 
 conda-express/
   Cargo.toml            Rust project manifest (crate: conda-express, binary: cx)
   pyproject.toml        maturin config for PyPI wheel builds
-  pixi.toml             Dev environment + [tool.cx] config + feature envs
+  pixi.toml             Dev environment + [tool.cx] config + [feature.cx-env] + pixi tasks
   action.yml            Composite GitHub Action for building custom cx binaries
   Formula/cx.rb         Homebrew formula (same-repo tap)
-  pixi.lock             Locked dev dependencies
+  pixi.lock             Locked dev + cx-env dependencies
   build.rs              Compile-time solver and lockfile generator
-  cx.lock               Cached rattler-lock v6 lockfile (checked in)
-  cx.lock.hash          Config hash for cx.lock cache invalidation
+  cx.lock               rattler-lock v6 lockfile extracted from pixi.lock (checked in)
+  cx.lock.hash          Content hash of pixi.lock + pixi.toml for cache invalidation
   CHANGELOG.md          Release changelog
   LICENSE               BSD 3-Clause
   README.md             User-facing documentation
@@ -301,6 +301,11 @@ conda-express/
     exec.rs             Process replacement (exec into installed conda)
     commands.rs         Bootstrap, status, uninstall implementations
     exclude.rs          Post-solve package exclusion algorithm
+
+  crates/xtask/         Internal build tools (cx-build)
+    Cargo.toml          Workspace member (rattler_lock, clap)
+    src/
+      main.rs           cx-build lock: extracts cx.lock from pixi.lock's cx-env environment
 
   crates/cx-wasm/       cx-wasm WASM crate
     Cargo.toml          Workspace member (rattler, wasm-bindgen, web-sys)
@@ -413,6 +418,7 @@ packages = [
     "conda-spawn",
     "conda-pypi",
     "conda-self",
+    "conda-workspaces",
 ]
 exclude = ["conda-libmamba-solver"]
 ```
@@ -460,12 +466,7 @@ Default prefix: `~/.cx`
 | conda-spawn | Subprocess-based activation (replaces `conda activate`) |
 | conda-pypi | PyPI interoperability (install, solve, convert) |
 | conda-self | Base environment self-management |
-
-### Planned additions
-
-| Plugin | Purpose | Blocker |
-|---|---|---|
-| [conda-workspaces](https://github.com/conda-incubator/conda-workspaces) | Multi-environment workspace management (`conda workspace`, `cw`) | Needs conda-forge feedstock (dep: conda-lockfiles is already on conda-forge) |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) | Multi-environment workspace and task management |
 
 ## Lockfile compatibility
 
@@ -501,7 +502,7 @@ cx is published to PyPI as platform wheels via [maturin](https://github.com/PyO3
 
 All workflows use `pixi` for toolchain management:
 
-- **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately.
+- **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately. Uses `sccache` for Rust compilation caching.
 - **`release.yml`** — triggers on tag push (`v*`). Orchestrates the full release pipeline: builds native binaries, builds maturin platform wheels and sdist, creates a GitHub Release with binary assets, publishes wheels to PyPI via trusted publishing (OIDC), and publishes the crate to crates.io via trusted publishing (`rust-lang/crates-io-auth-action`). All steps run as separate jobs with dependency ordering.
 - **`build.yml`** — reusable workflow (`workflow_call`) for building custom cx binaries. Accepts `packages`, `channels`, `exclude`, and `ref` inputs. Builds all 5 platforms using the composite action and uploads binary artifacts with checksums.
 - **`docs.yml`** — triggers on push to `main` and PRs (docs, lite, cx-wasm, conda-emscripten, recipes paths). Builds Sphinx documentation and JupyterLite demo (cx-wasm WASM build + conda recipes + `lite/build.py`). Deploys docs to GitHub Pages root and demo to `/demo/` subdirectory.

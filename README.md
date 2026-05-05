@@ -38,10 +38,10 @@ cx installs a minimal conda stack from conda-forge:
 | python >= 3.12 | Runtime |
 | conda >= 25.1 | Package manager |
 | conda-rattler-solver | Rust-based solver (replaces libmamba) |
-| conda-spawn | Subprocess-based environment activation |
+| conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
-| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) | Multi-environment workspace and task management |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.4.0 | Multi-environment workspace and task management |
 
 The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default, reducing the install size significantly.
 
@@ -185,15 +185,15 @@ packages = [
     "python >=3.12",
     "conda >=25.1",
     "conda-rattler-solver",
-    "conda-spawn",
+    "conda-spawn >=0.1.0",
     "conda-pypi",
     "conda-self",
-    "conda-workspaces",
+    "conda-workspaces >=0.4.0",
 ]
 exclude = ["conda-libmamba-solver"]
 ```
 
-Edit this section to customize what cx installs, then rebuild. You can also override these values at build time using environment variables — see [Building custom cx binaries](#building-custom-cx-binaries) below.
+Edit this section to customize what cx installs, then rebuild. You can also override these values at build time using environment variables -- see [Building custom cx binaries](#building-custom-cx-binaries) below.
 
 ## CLI reference
 
