@@ -85,11 +85,21 @@ lite-demo = { depends-on = ["lite-build-local", "lite-serve"] }
 # Remove the build output
 lite-clean = { cmd = "rm -rf _output _env .jupyterlite.doit.db", cwd = "lite" }
 
+[feature.cx-env.dependencies]
+python = ">=3.12"
+conda = ">=25.1"
+conda-rattler-solver = "*"
+conda-spawn = "*"
+conda-pypi = "*"
+conda-self = "*"
+conda-workspaces = "*"
+
 [environments]
 docs = ["docs"]
 web = ["web"]
 recipes = ["recipes"]
 lite = ["lite"]
+cx-env = { features = ["cx-env"], no-default-feature = true }
 
 [tool.cx]
 channels = ["conda-forge"]
