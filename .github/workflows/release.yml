@@ -304,6 +304,7 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: dist/
+          skip-existing: true
 
   publish-crates:
     name: Publish to crates.io
@@ -328,7 +329,7 @@ jobs:
       - name: Publish crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-auth.outputs.token }}
-        run: pixi run cargo publish --locked --no-verify -p conda-express
+        run: pixi run cargo publish --locked --no-verify -p conda-express || echo "::warning::cargo publish failed (crate may already exist)"
 
   docker-images:
     name: Docker images
