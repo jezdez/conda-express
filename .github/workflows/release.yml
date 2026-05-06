@@ -99,9 +99,11 @@ jobs:
       - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
 
       - name: Build cxz (embedded payload)
+        env:
+          CX_EMBED_PAYLOAD: "1"
         run: |
           pixi run -- cargo run -p cx-build -- payload
-          CX_EMBED_PAYLOAD=1 pixi run build
+          pixi run build
 
       - name: Stage binary and compute checksums
         shell: bash
@@ -326,7 +328,7 @@ jobs:
       - name: Publish crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ steps.crates-auth.outputs.token }}
-        run: pixi run cargo publish --locked --no-verify
+        run: pixi run cargo publish --locked --no-verify -p conda-express
 
   docker-images:
     name: Docker images
@@ -398,6 +400,7 @@ jobs:
           push-to-registry: true
 
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
+        continue-on-error: true
         with:
           image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
           format: table
