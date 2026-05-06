@@ -7,22 +7,22 @@ class Cx < Formula
   on_macos do
     on_arm do
       url "https://github.com/jezdez/conda-express/releases/download/#{version}/cx-aarch64-apple-darwin"
-      sha256 "dabbcf7c5cd2593ac4238d75aae9cbf38076a9ad1c499309551035022f580d8c"
+      sha256 "26d40b298e9c863d7a0b7dfddf717cb4c6a73c4ceaa7d56cf44264351211e52d"
     end
     on_intel do
       url "https://github.com/jezdez/conda-express/releases/download/#{version}/cx-x86_64-apple-darwin"
-      sha256 "0dbed18649271330ed4092e75268ec4351e17c95b55fd9add972fb9a92d7fdbc"
+      sha256 "96f76dd963330939076b6b0da6f5398826920cfcf34d4414147502fb64923841"
     end
   end
 
   on_linux do
     on_arm do
       url "https://github.com/jezdez/conda-express/releases/download/#{version}/cx-aarch64-unknown-linux-gnu"
-      sha256 "c77c70f6a8fc45b34926a5091f29b2f9413da35c199c3f34b3e5d01416b33102"
+      sha256 "e130803abcd2ca4e2fc9f333ae03191dd375343e7afd573ee36429ddff19f8ea"
     end
     on_intel do
       url "https://github.com/jezdez/conda-express/releases/download/#{version}/cx-x86_64-unknown-linux-gnu"
-      sha256 "da75a720c09df3e2d576e4f56bbc9affe5fae9d7fb7de5216ea025aef42b7399"
+      sha256 "6dd034f39ec43be87ac2ad8f14cd638c7b39f24f2becbdd9b0b0e6f2560bfe8d"
     end
   end
 
