@@ -45,7 +45,9 @@ pub(crate) async fn ensure_bootstrapped(prefix: &Path) -> miette::Result<()> {
 
 fn reject_dangerous_prefix(prefix: &Path) -> miette::Result<()> {
     let home = dirs::home_dir();
-    let canon = prefix.canonicalize().unwrap_or_else(|_| prefix.to_path_buf());
+    let canon = prefix
+        .canonicalize()
+        .unwrap_or_else(|_| prefix.to_path_buf());
 
     let dangerous = canon == Path::new("/")
         || canon == Path::new("")
