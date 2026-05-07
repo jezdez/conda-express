@@ -6,10 +6,32 @@ use serde::Serialize;
 
 use crate::error::CxWasmError;
 
+const MAX_ENTRY_SIZE: u64 = 256 * 1024 * 1024; // 256 MB per file
+const MAX_TOTAL_SIZE: u64 = 2 * 1024 * 1024 * 1024; // 2 GB total
+
 #[derive(Debug, Default, Serialize)]
 pub struct ExtractStats {
     pub file_count: usize,
     pub total_size: usize,
+}
+
+fn is_safe_tar_path(path: &str) -> bool {
+    if path.is_empty() {
+        return false;
+    }
+    if path.starts_with('/') || path.starts_with('\\') {
+        return false;
+    }
+    if path.contains("..") {
+        return false;
+    }
+    if path.contains('\\') {
+        return false;
+    }
+    if path.starts_with("C:") || path.starts_with("c:") || path.contains(":\\") {
+        return false;
+    }
+    true
 }
 
 fn stream_tar_entries<R: Read, F>(
@@ -27,19 +49,47 @@ where
     {
         let mut entry = entry_result
             .map_err(|e| CxWasmError::ExtractFailed(format!("tar entry error: {e}")))?;
+
+        let entry_type = entry.header().entry_type();
+        if !entry_type.is_file() {
+            continue;
+        }
+
         let path = entry
             .path()
             .map_err(|e| CxWasmError::ExtractFailed(format!("tar path error: {e}")))?
             .to_string_lossy()
             .into_owned();
 
-        let mut buf = Vec::with_capacity(entry.size() as usize);
+        if !is_safe_tar_path(&path) {
+            return Err(CxWasmError::ExtractFailed(format!(
+                "unsafe tar path rejected: {path}"
+            )));
+        }
+
+        let declared_size = entry.size();
+        if declared_size > MAX_ENTRY_SIZE {
+            return Err(CxWasmError::ExtractFailed(format!(
+                "tar entry too large ({} bytes): {path}",
+                declared_size
+            )));
+        }
+
+        let capacity = (declared_size as usize).min(16 * 1024 * 1024);
+        let mut buf = Vec::with_capacity(capacity);
         entry
             .read_to_end(&mut buf)
             .map_err(|e| CxWasmError::ExtractFailed(format!("reading tar entry {path}: {e}")))?;
 
         stats.file_count += 1;
         stats.total_size += buf.len();
+
+        if stats.total_size as u64 > MAX_TOTAL_SIZE {
+            return Err(CxWasmError::ExtractFailed(
+                "extraction exceeded total size limit (2 GB)".into(),
+            ));
+        }
+
         on_file(&path, &buf)?;
     }
 
