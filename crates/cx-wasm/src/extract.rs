@@ -56,6 +56,7 @@ where
 
         let entry_type = entry.header().entry_type();
 
+
         let path = entry
             .path()
             .map_err(|e| CxWasmError::ExtractFailed(format!("tar path error: {e}")))?
