@@ -60,10 +60,9 @@ pub async fn bootstrap_streaming_impl(
         errors: Vec::new(),
     };
 
-    for (i, r) in records.into_iter().enumerate() {
+    for (i, r) in records.iter().enumerate() {
         let name = r.package_record.name.as_normalized().to_string();
         let version = r.package_record.version.to_string();
-        let url = r.url.to_string();
 
         if let Some(cb) = on_progress {
             let _ = cb.call3(
@@ -74,7 +73,7 @@ pub async fn bootstrap_streaming_impl(
             );
         }
 
-        match download_and_extract_package_streaming(&name, &url, on_file).await {
+        match download_and_extract_package_streaming(r, on_file).await {
             Ok(stats) => {
                 result.packages_installed += 1;
                 result.total_files += stats.file_count;
@@ -120,12 +119,14 @@ pub async fn bootstrap_streaming_impl(
 }
 
 async fn download_and_extract_package_streaming(
-    name: &str,
-    url: &str,
+    record: &RepoDataRecord,
     on_file: &js_sys::Function,
 ) -> Result<extract::ExtractStats, CxWasmError> {
+    let name = record.package_record.name.as_normalized();
+    let url = record.url.to_string();
+
     web_sys::console::log_1(&format!("  Downloading {name} from {url}").into());
-    let bytes = crate::fetch_bytes(url).await?;
+    let bytes = crate::fetch_bytes(&url).await?;
     web_sys::console::log_1(
         &format!(
             "  Downloaded {name}: {} KB, extracting...",
@@ -134,7 +135,17 @@ async fn download_and_extract_package_streaming(
         .into(),
     );
 
-    let js_name = JsValue::from(name);
+    if let Some(expected) = record.package_record.sha256 {
+        use sha2::{Digest, Sha256};
+        let actual = Sha256::digest(&bytes);
+        if actual.as_slice() != expected.as_slice() {
+            return Err(CxWasmError::ExtractFailed(format!(
+                "SHA256 mismatch for {name}: expected {expected:x}, got {actual:x}"
+            )));
+        }
+    }
+
+    let js_name = JsValue::from(name.to_string());
     let mut file_cb = |path: &str, data: &[u8]| -> Result<(), CxWasmError> {
         let js_path = JsValue::from(path);
         let js_bytes = js_sys::Uint8Array::from(data);
@@ -149,6 +160,6 @@ async fn download_and_extract_package_streaming(
     } else if url.ends_with(".tar.bz2") {
         extract::extract_tar_bz2_streaming(&bytes, &mut file_cb)
     } else {
-        Err(CxWasmError::UnknownPackageFormat(url.to_string()))
+        Err(CxWasmError::UnknownPackageFormat(url))
     }
 }
