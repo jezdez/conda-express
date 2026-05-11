@@ -41,7 +41,11 @@ fn stream_tar_entries<R: Read, F>(
 where
     F: FnMut(&str, &[u8]) -> Result<(), CxWasmError>,
 {
+    use std::collections::HashMap;
+
     let mut stats = ExtractStats::default();
+    let mut file_contents: HashMap<String, Vec<u8>> = HashMap::new();
+    let mut deferred_links: Vec<(String, String)> = Vec::new();
 
     for entry_result in tar
         .entries()
@@ -51,9 +55,6 @@ where
             .map_err(|e| CxWasmError::ExtractFailed(format!("tar entry error: {e}")))?;
 
         let entry_type = entry.header().entry_type();
-        if !entry_type.is_file() {
-            continue;
-        }
 
         let path = entry
             .path()
@@ -65,6 +66,45 @@ where
             return Err(CxWasmError::ExtractFailed(format!(
                 "unsafe tar path rejected: {path}"
             )));
+        }
+
+        if entry_type == tar::EntryType::Symlink || entry_type == tar::EntryType::Link {
+            let link_target = entry
+                .link_name()
+                .map_err(|e| {
+                    CxWasmError::ExtractFailed(format!("reading link name for {path}: {e}"))
+                })?
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default();
+
+            let resolved = if entry_type == tar::EntryType::Symlink {
+                if let Some(parent) = std::path::Path::new(&path).parent() {
+                    parent
+                        .join(&link_target)
+                        .components()
+                        .fold(std::path::PathBuf::new(), |mut acc, c| {
+                            match c {
+                                std::path::Component::ParentDir => { acc.pop(); }
+                                std::path::Component::Normal(s) => acc.push(s),
+                                _ => {}
+                            }
+                            acc
+                        })
+                        .to_string_lossy()
+                        .into_owned()
+                } else {
+                    link_target.clone()
+                }
+            } else {
+                link_target.clone()
+            };
+
+            deferred_links.push((path, resolved));
+            continue;
+        }
+
+        if !entry_type.is_file() {
+            continue;
         }
 
         let declared_size = entry.size();
@@ -91,6 +131,18 @@ where
         }
 
         on_file(&path, &buf)?;
+        file_contents.insert(path, buf);
+    }
+
+    for (path, target) in deferred_links {
+        if let Some(data) = file_contents.get(&target) {
+            stats.file_count += 1;
+            stats.total_size += data.len();
+            on_file(&path, data)?;
+        } else {
+            stats.file_count += 1;
+            on_file(&path, &[])?;
+        }
     }
 
     Ok(stats)
