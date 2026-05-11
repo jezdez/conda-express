@@ -87,21 +87,55 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
     required on Emscripten's MEMFS.
     """
     import tarfile
+    from posixpath import dirname, join, normpath
 
     os.makedirs(dest_dir, exist_ok=True)
     file_count = 0
+    file_contents: dict[str, bytes] = {}
+    deferred_links: list[tuple[str, str]] = []
+
     with open(source_path, "rb") as raw:
         with tarfile.open(fileobj=raw, mode="r|bz2") as tar:
             for member in tar:
                 if member.isdir():
-                    os.makedirs(os.path.join(dest_dir, member.name), exist_ok=True)
+                    os.makedirs(join(dest_dir, member.name), exist_ok=True)
                     continue
-                parent = os.path.dirname(os.path.join(dest_dir, member.name))
+
+                if member.issym():
+                    parent = dirname(member.name)
+                    resolved = normpath(join(parent, member.linkname))
+                    deferred_links.append((member.name, resolved))
+                    continue
+
+                if member.islnk():
+                    deferred_links.append((member.name, member.linkname))
+                    continue
+
+                parent = dirname(join(dest_dir, member.name))
                 if parent:
                     os.makedirs(parent, exist_ok=True)
                 extracted = tar.extractfile(member)
                 if extracted is not None:
-                    with open(os.path.join(dest_dir, member.name), "wb") as out:
-                        out.write(extracted.read())
+                    data = extracted.read()
+                    with open(join(dest_dir, member.name), "wb") as out:
+                        out.write(data)
+                    file_contents[member.name] = data
                     file_count += 1
+
+    for path, target in deferred_links:
+        dest_path = join(dest_dir, path)
+        parent = dirname(dest_path)
+        if parent:
+            os.makedirs(parent, exist_ok=True)
+        if target in file_contents:
+            with open(dest_path, "wb") as out:
+                out.write(file_contents[target])
+            file_count += 1
+        else:
+            src_path = join(dest_dir, target)
+            if os.path.isfile(src_path):
+                import shutil
+                shutil.copy2(src_path, dest_path)
+                file_count += 1
+
     log.info("extractor: extracted %d files from %s (tar|bz2)", file_count, filename)
