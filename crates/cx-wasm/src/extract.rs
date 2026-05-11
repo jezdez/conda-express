@@ -84,7 +84,9 @@ where
                         .components()
                         .fold(std::path::PathBuf::new(), |mut acc, c| {
                             match c {
-                                std::path::Component::ParentDir => { acc.pop(); }
+                                std::path::Component::ParentDir => {
+                                    acc.pop();
+                                }
                                 std::path::Component::Normal(s) => acc.push(s),
                                 _ => {}
                             }
