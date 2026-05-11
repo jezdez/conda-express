@@ -102,7 +102,10 @@ fn prepare(check: bool, root_override: Option<PathBuf>) {
         hasher.update(pixi_toml.as_bytes());
         hasher.update(pixi_lock_content.as_bytes());
         let digest = hasher.finalize();
-        digest.iter().map(|b| format!("{b:02x}")).collect::<String>()
+        digest
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect::<String>()
     };
 
     if check {
