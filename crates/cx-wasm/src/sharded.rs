@@ -513,3 +513,154 @@ pub(crate) fn fetch_sharded_records(
 
     Ok(all_records)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_test_shard() -> Shard {
+        let mut shard = Shard::default();
+
+        let rec = PackageRecord {
+            name: "numpy".parse().unwrap(),
+            version: "1.24.0".parse().unwrap(),
+            build: "py311h_0".into(),
+            build_number: 0,
+            subdir: "noarch".into(),
+            depends: vec!["python >=3.11".into(), "openblas".into()],
+            arch: None,
+            constrains: vec![],
+            experimental_extra_depends: Default::default(),
+            features: None,
+            legacy_bz2_md5: None,
+            legacy_bz2_size: None,
+            license: None,
+            license_family: None,
+            md5: None,
+            noarch: Default::default(),
+            platform: None,
+            purls: None,
+            python_site_packages_path: None,
+            run_exports: None,
+            sha256: None,
+            size: None,
+            timestamp: None,
+            track_features: vec![],
+        };
+        let id: rattler_conda_types::package::ArchiveIdentifier =
+            "numpy-1.24.0-py311h_0".parse().unwrap();
+        shard.experimental_v3.conda.insert(id, rec);
+
+        let whl_rec = rattler_conda_types::WhlPackageRecord {
+            package_record: PackageRecord {
+                name: "requests".parse().unwrap(),
+                version: "2.31.0".parse().unwrap(),
+                build: "pyhd8ed1ab_0".into(),
+                build_number: 0,
+                subdir: "noarch".into(),
+                depends: vec![
+                    "urllib3 >=1.21.1".into(),
+                    "charset-normalizer >=2".into(),
+                ],
+                arch: None,
+                constrains: vec![],
+                experimental_extra_depends: Default::default(),
+                features: None,
+                legacy_bz2_md5: None,
+                legacy_bz2_size: None,
+                license: None,
+                license_family: None,
+                md5: None,
+                noarch: Default::default(),
+                platform: None,
+                purls: None,
+                python_site_packages_path: None,
+                run_exports: None,
+                sha256: None,
+                size: None,
+                timestamp: None,
+                track_features: vec![],
+            },
+            url: UrlOrPath::Url(
+                url::Url::parse("https://conda.anaconda.org/conda-pypi/noarch/requests-2.31.0.whl")
+                    .unwrap(),
+            ),
+        };
+        let whl_id: rattler_conda_types::package::ArchiveIdentifier =
+            "requests-2.31.0-pyhd8ed1ab_0".parse().unwrap();
+        shard.experimental_v3.whl.insert(whl_id, whl_rec);
+
+        shard
+    }
+
+    #[test]
+    fn test_shard_dep_names_includes_v3() {
+        let shard = make_test_shard();
+        let deps = shard_dep_names(&shard);
+
+        assert!(deps.contains("python"), "missing python dep from v3 conda");
+        assert!(deps.contains("openblas"), "missing openblas dep from v3 conda");
+        assert!(deps.contains("urllib3"), "missing urllib3 dep from v3 whl");
+        assert!(
+            deps.contains("charset-normalizer"),
+            "missing charset-normalizer dep from v3 whl"
+        );
+    }
+
+    #[test]
+    fn test_parse_repodata_text_with_v3() {
+        let json = r#"{
+            "info": {"subdir": "noarch"},
+            "packages": {},
+            "packages.conda": {},
+            "v3": {
+                "tar.bz2": {},
+                "conda": {
+                    "numpy-1.24.0-py311h_0": {
+                        "name": "numpy",
+                        "version": "1.24.0",
+                        "build": "py311h_0",
+                        "build_number": 0,
+                        "subdir": "noarch",
+                        "depends": ["python >=3.11"]
+                    }
+                },
+                "whl": {
+                    "requests-2.31.0-pyhd8ed1ab_0": {
+                        "name": "requests",
+                        "version": "2.31.0",
+                        "build": "pyhd8ed1ab_0",
+                        "build_number": 0,
+                        "subdir": "noarch",
+                        "depends": ["urllib3"],
+                        "url": "https://conda.anaconda.org/conda-pypi/noarch/requests-2.31.0.whl"
+                    }
+                }
+            }
+        }"#;
+
+        let records = parse_repodata_text(
+            json,
+            "https://conda.anaconda.org/conda-pypi",
+            "noarch",
+            "https://conda.anaconda.org/conda-pypi/noarch/",
+        )
+        .unwrap();
+
+        assert_eq!(records.len(), 2);
+
+        let numpy = records.iter().find(|r| r.package_record.name.as_normalized() == "numpy");
+        assert!(numpy.is_some(), "numpy not found in records");
+        let numpy = numpy.unwrap();
+        assert!(numpy.url.as_str().contains("numpy"));
+        assert!(numpy.url.as_str().ends_with(".conda"));
+
+        let requests = records.iter().find(|r| r.package_record.name.as_normalized() == "requests");
+        assert!(requests.is_some(), "requests not found in records");
+        let requests = requests.unwrap();
+        assert_eq!(
+            requests.url.as_str(),
+            "https://conda.anaconda.org/conda-pypi/noarch/requests-2.31.0.whl"
+        );
+    }
+}

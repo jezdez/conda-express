@@ -258,3 +258,100 @@ where
     let mut tar = tar::Archive::new(decoder);
     stream_tar_entries(&mut tar, on_file)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    fn make_test_whl() -> Vec<u8> {
+        let buf = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(buf);
+        let options = zip::write::SimpleFileOptions::default();
+
+        zip.start_file("requests/__init__.py", options).unwrap();
+        zip.write_all(b"# requests package").unwrap();
+
+        zip.start_file("requests/api.py", options).unwrap();
+        zip.write_all(b"def get(url): pass").unwrap();
+
+        zip.start_file("requests-2.31.0.dist-info/METADATA", options)
+            .unwrap();
+        zip.write_all(b"Name: requests\nVersion: 2.31.0\n")
+            .unwrap();
+
+        zip.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn test_extract_whl_basic() {
+        let whl = make_test_whl();
+        let mut files: Vec<(String, Vec<u8>)> = Vec::new();
+
+        let stats = extract_whl_streaming(&whl, |path, data| {
+            files.push((path.to_string(), data.to_vec()));
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(stats.file_count, 3);
+        assert!(stats.total_size > 0);
+
+        let names: Vec<&str> = files.iter().map(|(n, _)| n.as_str()).collect();
+        assert!(names.contains(&"requests/__init__.py"));
+        assert!(names.contains(&"requests/api.py"));
+        assert!(names.contains(&"requests-2.31.0.dist-info/METADATA"));
+    }
+
+    #[test]
+    fn test_extract_whl_rejects_path_traversal() {
+        let buf = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(buf);
+        let options = zip::write::SimpleFileOptions::default();
+
+        zip.start_file("../escape.py", options).unwrap();
+        zip.write_all(b"malicious").unwrap();
+
+        let whl = zip.finish().unwrap().into_inner();
+
+        let result = extract_whl_streaming(&whl, |_, _| Ok(()));
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("unsafe path"), "error was: {err}");
+    }
+
+    #[test]
+    fn test_extract_whl_skips_directories() {
+        let buf = std::io::Cursor::new(Vec::new());
+        let mut zip = zip::ZipWriter::new(buf);
+        let options = zip::write::SimpleFileOptions::default();
+
+        zip.add_directory("somedir/", options).unwrap();
+        zip.start_file("somedir/file.py", options).unwrap();
+        zip.write_all(b"content").unwrap();
+
+        let whl = zip.finish().unwrap().into_inner();
+        let mut count = 0;
+
+        let stats = extract_whl_streaming(&whl, |_, _| {
+            count += 1;
+            Ok(())
+        })
+        .unwrap();
+
+        assert_eq!(stats.file_count, 1);
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_safe_path_validation() {
+        assert!(is_safe_tar_path("requests/__init__.py"));
+        assert!(is_safe_tar_path("a/b/c.txt"));
+        assert!(!is_safe_tar_path(""));
+        assert!(!is_safe_tar_path("/etc/passwd"));
+        assert!(!is_safe_tar_path("../escape"));
+        assert!(!is_safe_tar_path("a/../../escape"));
+        assert!(!is_safe_tar_path("C:\\Windows\\system32"));
+        assert!(!is_safe_tar_path("a\\b\\c"));
+    }
+}
