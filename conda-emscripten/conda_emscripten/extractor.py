@@ -40,6 +40,9 @@ def extract_wasm(source_path, dest_dir):
         if filename.endswith(".tar.bz2"):
             log.info("extractor: WASM failed for %s, using Python tarfile", filename)
             _extract_tar_bz2(source_path, dest_dir, filename)
+        elif filename.endswith(".whl"):
+            log.info("extractor: WASM failed for %s, using Python zipfile", filename)
+            _extract_whl(source_path, dest_dir, filename)
         else:
             raise
 
@@ -139,3 +142,33 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
                 file_count += 1
 
     log.info("extractor: extracted %d files from %s (tar|bz2)", file_count, filename)
+
+
+def _extract_whl(source_path, dest_dir, filename):
+    """Fallback: extract .whl using Python's zipfile module."""
+    import zipfile
+    from posixpath import dirname, join
+
+    os.makedirs(dest_dir, exist_ok=True)
+    file_count = 0
+
+    with zipfile.ZipFile(source_path, "r") as zf:
+        for member in zf.infolist():
+            if member.is_dir():
+                continue
+
+            if not _is_within(join(dest_dir, member.filename), dest_dir):
+                raise RuntimeError(
+                    f"extractor: wheel path escapes destination: {member.filename}"
+                )
+
+            dest_path = join(dest_dir, member.filename)
+            parent = dirname(dest_path)
+            if parent:
+                os.makedirs(parent, exist_ok=True)
+
+            with zf.open(member) as src, open(dest_path, "wb") as dst:
+                dst.write(src.read())
+            file_count += 1
+
+    log.info("extractor: extracted %d files from %s (zipfile)", file_count, filename)

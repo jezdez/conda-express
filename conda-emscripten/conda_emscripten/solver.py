@@ -82,7 +82,7 @@ def _records_to_dicts(records: Iterable[PrefixRecord]) -> list[dict]:
     result = []
     for rec in records:
         fn = rec.fn or ""
-        if not (fn.endswith(".conda") or fn.endswith(".tar.bz2")):
+        if not (fn.endswith(".conda") or fn.endswith(".tar.bz2") or fn.endswith(".whl")):
             fn = f"{rec.name}-{rec.version}-{rec.build}.conda"
 
         channel_str = str(rec.channel) if rec.channel else ""

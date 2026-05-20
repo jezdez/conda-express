@@ -26,7 +26,8 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::io::Read;
 use std::rc::Rc;
 
-use rattler_conda_types::{PackageRecord, Shard};
+use rattler_conda_types::package::{CondaArchiveType, DistArchiveIdentifier, WheelArchiveType};
+use rattler_conda_types::{PackageRecord, Shard, UrlOrPath};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
@@ -142,6 +143,17 @@ fn shard_dep_names(shard: &Shard) -> BTreeSet<String> {
     let mut names = BTreeSet::new();
     for rec in shard.packages.values().chain(shard.conda_packages.values()) {
         extract_dep_names(rec, &mut names);
+    }
+    for rec in shard
+        .experimental_v3
+        .tar_bz2
+        .values()
+        .chain(shard.experimental_v3.conda.values())
+    {
+        extract_dep_names(rec, &mut names);
+    }
+    for whl_rec in shard.experimental_v3.whl.values() {
+        extract_dep_names(&whl_rec.package_record, &mut names);
     }
     names
 }
@@ -259,6 +271,53 @@ fn get_or_fetch_shard(
         });
     }
 
+    for (id, rec) in shard.experimental_v3.tar_bz2.iter() {
+        let dist_id = DistArchiveIdentifier::new(id.clone(), CondaArchiveType::TarBz2);
+        if shard.removed.contains(&dist_id) {
+            continue;
+        }
+        let url = url::Url::parse(&format!("{base_url}{dist_id}"))
+            .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {dist_id}: {e}")))?;
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: rec.clone(),
+            identifier: dist_id,
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+    for (id, rec) in shard.experimental_v3.conda.iter() {
+        let dist_id = DistArchiveIdentifier::new(id.clone(), CondaArchiveType::Conda);
+        if shard.removed.contains(&dist_id) {
+            continue;
+        }
+        let url = url::Url::parse(&format!("{base_url}{dist_id}"))
+            .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {dist_id}: {e}")))?;
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: rec.clone(),
+            identifier: dist_id,
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+    for (id, whl_rec) in shard.experimental_v3.whl.iter() {
+        let dist_id = DistArchiveIdentifier::new(id.clone(), WheelArchiveType::Whl);
+        if shard.removed.contains(&dist_id) {
+            continue;
+        }
+        let url = match &whl_rec.url {
+            UrlOrPath::Url(u) => u.clone(),
+            UrlOrPath::Path(p) => url::Url::parse(&format!("{base_url}{p}")).map_err(|e| {
+                CxWasmError::RepodataParse(format!("invalid whl URL for {dist_id}: {e}"))
+            })?,
+        };
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: whl_rec.package_record.clone(),
+            identifier: dist_id,
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+
     let cached = Rc::new(CachedShard { records, dep_names });
     SHARD_CACHE.with(|c| {
         c.borrow_mut()
@@ -328,6 +387,45 @@ fn parse_repodata_text(
             channel: Some(channel_url.to_string()),
         });
     }
+
+    for (id, rec) in repo.experimental_v3.tar_bz2.into_iter() {
+        let dist_id = DistArchiveIdentifier::new(id, CondaArchiveType::TarBz2);
+        let url = url::Url::parse(&format!("{base_url}{dist_id}"))
+            .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {dist_id}: {e}")))?;
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: rec,
+            identifier: dist_id,
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+    for (id, rec) in repo.experimental_v3.conda.into_iter() {
+        let dist_id = DistArchiveIdentifier::new(id, CondaArchiveType::Conda);
+        let url = url::Url::parse(&format!("{base_url}{dist_id}"))
+            .map_err(|e| CxWasmError::RepodataParse(format!("invalid URL for {dist_id}: {e}")))?;
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: rec,
+            identifier: dist_id,
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+    for (id, whl_rec) in repo.experimental_v3.whl.into_iter() {
+        let dist_id = DistArchiveIdentifier::new(id, WheelArchiveType::Whl);
+        let url = match whl_rec.url {
+            UrlOrPath::Url(u) => u,
+            UrlOrPath::Path(p) => url::Url::parse(&format!("{base_url}{p}")).map_err(|e| {
+                CxWasmError::RepodataParse(format!("invalid whl URL for {dist_id}: {e}"))
+            })?,
+        };
+        records.push(rattler_conda_types::RepoDataRecord {
+            package_record: whl_rec.package_record,
+            identifier: dist_id,
+            url,
+            channel: Some(channel_url.to_string()),
+        });
+    }
+
     Ok(records)
 }
 

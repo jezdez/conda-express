@@ -45,7 +45,7 @@ def conda_package_extractors():
 
         yield plugins.types.CondaPackageExtractor(
             name="wasm-extractor",
-            extensions=[".tar.bz2", ".conda"],
+            extensions=[".tar.bz2", ".conda", ".whl"],
             extract=extract_wasm,
         )
 

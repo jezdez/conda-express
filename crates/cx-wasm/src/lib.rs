@@ -209,6 +209,8 @@ pub fn cx_extract_package(
         extract::extract_conda_streaming(bytes, &mut file_cb)?
     } else if filename.ends_with(".tar.bz2") {
         extract::extract_tar_bz2_streaming(bytes, &mut file_cb)?
+    } else if filename.ends_with(".whl") {
+        extract::extract_whl_streaming(bytes, &mut file_cb)?
     } else {
         return Err(CxWasmError::UnknownPackageFormat(filename.to_string()).into());
     };

@@ -39,6 +39,7 @@ show_channel_urls: true
 channels:
   - https://repo.prefix.dev/emscripten-forge-4x
   - conda-forge
+  - https://conda.anaconda.org/conda-pypi
 """
 
 

@@ -128,6 +128,7 @@ notify_outdated_conda: false
 show_channel_urls: true
 channels:
   - conda-forge
+  - https://conda.anaconda.org/conda-pypi
 ";
     std::fs::create_dir_all(prefix).into_diagnostic()?;
     std::fs::write(&condarc_path, contents).into_diagnostic()?;

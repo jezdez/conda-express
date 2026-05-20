@@ -178,6 +178,59 @@ where
     Ok(stats)
 }
 
+pub fn extract_whl_streaming<F>(bytes: &[u8], mut on_file: F) -> Result<ExtractStats, CxWasmError>
+where
+    F: FnMut(&str, &[u8]) -> Result<(), CxWasmError>,
+{
+    let reader = Cursor::new(bytes);
+    let mut archive = zip::ZipArchive::new(reader)
+        .map_err(|e| CxWasmError::ExtractFailed(format!("opening wheel ZIP: {e}")))?;
+
+    let mut stats = ExtractStats::default();
+
+    for i in 0..archive.len() {
+        let mut entry = archive.by_index(i).map_err(|e| {
+            CxWasmError::ExtractFailed(format!("reading wheel ZIP entry {i}: {e}"))
+        })?;
+
+        if entry.is_dir() {
+            continue;
+        }
+
+        let name = entry.name().to_string();
+        if !is_safe_tar_path(&name) {
+            return Err(CxWasmError::ExtractFailed(format!(
+                "unsafe path in wheel: {name}"
+            )));
+        }
+
+        let size = entry.size();
+        if size > MAX_ENTRY_SIZE {
+            return Err(CxWasmError::ExtractFailed(format!(
+                "wheel entry too large ({size} bytes): {name}"
+            )));
+        }
+
+        let mut buf = Vec::with_capacity(size as usize);
+        entry.read_to_end(&mut buf).map_err(|e| {
+            CxWasmError::ExtractFailed(format!("reading wheel entry {name}: {e}"))
+        })?;
+
+        stats.file_count += 1;
+        stats.total_size += buf.len();
+
+        if stats.total_size as u64 > MAX_TOTAL_SIZE {
+            return Err(CxWasmError::ExtractFailed(
+                "wheel extraction exceeded total size limit (2 GB)".into(),
+            ));
+        }
+
+        on_file(&name, &buf)?;
+    }
+
+    Ok(stats)
+}
+
 pub fn extract_tar_bz2_streaming<F>(
     bytes: &[u8],
     mut on_file: F,

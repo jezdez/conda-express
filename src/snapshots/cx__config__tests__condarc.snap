@@ -8,3 +8,4 @@ notify_outdated_conda: false
 show_channel_urls: true
 channels:
   - conda-forge
+  - https://conda.anaconda.org/conda-pypi
