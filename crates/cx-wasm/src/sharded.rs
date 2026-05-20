@@ -94,6 +94,8 @@ pub(crate) struct DecodedShardIndex {
     pub(crate) shards: BTreeMap<String, String>,
 }
 
+const MAX_DECOMPRESSED_SIZE: usize = 256 * 1024 * 1024; // 256 MB
+
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>, CxWasmError> {
     if compressed.is_empty() {
         return Err(CxWasmError::RepodataParse(
@@ -105,9 +107,22 @@ fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>, CxWasmError> {
         .map_err(|e| CxWasmError::RepodataParse(format!("zstd init: {e}")))?;
 
     let mut decompressed = Vec::new();
-    decoder
-        .read_to_end(&mut decompressed)
-        .map_err(|e| CxWasmError::RepodataParse(format!("zstd decompress: {e}")))?;
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        let n = decoder
+            .read(&mut buf)
+            .map_err(|e| CxWasmError::RepodataParse(format!("zstd decompress: {e}")))?;
+        if n == 0 {
+            break;
+        }
+        decompressed.extend_from_slice(&buf[..n]);
+        if decompressed.len() > MAX_DECOMPRESSED_SIZE {
+            return Err(CxWasmError::RepodataParse(format!(
+                "decompressed data exceeds {} MB limit",
+                MAX_DECOMPRESSED_SIZE / (1024 * 1024)
+            )));
+        }
+    }
 
     Ok(decompressed)
 }

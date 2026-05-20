@@ -63,7 +63,6 @@ fn reject_dangerous_prefix(prefix: &Path) -> miette::Result<()> {
     Ok(())
 }
 
-
 pub(crate) fn validate_bootstrap_flags(
     offline: bool,
     no_lock: bool,

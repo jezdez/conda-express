@@ -244,10 +244,37 @@ pub fn extract_embedded_payload() -> miette::Result<Option<PathBuf>> {
         .into_diagnostic()
         .context("failed to decompress embedded payload")?;
     let mut archive = tar::Archive::new(decoder);
-    archive
-        .unpack(tmp_dir.path())
+    archive.set_preserve_permissions(false);
+    archive.set_unpack_xattrs(false);
+    archive.set_preserve_ownerships(false);
+    for entry in archive
+        .entries()
         .into_diagnostic()
-        .context("failed to unpack embedded payload")?;
+        .context("failed to read embedded payload entries")?
+    {
+        let mut entry = entry
+            .into_diagnostic()
+            .context("failed to read payload entry")?;
+        let path = entry
+            .path()
+            .into_diagnostic()
+            .context("failed to read payload entry path")?;
+        let path_str = path.to_string_lossy();
+        if path_str.contains("..") || path.is_absolute() {
+            return Err(miette::miette!(
+                "unsafe path in embedded payload: {}",
+                path_str
+            ));
+        }
+        let entry_type = entry.header().entry_type();
+        if entry_type.is_symlink() || entry_type.is_hard_link() {
+            continue;
+        }
+        entry
+            .unpack_in(tmp_dir.path())
+            .into_diagnostic()
+            .context("failed to unpack payload entry")?;
+    }
 
     eprintln!(
         "   Extracted embedded payload ({:.1} MB) to {}",
@@ -426,6 +453,8 @@ pub(crate) fn parse_specs(specs: &[String]) -> miette::Result<Vec<MatchSpec>> {
 fn make_download_client() -> miette::Result<reqwest_middleware::ClientWithMiddleware> {
     let raw = reqwest::Client::builder()
         .no_gzip()
+        .connect_timeout(Duration::from_secs(30))
+        .timeout(Duration::from_secs(600))
         .build()
         .into_diagnostic()
         .context("failed to create HTTP client")?;

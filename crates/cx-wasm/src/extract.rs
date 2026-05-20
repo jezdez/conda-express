@@ -56,6 +56,15 @@ where
 
         let entry_type = entry.header().entry_type();
 
+        if matches!(
+            entry_type,
+            tar::EntryType::Char
+                | tar::EntryType::Block
+                | tar::EntryType::Fifo
+                | tar::EntryType::GNUSparse
+        ) {
+            continue;
+        }
 
         let path = entry
             .path()
