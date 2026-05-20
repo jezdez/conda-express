@@ -1,6 +1,8 @@
+diff --git a/conda/gateways/disk/lock.py b/conda/gateways/disk/lock.py
+index eea2fe4..e038b99 100644
 --- a/conda/gateways/disk/lock.py
 +++ b/conda/gateways/disk/lock.py
-@@ -7,6 +7,7 @@ between conda processes. Try to acquire a lock on a single byte in the metadat
+@@ -6,6 +6,7 @@ between conda processes. Try to acquire a lock on a single byte in the metadat
  file; modify both files; then release the lock.
  """
  
@@ -8,12 +10,12 @@
  import time
  import warnings
  from contextlib import contextmanager
-@@ -86,7 +87,7 @@ except ImportError:
+@@ -84,7 +85,7 @@ except ImportError:
  
  
  def lock(fd, *, lock_attempts=LOCK_ATTEMPTS):
 -    if not context.no_lock:
 +    if not context.no_lock and sys.platform != "emscripten":
-         # locking required for jlap, now default for all
+         # locking now default for all repodata operations
          return _lock_impl(fd, lock_attempts)
      return _lock_noop(fd, lock_attempts)

@@ -29,22 +29,6 @@ index 50dcefe81..bcdf97ab6 100644
  
          return str(archspec.cpu.host())
  
-diff --git a/conda/gateways/repodata/jlap/fetch.py b/conda/gateways/repodata/jlap/fetch.py
-index 7dd830d2a..7083a3c2e 100644
---- a/conda/gateways/repodata/jlap/fetch.py
-+++ b/conda/gateways/repodata/jlap/fetch.py
-@@ -14,7 +14,10 @@ from hashlib import blake2b
- from typing import TYPE_CHECKING
- 
- import jsonpatch
--import zstandard
-+try:
-+    import zstandard
-+except ImportError:
-+    zstandard = None  # JLAP/zst repodata fetching unavailable on emscripten
- from requests import HTTPError
- 
- from ....base.context import context
 diff --git a/conda/plugins/package_extractors/conda.py b/conda/plugins/package_extractors/conda.py
 index 8ed71fd00..a993079ba 100644
 --- a/conda/plugins/package_extractors/conda.py

@@ -1,5 +1,5 @@
 context:
-  version: "26.1.1"
+  version: "26.5.0"
   conda_git: "https://github.com/conda/conda"
 
 package:
