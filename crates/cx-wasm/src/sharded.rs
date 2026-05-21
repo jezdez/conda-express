@@ -94,6 +94,8 @@ pub(crate) struct DecodedShardIndex {
     pub(crate) shards: BTreeMap<String, String>,
 }
 
+const MAX_DECOMPRESSED_SIZE: usize = 256 * 1024 * 1024; // 256 MB
+
 fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>, CxWasmError> {
     if compressed.is_empty() {
         return Err(CxWasmError::RepodataParse(
@@ -105,9 +107,22 @@ fn decompress_zstd(compressed: &[u8]) -> Result<Vec<u8>, CxWasmError> {
         .map_err(|e| CxWasmError::RepodataParse(format!("zstd init: {e}")))?;
 
     let mut decompressed = Vec::new();
-    decoder
-        .read_to_end(&mut decompressed)
-        .map_err(|e| CxWasmError::RepodataParse(format!("zstd decompress: {e}")))?;
+    let mut buf = [0u8; 64 * 1024];
+    loop {
+        let n = decoder
+            .read(&mut buf)
+            .map_err(|e| CxWasmError::RepodataParse(format!("zstd decompress: {e}")))?;
+        if n == 0 {
+            break;
+        }
+        decompressed.extend_from_slice(&buf[..n]);
+        if decompressed.len() > MAX_DECOMPRESSED_SIZE {
+            return Err(CxWasmError::RepodataParse(format!(
+                "decompressed data exceeds {} MB limit",
+                MAX_DECOMPRESSED_SIZE / (1024 * 1024)
+            )));
+        }
+    }
 
     Ok(decompressed)
 }
@@ -414,4 +429,64 @@ pub(crate) fn fetch_sharded_records(
     );
 
     Ok(all_records)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decompress_zstd_rejects_empty_input() {
+        let result = decompress_zstd(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("empty zstd input"), "error was: {err}");
+    }
+
+    #[test]
+    fn test_decompress_zstd_rejects_invalid_data() {
+        let result = decompress_zstd(&[0xFF, 0xFE, 0xFD, 0xFC]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("zstd"), "error was: {err}");
+    }
+
+    #[test]
+    fn test_resolve_shards_base_url_absolute() {
+        let result = resolve_shards_base_url(
+            "https://cdn.example.com/shards",
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        );
+        assert_eq!(result, "https://cdn.example.com/shards/");
+    }
+
+    #[test]
+    fn test_resolve_shards_base_url_relative() {
+        let result = resolve_shards_base_url(
+            "./shards",
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        );
+        assert_eq!(
+            result,
+            "https://conda.anaconda.org/conda-forge/noarch/shards/"
+        );
+    }
+
+    #[test]
+    fn test_resolve_shards_base_url_empty() {
+        let result = resolve_shards_base_url(
+            "",
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        );
+        assert_eq!(result, "https://conda.anaconda.org/conda-forge/noarch/");
+    }
+
+    #[test]
+    fn test_shard_index_url_format() {
+        let url = shard_index_url("https://conda.anaconda.org/conda-forge", "noarch");
+        assert_eq!(
+            url,
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst"
+        );
+    }
 }

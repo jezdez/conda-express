@@ -4,10 +4,19 @@ Extracts .conda and .tar.bz2 packages via cx-wasm's Rust WASM code,
 with a Python streaming tarfile fallback for .tar.bz2 if WASM fails.
 """
 
+from __future__ import annotations
+
 import logging
 import os
+from pathlib import PurePosixPath
+from posixpath import normpath
 
 log = logging.getLogger(__name__)
+
+
+def is_within(path, directory):
+    """Check that *path* stays inside *directory* after resolving ``..``."""
+    return PurePosixPath(normpath(path)).is_relative_to(normpath(directory))
 
 
 def extract_wasm(source_path, dest_dir):
@@ -63,6 +72,8 @@ def _extract_via_wasm(source_path, dest_dir, filename):
     def on_file(path, data):
         nonlocal file_count
         full_path = os.path.join(dest_dir, path)
+        if not is_within(full_path, dest_dir):
+            raise RuntimeError(f"extractor: path escapes destination: {path}")
         parent = os.path.dirname(full_path)
         if parent:
             os.makedirs(parent, exist_ok=True)
@@ -87,7 +98,7 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
     required on Emscripten's MEMFS.
     """
     import tarfile
-    from posixpath import dirname, join, normpath
+    from posixpath import dirname, join
 
     os.makedirs(dest_dir, exist_ok=True)
     file_count = 0
@@ -97,6 +108,14 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
     with open(source_path, "rb") as raw:
         with tarfile.open(fileobj=raw, mode="r|bz2") as tar:
             for member in tar:
+                if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
+                    continue
+
+                if not is_within(join(dest_dir, member.name), dest_dir):
+                    raise RuntimeError(
+                        f"extractor: tar path escapes destination: {member.name}"
+                    )
+
                 if member.isdir():
                     os.makedirs(join(dest_dir, member.name), exist_ok=True)
                     continue
@@ -104,10 +123,20 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
                 if member.issym():
                     parent = dirname(member.name)
                     resolved = normpath(join(parent, member.linkname))
+                    if not is_within(join(dest_dir, resolved), dest_dir):
+                        raise RuntimeError(
+                            f"extractor: symlink escapes destination: "
+                            f"{member.name} -> {member.linkname}"
+                        )
                     deferred_links.append((member.name, resolved))
                     continue
 
                 if member.islnk():
+                    if not is_within(join(dest_dir, member.linkname), dest_dir):
+                        raise RuntimeError(
+                            f"extractor: hardlink escapes destination: "
+                            f"{member.name} -> {member.linkname}"
+                        )
                     deferred_links.append((member.name, member.linkname))
                     continue
 
