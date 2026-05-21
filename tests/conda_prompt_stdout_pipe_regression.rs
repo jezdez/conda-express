@@ -12,7 +12,7 @@
 
 #[cfg(unix)]
 mod unix {
-    use std::io::{BufRead, BufReader, Write};
+    use std::io::{BufRead, BufReader, Read, Write};
     use std::process::{Command, Stdio};
     use std::sync::mpsc;
     use std::thread;
@@ -59,14 +59,22 @@ mod unix {
                         .expect("read_line from piped child stdout");
                     line
                 }
-                FirstLineMode::LinesIterator => buf
-                    .lines()
-                    .next()
-                    .expect("lines iterator should yield")
-                    .expect("first line from piped child stdout"),
+                FirstLineMode::LinesIterator => {
+                    let first = buf
+                        .by_ref()
+                        .lines()
+                        .next()
+                        .expect("lines iterator should yield")
+                        .expect("first line from piped child stdout");
+                    first
+                }
             };
             tx.send((start.elapsed(), line))
                 .expect("send timing + line to main thread");
+            // Drain remaining output so the child doesn't get SIGPIPE on its
+            // final `echo after`.
+            let mut rest = String::new();
+            let _ = buf.read_to_string(&mut rest);
         });
 
         const DELAY: Duration = Duration::from_millis(150);
@@ -76,6 +84,7 @@ mod unix {
             .write_all(b"y\n")
             .expect("answer child's read as the user would");
         stdin.flush().expect("flush stdin");
+        drop(stdin);
 
         let (elapsed, line) = rx
             .recv_timeout(Duration::from_secs(5))
@@ -84,7 +93,7 @@ mod unix {
         reader.join().expect("reader thread panicked");
 
         let status = child.wait().expect("wait child");
-        assert!(status.success(), "child should exit 0");
+        assert!(status.success(), "child exited {:?}", status);
 
         assert!(
             elapsed >= DELAY.saturating_sub(Duration::from_millis(30)),
