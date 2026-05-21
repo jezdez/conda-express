@@ -126,9 +126,9 @@ dependencies = [
 
 [[package]]
 name = "assert_cmd"
-version = "2.2.1"
+version = "2.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "39bae1d3fa576f7c6519514180a72559268dd7d1fe104070956cb687bc6673bd"
+checksum = "2aa3a22042e45de04255c7bf3626e239f450200fd0493c1e382263544b20aea6"
 dependencies = [
  "anstyle",
  "bstr",
@@ -242,8 +242,8 @@ dependencies = [
  "http-content-range",
  "itertools 0.13.0",
  "memmap2",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "thiserror 1.0.69",
  "tokio",
  "tokio-stream",
@@ -573,8 +573,8 @@ dependencies = [
  "rattler_repodata_gateway",
  "rattler_solve",
  "rattler_virtual_packages",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.5.2",
  "rstest",
  "serde",
  "serde_json",
@@ -707,7 +707,7 @@ dependencies = [
  "futures",
  "rattler_conda_types",
  "rattler_lock",
- "reqwest",
+ "reqwest 0.12.28",
  "serde",
  "sha2 0.11.0",
  "tar",
@@ -722,7 +722,7 @@ name = "cx-wasm"
 version = "0.1.0"
 dependencies = [
  "bzip2-rs",
- "getrandom 0.3.4",
+ "getrandom 0.4.2",
  "js-sys",
  "rattler_conda_types",
  "rattler_lock",
@@ -1404,7 +1404,7 @@ checksum = "4311240f94cb6fe622337dc580b09ddd6ae4a891eb121dba20cf4f77ca4e7129"
 dependencies = [
  "http",
  "http-serde",
- "reqwest",
+ "reqwest 0.12.28",
  "serde",
  "time",
 ]
@@ -2661,8 +2661,8 @@ dependencies = [
  "rayon",
  "reflink-copy",
  "regex",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "serde",
  "serde_json",
  "simple_spawn_blocking",
@@ -2697,8 +2697,8 @@ dependencies = [
  "rattler_package_streaming",
  "rattler_redaction",
  "rayon",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "serde_json",
  "simple_spawn_blocking",
  "tempfile",
@@ -2850,8 +2850,8 @@ dependencies = [
  "getrandom 0.4.2",
  "http",
  "itertools 0.14.0",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "retry-policies",
  "serde",
  "serde_json",
@@ -2885,8 +2885,8 @@ dependencies = [
  "rattler_digest",
  "rattler_networking",
  "rattler_redaction",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "serde_json",
  "simple_spawn_blocking",
  "tar",
@@ -2918,8 +2918,8 @@ version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "961121cad9792daafc176a7f4caafc0fc889fb17507c23a4c86e1777a8b5e179"
 dependencies = [
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "url",
 ]
 
@@ -2964,8 +2964,8 @@ dependencies = [
  "rattler_networking",
  "rattler_package_streaming",
  "rattler_redaction",
- "reqwest",
- "reqwest-middleware",
+ "reqwest 0.12.28",
+ "reqwest-middleware 0.4.2",
  "retry-policies",
  "rmp-serde",
  "self_cell",
@@ -3208,6 +3208,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "reqwest"
+version = "0.13.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "62e0021ea2c22aed41653bc7e1419abb2c97e038ff2c33d0e1309e49a97deec0"
+dependencies = [
+ "base64",
+ "bytes",
+ "futures-core",
+ "http",
+ "http-body",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
+ "js-sys",
+ "log",
+ "percent-encoding",
+ "pin-project-lite",
+ "sync_wrapper",
+ "tokio",
+ "tower",
+ "tower-http",
+ "tower-service",
+ "url",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "reqwest-middleware"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3216,9 +3245,23 @@ dependencies = [
  "anyhow",
  "async-trait",
  "http",
- "reqwest",
+ "reqwest 0.12.28",
  "serde",
  "thiserror 1.0.69",
+ "tower-service",
+]
+
+[[package]]
+name = "reqwest-middleware"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07bc3f1384cffa4f274dad2d4ddd73aed32fed8f786d96c6be8aa4e5fd3c3b58"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "http",
+ "reqwest 0.13.3",
+ "thiserror 2.0.18",
  "tower-service",
 ]
 
@@ -3424,9 +3467,9 @@ dependencies = [
 
 [[package]]
 name = "ruzstd"
-version = "0.8.2"
+version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5ff0cc5e135c8870a775d3320910cd9b564ec036b4dc0b8741629020be63f01"
+checksum = "a7c1c839d570d835527c9a5e4db7cb2198683a988cb9d7293fc8674e6bd58fc8"
 dependencies = [
  "twox-hash",
 ]
@@ -3925,9 +3968,9 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "tar"
-version = "0.4.45"
+version = "0.4.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "22692a6476a21fa75fdfc11d452fda482af402c008cdbaf3476414e122040973"
+checksum = "3f6221d9a6003c78398e3b239969f352578258df48c8eb051caadae0015bc840"
 dependencies = [
  "filetime",
  "libc",
@@ -4090,9 +4133,9 @@ checksum = "1f3ccbac311fea05f86f61904b462b55fb3df8837a366dfc601a0161d0532f20"
 
 [[package]]
 name = "tokio"
-version = "1.52.2"
+version = "1.52.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "110a78583f19d5cdb2c5ccf321d1290344e71313c6c37d43520d386027d18386"
+checksum = "8fc7f01b389ac15039e4dc9531aa973a135d7a4135281b12d7c1bc79fd57fffe"
 dependencies = [
  "bytes",
  "libc",
