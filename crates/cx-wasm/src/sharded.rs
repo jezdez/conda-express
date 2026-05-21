@@ -430,3 +430,63 @@ pub(crate) fn fetch_sharded_records(
 
     Ok(all_records)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_decompress_zstd_rejects_empty_input() {
+        let result = decompress_zstd(&[]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("empty zstd input"), "error was: {err}");
+    }
+
+    #[test]
+    fn test_decompress_zstd_rejects_invalid_data() {
+        let result = decompress_zstd(&[0xFF, 0xFE, 0xFD, 0xFC]);
+        assert!(result.is_err());
+        let err = result.unwrap_err().to_string();
+        assert!(err.contains("zstd"), "error was: {err}");
+    }
+
+    #[test]
+    fn test_resolve_shards_base_url_absolute() {
+        let result = resolve_shards_base_url(
+            "https://cdn.example.com/shards",
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        );
+        assert_eq!(result, "https://cdn.example.com/shards/");
+    }
+
+    #[test]
+    fn test_resolve_shards_base_url_relative() {
+        let result = resolve_shards_base_url(
+            "./shards",
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        );
+        assert_eq!(
+            result,
+            "https://conda.anaconda.org/conda-forge/noarch/shards/"
+        );
+    }
+
+    #[test]
+    fn test_resolve_shards_base_url_empty() {
+        let result = resolve_shards_base_url(
+            "",
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst",
+        );
+        assert_eq!(result, "https://conda.anaconda.org/conda-forge/noarch/");
+    }
+
+    #[test]
+    fn test_shard_index_url_format() {
+        let url = shard_index_url("https://conda.anaconda.org/conda-forge", "noarch");
+        assert_eq!(
+            url,
+            "https://conda.anaconda.org/conda-forge/noarch/repodata_shards.msgpack.zst"
+        );
+    }
+}

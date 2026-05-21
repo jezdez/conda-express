@@ -59,15 +59,12 @@ mod unix {
                         .expect("read_line from piped child stdout");
                     line
                 }
-                FirstLineMode::LinesIterator => {
-                    let first = buf
-                        .by_ref()
-                        .lines()
-                        .next()
-                        .expect("lines iterator should yield")
-                        .expect("first line from piped child stdout");
-                    first
-                }
+                FirstLineMode::LinesIterator => buf
+                    .by_ref()
+                    .lines()
+                    .next()
+                    .expect("lines iterator should yield")
+                    .expect("first line from piped child stdout"),
             };
             tx.send((start.elapsed(), line))
                 .expect("send timing + line to main thread");
