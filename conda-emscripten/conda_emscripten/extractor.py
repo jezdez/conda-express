@@ -4,17 +4,19 @@ Extracts .conda and .tar.bz2 packages via cx-wasm's Rust WASM code,
 with a Python streaming tarfile fallback for .tar.bz2 if WASM fails.
 """
 
+from __future__ import annotations
+
 import logging
 import os
+from pathlib import PurePosixPath
 from posixpath import normpath
 
 log = logging.getLogger(__name__)
 
 
-def _is_within(path, directory):
-    """Check that path is within directory after normalization."""
-    resolved = normpath(os.path.join(directory, path))
-    return resolved == directory or resolved.startswith(directory + os.sep)
+def is_within(path, directory):
+    """Check that *path* stays inside *directory* after resolving ``..``."""
+    return PurePosixPath(normpath(path)).is_relative_to(normpath(directory))
 
 
 def extract_wasm(source_path, dest_dir):
@@ -70,7 +72,7 @@ def _extract_via_wasm(source_path, dest_dir, filename):
     def on_file(path, data):
         nonlocal file_count
         full_path = os.path.join(dest_dir, path)
-        if not _is_within(full_path, dest_dir):
+        if not is_within(full_path, dest_dir):
             raise RuntimeError(f"extractor: path escapes destination: {path}")
         parent = os.path.dirname(full_path)
         if parent:
@@ -109,7 +111,7 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
                 if not (member.isfile() or member.isdir() or member.issym() or member.islnk()):
                     continue
 
-                if not _is_within(join(dest_dir, member.name), dest_dir):
+                if not is_within(join(dest_dir, member.name), dest_dir):
                     raise RuntimeError(
                         f"extractor: tar path escapes destination: {member.name}"
                     )
@@ -121,7 +123,7 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
                 if member.issym():
                     parent = dirname(member.name)
                     resolved = normpath(join(parent, member.linkname))
-                    if not _is_within(join(dest_dir, resolved), dest_dir):
+                    if not is_within(join(dest_dir, resolved), dest_dir):
                         raise RuntimeError(
                             f"extractor: symlink escapes destination: "
                             f"{member.name} -> {member.linkname}"
@@ -130,7 +132,7 @@ def _extract_tar_bz2(source_path, dest_dir, filename):
                     continue
 
                 if member.islnk():
-                    if not _is_within(join(dest_dir, member.linkname), dest_dir):
+                    if not is_within(join(dest_dir, member.linkname), dest_dir):
                         raise RuntimeError(
                             f"extractor: hardlink escapes destination: "
                             f"{member.name} -> {member.linkname}"
