@@ -35,11 +35,11 @@ base prefix. Later invocations delegate to the installed `conda` executable.
   conda ecosystem plugins
 - frozen base prefix behavior
 - `cx shell` as the conda-spawn based activation command
-- user-facing install methods such as Homebrew, shell scripts, Docker, and
-  GitHub Releases
+- user-facing install methods such as Homebrew, shell scripts, Docker, PyPI,
+  crates.io, and GitHub Releases
 
-PyPI and crates.io packaging are not part of the active release path until they
-can consume Pronto-built artifacts without reintroducing a local runtime build.
+PyPI wheels and the crates.io package consume Pronto-built release artifacts;
+they do not rebuild or vendor the runtime source in this repository.
 
 ## Build Flow
 

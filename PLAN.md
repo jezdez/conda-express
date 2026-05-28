@@ -23,6 +23,8 @@ creates two companion repositories:
   runtime and builder implementation.
 - Removed legacy `payload`, `cx.lock`, and `cx.lock.hash` runtime/build
   surfaces from this repo; remaining references are historical notes.
+- Rebuilt PyPI and crates.io distribution around Pronto-built release binaries
+  instead of local runtime source builds.
 
 ## Remaining
 
@@ -39,8 +41,7 @@ creates two companion repositories:
 - Keep frozen base prefix behavior.
 - Keep Homebrew, shell script, Docker, and GitHub Releases as distribution
   channels for `cx` / `cxz`.
-- Decide whether and how PyPI and crates.io packaging should consume
-  Pronto-built artifacts.
+- Keep PyPI and crates.io as distribution channels backed by Pronto artifacts.
 
 ### Documentation
 

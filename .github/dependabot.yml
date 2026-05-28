@@ -8,3 +8,12 @@ updates:
       actions:
         patterns:
           - "*"
+
+  - package-ecosystem: cargo
+    directory: /crates/cargo-package
+    schedule:
+      interval: weekly
+    groups:
+      rust:
+        patterns:
+          - "*"

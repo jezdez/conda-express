@@ -10,6 +10,10 @@
   Homebrew/Docker/release packaging, docs, and installer entry points.
   Do not reintroduce a local Cargo workspace for the runtime or builder.
 
+- `crates/cargo-package` is only the crates.io installer package. It embeds
+  a Pronto-built release binary; it must not grow a local runtime or builder
+  implementation.
+
 - Browser, WebAssembly, Emscripten, and JupyterLite work belongs in the
   separate `conda-wasm` repository, not here.
 
@@ -19,6 +23,10 @@
   (dependencies, features, tasks, or workspace settings), always run
   `pixi lock` and commit the updated `pixi.lock` alongside the
   change. CI will fail if the lockfile is out of date.
+
+- After changes to `crates/cargo-package/Cargo.toml`, run
+  `cargo generate-lockfile --manifest-path crates/cargo-package/Cargo.toml`
+  and commit the updated `crates/cargo-package/Cargo.lock`.
 
 ## Dependencies
 

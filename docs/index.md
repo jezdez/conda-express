@@ -39,6 +39,18 @@ docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootst
 Works on Linux, macOS, and Windows via Docker Desktop.
 :::
 
+:::{tab-item} PyPI / crates.io
+```bash
+pip install conda-express
+```
+
+```bash
+cargo install conda-express
+```
+
+Both packages install the Pronto-built `cx` release binary for your platform.
+:::
+
 ::::
 
 See the {doc}`quickstart <quickstart>` for all installation methods.

@@ -107,6 +107,18 @@ docker run --rm ghcr.io/jezdez/conda-express:latest-cxz create -n myenv python=3
 ```
 ::::
 
+::::{tab-item} PyPI / crates.io
+```bash
+pip install conda-express
+```
+
+```bash
+cargo install conda-express
+```
+
+Both packages install the Pronto-built `cx` release binary for your platform.
+::::
+
 :::::
 
 ## Bootstrap

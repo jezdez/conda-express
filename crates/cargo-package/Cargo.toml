@@ -1,0 +1,18 @@
+[package]
+name = "conda-express"
+version = "0.6.0"
+edition = "2024"
+description = "Cargo installer for the Pronto-built conda-express cx binary"
+license = "BSD-3-Clause"
+repository = "https://github.com/jezdez/conda-express"
+homepage = "https://jezdez.github.io/conda-express/"
+keywords = ["conda", "bootstrapper", "rattler", "package-manager"]
+categories = ["command-line-utilities", "development-tools"]
+
+[[bin]]
+name = "cx"
+path = "src/main.rs"
+
+[build-dependencies]
+sha2 = "0.10"
+ureq = "2.12"

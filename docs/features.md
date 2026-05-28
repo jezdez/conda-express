@@ -233,6 +233,20 @@ See the [GitHub Action reference](reference/github-action.md) for inputs,
 outputs, and behavior. For a step-by-step walkthrough, see the
 [custom builds guide](guides/custom-builds.md).
 
+## PyPI and crates.io distribution
+
+cx is published as `conda-express` on both
+[PyPI](https://pypi.org/project/conda-express/) and
+[crates.io](https://crates.io/crates/conda-express):
+
+```bash
+pip install conda-express       # from PyPI
+cargo install conda-express     # from crates.io
+```
+
+Both distributions consume the Pronto-built `cx` release artifacts instead of
+building the runtime source in this repository.
+
 ## Multi-platform support
 
 cx builds and tests on 5 platforms via GitHub Actions:
