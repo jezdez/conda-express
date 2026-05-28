@@ -14,5 +14,5 @@ name = "cx"
 path = "src/main.rs"
 
 [build-dependencies]
-sha2 = "0.10"
-ureq = "2.12"
+sha2 = "0.11"
+ureq = "3.3"
