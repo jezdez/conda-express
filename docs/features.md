@@ -8,13 +8,13 @@ cx is a single static binary (7-11 MB depending on platform) written in Rust. It
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
 
-## Compile-time lockfile
+## Pronto artifact lockfile
 
-`build.rs` performs a full dependency solve at `cargo build` time using rattler
-crates, producing a [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock)
-lockfile that is embedded into the binary. At runtime, bootstrap skips repodata
-fetching and solving entirely — it downloads and installs packages directly from
-the locked URLs.
+Pronto performs a full dependency solve at build time and produces a
+[rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock)
+artifact lockfile that is embedded into the binary. At runtime, bootstrap skips
+repodata fetching and solving entirely; it downloads and installs packages
+directly from the locked URLs.
 
 This gives cx deterministic, reproducible bootstraps with ~3–5 second install
 times.
@@ -151,27 +151,27 @@ cx bootstrap --no-lock
 
 cx supports fully offline, air-gapped bootstrap from a local directory of
 package archives or from a previously populated package cache. This enables
-deployment in restricted-network environments and native installers
-(macOS PKG, Windows MSI) that bundle cx alongside a package payload.
+deployment in restricted-network environments and native installers that bundle
+cx alongside a package bundle.
 
 Two flags control this behavior:
 
-- `--payload DIR` points to a directory of `.conda` / `.tar.bz2` archives.
+- `--bundle DIR` points to a directory of `.conda` / `.tar.bz2` archives.
   cx pre-populates the rattler package cache from this directory, then
   installs from cache. Without `--offline`, missing packages fall back to
   network download.
 - `--offline` disables all network access. All packages must be available
-  locally (in the cache or payload). Incompatible with `--no-lock`.
+  locally (in the cache or bundle). Incompatible with `--no-lock`.
 
 ```bash
 # Re-use packages from a previous bootstrap (no network)
 cx bootstrap --prefix /opt/conda --offline
 
-# Install from a bundled payload directory (fully air-gapped)
-cx bootstrap --payload ./packages/ --offline
+# Install from a bundled package directory (fully air-gapped)
+cx bootstrap --bundle ./packages/ --offline
 ```
 
-Both flags can also be set via the `CX_PAYLOAD` and `CX_OFFLINE` environment
+Both flags can also be set via the `CX_BUNDLE` and `CX_OFFLINE` environment
 variables, making them easy to use from native installer post-install scripts.
 
 ## Self-contained binary (cxz)
@@ -189,14 +189,14 @@ cx (7-11 MB)              cxz (50-95 MB)
 │  lockfile    │          │  lockfile        │
 │  (~130 KB)   │          │  (~130 KB)       │
 │              │          ├──────────────────┤
-│              │          │  payload.tar.zst │
+│              │          │  bundle.tar.zst  │
 │              │          │  (40-85 MB)      │
 └──────────────┘          └──────────────────┘
 ```
 
-`cxz` is the same codebase as `cx`, built with `CX_EMBED_PAYLOAD=1`. It
-detects its embedded payload automatically and behaves as if `--payload
---offline` were passed. All other flags and subcommands work identically.
+`cxz` is the embedded-bundle variant built by Pronto. It detects its embedded
+bundle automatically and behaves as if `--bundle --offline` were passed. All
+other flags and subcommands work identically.
 
 It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
 Docker image. See the [custom builds guide](guides/custom-builds.md) for
@@ -221,12 +221,8 @@ This will:
 ## GitHub Action for custom builds
 
 cx ships a composite GitHub Action and a reusable workflow that let you build
-custom cx binaries with your own package set baked in. The build performs a
-full compile-time dependency solve, producing a self-contained binary with
-an embedded lockfile — just like the official cx releases.
-
-This is powered by the same {ref}`environment variable overrides <env-var-overrides>`
-that work locally, but wrapped in a ready-to-use Action.
+custom cx binaries with your own package set. The build is powered by Pronto
+and produces a binary plus artifact metadata for downstream packaging.
 
 See the [GitHub Action reference](reference/github-action.md) for inputs,
 outputs, and behavior. For a step-by-step walkthrough, see the

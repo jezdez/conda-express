@@ -5,41 +5,39 @@ on:
     inputs:
       packages:
         description: >
-          Comma-separated conda package specs to include in the bootstrapper.
-          Example: "python >=3.12, conda >=25.1, numpy, pandas"
-          Defaults to the packages defined in pixi.toml [tool.cx].
+          Comma-separated conda package specs to include in cx. Defaults to the
+          conda-express distribution package set.
         required: false
         type: string
         default: ""
       channels:
         description: >
-          Comma-separated conda channels.
-          Defaults to the channels defined in pixi.toml [tool.cx].
+          Comma-separated conda channels. Defaults to the conda-express channel
+          set.
         required: false
         type: string
         default: ""
       exclude:
         description: >
-          Comma-separated packages to exclude from the bootstrapper
-          (along with their exclusive dependencies).
-          Defaults to the excludes defined in pixi.toml [tool.cx].
+          Comma-separated packages to exclude from cx along with their exclusive
+          dependencies. Defaults to the conda-express exclusions.
         required: false
         type: string
         default: ""
-      ref:
-        description: "Git ref of conda-express to build from (tag, branch, or SHA)."
+      pronto-ref:
+        description: "Git ref of Pronto to use for the build."
         required: false
         type: string
-        default: "main"
+        default: "c679dd6e25f3eb6e4ef6e13192b31b8f469708a7"
       retention-days:
         description: "Number of days to retain build artifacts."
         required: false
         type: number
         default: 7
-      embed-payload:
+      embed-bundle:
         description: >
-          Embed package archives into the binary for offline bootstrap
-          (increases size by 40-85 MB depending on platform). The output binary is named cxz instead of cx.
+          Embed package archives into the binary for offline bootstrap. The
+          output binary uses the cxz artifact name.
         required: false
         type: string
         default: "false"
@@ -64,15 +62,17 @@ jobs:
             os: windows-latest
 
     steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
       - name: Build cx
         id: build
-        uses: jezdez/conda-express@main
+        uses: ./
         with:
           packages: ${{ inputs.packages }}
           channels: ${{ inputs.channels }}
           exclude: ${{ inputs.exclude }}
-          ref: ${{ inputs.ref }}
-          embed-payload: ${{ inputs.embed-payload }}
+          pronto-ref: ${{ inputs.pronto-ref }}
+          embed-bundle: ${{ inputs.embed-bundle }}
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -80,5 +80,8 @@ jobs:
           name: ${{ steps.build.outputs.asset-name }}
           path: |
             ${{ steps.build.outputs.binary-path }}
-            ${{ steps.build.outputs.binary-path }}.sha256
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
           retention-days: ${{ inputs.retention-days }}

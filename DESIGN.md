@@ -44,21 +44,17 @@ can become a consumer of Pronto-built artifacts.
 
 ## Build Flow
 
-The current build flow is:
+The Pronto-backed distribution flow is:
 
-1. `cx-build prepare` reads `pixi.toml`, extracts the `cx-env` environment from
-   `pixi.lock`, applies exclusions, and writes `cx.lock`.
-2. `build.rs` embeds `cx.lock` and the distribution metadata into the binary.
-3. Standard `cx` builds ship only the binary and embedded lockfile.
-4. `cxz` builds run `cx-build payload`, produce `payload.tar.zst`, and compile
-   with `CX_EMBED_PAYLOAD=1`.
+1. `conda-express` supplies distribution defaults: package specs, channels,
+   exclusions, artifact names, release policy, and downstream packaging.
+2. The conda-express composite action invokes the pinned Pronto action.
+3. Pronto owns the lock, bundle, build, inspect, and artifact metadata steps.
+4. CI and release jobs build `cx` and `cxz` by invoking Pronto rather than the
+   legacy in-repo builder path.
 
-The intended split flow is:
-
-1. `pronto` owns the lock, bundle, build, inspect, and artifact metadata steps.
-2. `conda-express` supplies distribution configuration and release policy.
-3. CI builds `cx` and `cxz` by invoking Pronto rather than keeping builder
-   logic in this repo.
+The source tree still contains legacy builder/runtime code while the split is
+incremental. New distribution artifacts are produced through Pronto.
 
 ## Bootstrap Flow
 

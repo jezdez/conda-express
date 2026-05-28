@@ -143,44 +143,32 @@ cargo install conda-express
 
 The package is published as `conda-express` on [PyPI](https://pypi.org/project/conda-express/) and [crates.io](https://crates.io/crates/conda-express).
 
-## Building from source
+## Building distribution artifacts
 
-Requires [pixi](https://pixi.sh) (recommended) or [Rust](https://rustup.rs/) (edition 2024).
-
-### With pixi (recommended)
-
-[pixi](https://pixi.sh) manages the Rust toolchain from conda-forge for reproducible builds:
+Official `cx` and `cxz` artifacts are built with
+[Pronto](https://github.com/jezdez/pronto). The local workflow mirrors the
+GitHub Action:
 
 ```bash
-git clone https://github.com/jezdez/conda-express.git
-cd conda-express
+git clone https://github.com/jezdez/pronto.git
+cd pronto
 
-pixi run build          # cargo build --release
-pixi run test           # cargo test
-pixi run lint           # fmt-check + clippy
+cargo run -p pronto -- configure \
+  --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0" \
+  --channels "conda-forge" \
+  --exclude "conda-libmamba-solver"
+pixi lock
+cargo run -p pronto -- build --layout none --name cx
+cargo run -p pronto -- build --layout embedded --name cx
 ```
 
-### With system Rust
-
-```bash
-git clone https://github.com/jezdez/conda-express.git
-cd conda-express
-
-# Build (first build solves packages at compile time — needs network)
-cargo build --release
-
-# Binary is at target/release/cx
-./target/release/cx --help
-```
-
-The first build runs a compile-time solve via `build.rs`, generating a rattler-lock v6 lockfile that gets embedded into the binary. Subsequent builds reuse the cached lockfile unless `pixi.toml` changes.
+Staged binaries and metadata files are written to `dist/`.
 
 ## Configuration
 
-Package specs, channels, and exclusions live in the `[tool.cx]` section of `pixi.toml`:
+The conda-express distribution package set is:
 
 ```toml
-[tool.cx]
 channels = ["conda-forge"]
 packages = [
     "python >=3.12",
@@ -194,8 +182,6 @@ packages = [
 ]
 exclude = ["conda-libmamba-solver"]
 ```
-
-Edit this section to customize what cx installs, then rebuild. You can also override these values at build time using environment variables -- see [Building custom cx binaries](#building-custom-cx-binaries) below.
 
 ## CLI reference
 
@@ -242,7 +228,10 @@ Updating the base installation is handled by `conda self update` (via conda-self
 
 ## Building custom cx binaries
 
-You can build a cx binary with your own set of packages using the composite GitHub Action or the reusable workflow.
+`conda-express` builds `cx` and `cxz` with
+[Pronto](https://github.com/jezdez/pronto). Use the composite GitHub Action or
+the reusable workflow to build the distribution package set, or override it for
+your own binaries.
 
 ### Composite action (`uses: jezdez/conda-express@main`)
 
@@ -260,11 +249,17 @@ jobs:
         id: cx
         with:
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+          embed-bundle: "false"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.cx.outputs.asset-name }}
-          path: ${{ steps.cx.outputs.binary-path }}
+          path: |
+            ${{ steps.cx.outputs.binary-path }}
+            ${{ steps.cx.outputs.checksums-path }}
+            ${{ steps.cx.outputs.info-path }}
+            ${{ steps.cx.outputs.lock-path }}
+            ${{ steps.cx.outputs.package-list-path }}
 ```
 
 ### Reusable workflow
@@ -277,21 +272,13 @@ jobs:
     uses: jezdez/conda-express/.github/workflows/build.yml@main
     with:
       packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+      embed-bundle: "false"
 ```
 
-### Build-time environment variables
+Set `embed-bundle: "true"` to build the compressed-bundle `cxz` variant.
 
-When building from source, you can override the package configuration without editing `pixi.toml`:
-
-| Variable | Overrides | Format |
-|---|---|---|
-| `CX_PACKAGES` | `[tool.cx].packages` | Comma-separated match specs |
-| `CX_CHANNELS` | `[tool.cx].channels` | Comma-separated channel names |
-| `CX_EXCLUDE` | `[tool.cx].exclude` | Comma-separated package names |
-
-```bash
-CX_PACKAGES="python >=3.12, conda >=25.1, numpy" pixi run build
-```
+Pronto writes the binary plus `.sha256`, `.info.json`, `.artifact.lock`, and
+`.packages.txt` files for auditing and downstream packaging.
 
 ## Uninstalling
 
@@ -305,7 +292,7 @@ This will show what will be removed and ask for confirmation. Use `--yes` to ski
 
 ## How it works
 
-1. **Compile time**: `build.rs` reads `[tool.cx]` from `pixi.toml`, solves dependencies using rattler, filters excluded packages, and writes a rattler-lock v6 lockfile embedded into the binary.
+1. **Build time**: Pronto resolves the conda-express package set, filters excluded packages, and embeds an artifact lockfile into the binary.
 
 2. **First run**: cx parses the embedded lockfile, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.
 

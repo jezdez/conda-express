@@ -1,8 +1,7 @@
 name: "Build cx (conda-express)"
 description: >
-  Build a custom cx bootstrapper binary with your choice of conda packages
-  baked in. Runs on the current runner — use a matrix strategy for
-  multi-platform builds.
+  Build the conda-express cx distribution binary with Pronto. Runs on the
+  current runner; use a matrix strategy for multi-platform builds.
 branding:
   icon: package
   color: green
@@ -10,112 +9,89 @@ branding:
 inputs:
   packages:
     description: >
-      Comma-separated conda package specs to include in the bootstrapper.
-      Example: "python >=3.12, conda >=25.1, numpy, pandas".
-      When empty, uses the default packages from conda-express.
+      Comma-separated conda package specs to include in cx. When empty, uses the
+      conda-express distribution package set.
     required: false
     default: ""
   channels:
     description: >
-      Comma-separated conda channels.
-      When empty, uses the default (conda-forge).
+      Comma-separated conda channels. When empty, uses the conda-express default
+      channel set.
     required: false
     default: ""
   exclude:
     description: >
-      Comma-separated packages to exclude (along with their exclusive
-      dependencies). When empty, uses the default exclusions.
+      Comma-separated packages to exclude along with their exclusive
+      dependencies. When empty, uses the conda-express default exclusions.
     required: false
     default: ""
-  ref:
-    description: "Git ref of conda-express to build from (tag, branch, or SHA)."
+  pronto-ref:
+    description: "Git ref of Pronto to use for the build."
     required: false
-    default: "main"
-  embed-payload:
+    default: "c679dd6e25f3eb6e4ef6e13192b31b8f469708a7"
+  embed-bundle:
     description: >
-      Embed package archives into the binary for offline bootstrap
-      (increases size by 40-85 MB depending on platform). The output binary is named cxz instead of cx.
+      Embed package archives into the binary for offline bootstrap. The output
+      binary uses the cxz artifact name.
     required: false
     default: "false"
 
 outputs:
   binary-path:
-    description: "Absolute path to the built cx binary."
-    value: ${{ steps.stage.outputs.binary_path }}
+    description: "Absolute path to the built cx or cxz binary."
+    value: ${{ steps.build.outputs.binary-path }}
   asset-name:
-    description: "Platform-qualified asset name (e.g. cx-aarch64-apple-darwin)."
-    value: ${{ steps.stage.outputs.asset_name }}
+    description: "Platform-qualified asset name, such as cx-aarch64-apple-darwin."
+    value: ${{ steps.build.outputs.asset-name }}
+  info-path:
+    description: "Absolute path to the artifact info JSON."
+    value: ${{ steps.build.outputs.info-path }}
+  lock-path:
+    description: "Absolute path to the staged artifact lock."
+    value: ${{ steps.build.outputs.lock-path }}
+  package-list-path:
+    description: "Absolute path to the package list."
+    value: ${{ steps.build.outputs.package-list-path }}
+  checksums-path:
+    description: "Absolute path to the SHA256 checksum file."
+    value: ${{ steps.build.outputs.checksums-path }}
 
 runs:
   using: composite
   steps:
-    - name: Checkout conda-express
-      uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      with:
-        repository: jezdez/conda-express
-        ref: ${{ inputs.ref }}
-        path: .cx-build
-
-    - name: Setup pixi
-      uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
-      with:
-        manifest-path: .cx-build/pixi.toml
-        cache: true
-
-    - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
-
-    - name: Configure custom packages
-      if: inputs.packages != '' || inputs.channels != '' || inputs.exclude != ''
-      shell: bash
-      working-directory: .cx-build
-      run: |
-        ARGS=""
-        if [ -n "${{ inputs.packages }}" ]; then
-          ARGS="$ARGS --packages '${{ inputs.packages }}'"
-        fi
-        if [ -n "${{ inputs.channels }}" ]; then
-          ARGS="$ARGS --channels '${{ inputs.channels }}'"
-        fi
-        if [ -n "${{ inputs.exclude }}" ]; then
-          ARGS="$ARGS --exclude '${{ inputs.exclude }}'"
-        fi
-        eval pixi run -- cargo run -p cx-build -- configure $ARGS
-        pixi lock
-        pixi run prepare
-
-    - name: Generate payload
-      if: inputs.embed-payload == 'true'
-      shell: bash
-      working-directory: .cx-build
-      run: pixi run payload
-
-    - name: Build cx
-      shell: bash
-      env:
-        CX_EMBED_PAYLOAD: ${{ inputs.embed-payload == 'true' && '1' || '' }}
-      working-directory: .cx-build
-      run: pixi run build
-
-    - name: Stage binary
-      id: stage
+    - name: Resolve conda-express distribution inputs
+      id: config
       shell: bash
       run: |
-        TARGET="$(rustc -vV | grep '^host:' | cut -d' ' -f2)"
-        EMBED="${{ inputs.embed-payload }}"
-        if [[ "$EMBED" == "true" ]]; then
-          PREFIX="cxz"
-        else
-          PREFIX="cx"
+        DEFAULT_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
+        DEFAULT_CHANNELS="conda-forge"
+        DEFAULT_EXCLUDE="conda-libmamba-solver"
+
+        packages="${{ inputs.packages }}"
+        channels="${{ inputs.channels }}"
+        exclude="${{ inputs.exclude }}"
+
+        if [[ -z "$packages" ]]; then
+          packages="$DEFAULT_PACKAGES"
         fi
-        if [[ "$TARGET" == *"windows"* ]]; then
-          BIN_NAME="cx.exe"
-          ASSET_NAME="${PREFIX}-${TARGET}.exe"
-        else
-          BIN_NAME="cx"
-          ASSET_NAME="${PREFIX}-${TARGET}"
+        if [[ -z "$channels" ]]; then
+          channels="$DEFAULT_CHANNELS"
         fi
-        BINARY_PATH="${GITHUB_WORKSPACE}/${ASSET_NAME}"
-        cp ".cx-build/target/release/${BIN_NAME}" "${BINARY_PATH}"
-        sha256sum "${BINARY_PATH}" > "${BINARY_PATH}.sha256"
-        echo "binary_path=${BINARY_PATH}" >> "$GITHUB_OUTPUT"
-        echo "asset_name=${ASSET_NAME}" >> "$GITHUB_OUTPUT"
+        if [[ -z "$exclude" ]]; then
+          exclude="$DEFAULT_EXCLUDE"
+        fi
+
+        echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+        echo "channels=${channels}" >> "$GITHUB_OUTPUT"
+        echo "exclude=${exclude}" >> "$GITHUB_OUTPUT"
+
+    - name: Build cx with Pronto
+      id: build
+      uses: jezdez/pronto@c679dd6e25f3eb6e4ef6e13192b31b8f469708a7
+      with:
+        packages: ${{ steps.config.outputs.packages }}
+        channels: ${{ steps.config.outputs.channels }}
+        exclude: ${{ steps.config.outputs.exclude }}
+        ref: ${{ inputs.pronto-ref }}
+        embed-bundle: ${{ inputs.embed-bundle }}
+        docs-url: "https://jezdez.github.io/conda-express/"

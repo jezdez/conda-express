@@ -2,12 +2,10 @@
 
 ## Build-time configuration
 
-Package specs, channels, and exclusions are defined in the `[tool.cx]` section
-of `pixi.toml`. These are read both by `build.rs` (at compile time) and
-embedded into the binary.
+The conda-express GitHub Action passes this distribution package set to Pronto
+when building official `cx` and `cxz` artifacts:
 
 ```toml
-[tool.cx]
 channels = ["conda-forge"]
 packages = [
     "python >=3.12",
@@ -33,8 +31,8 @@ strings defining the packages to install in the base prefix.
 
 ### `exclude`
 
-List of package names to exclude from the installation. cx will also remove
-any dependencies that are *exclusively* required by the excluded packages.
+List of package names to exclude from the installation. Pronto also removes any
+dependencies that are *exclusively* required by the excluded packages.
 
 ## Runtime configuration
 
@@ -57,90 +55,67 @@ cx writes metadata about the installation into `.cx.json` at the prefix root:
 
 ```json
 {
-  "version": "0.1.0",
+  "version": "0.6.0",
   "channels": ["conda-forge"],
   "packages": ["python >=3.12", "conda >=25.1", "conda-rattler-solver"],
   "excludes": ["conda-libmamba-solver"]
 }
 ```
 
-This is used by `cx status` and will be used by the future conda-self update
-backend to detect cx-managed prefixes.
+This is used by `cx status` and by distribution tooling to detect cx-managed
+prefixes.
 
 ### `conda-meta/frozen`
 
-A [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker file that
-prevents accidental modification of the base prefix:
+A [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker file prevents
+accidental modification of the base prefix:
 
 ```json
 {
-  "message": "This base environment is managed by cx (conda-express).\nCreate a new environment instead: conda create -n myenv\nTo re-bootstrap: cx bootstrap --force\nTo override: pass --override-frozen-env"
+  "message": "This base environment is managed by cx.\nCreate a new environment instead: conda create -n myenv\nTo re-bootstrap: cx bootstrap --force\nTo override: pass --override-frozen-env"
 }
 ```
 
 ## Customizing the build
 
-To change what cx installs, edit the `[tool.cx]` section in `pixi.toml` and
-rebuild:
+To change what cx installs in CI, pass package, channel, and exclude inputs to
+the conda-express action or reusable workflow:
 
-```bash
-pixi run build
+```yaml
+- uses: jezdez/conda-express@main
+  with:
+    packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy"
+    channels: "conda-forge"
+    exclude: "conda-libmamba-solver"
 ```
 
-The first build after a config change triggers a compile-time re-solve. A
-content hash ensures the solve is skipped when the config hasn't changed.
+Pronto resolves the package set, writes the artifact lock, and embeds that lock
+into the staged binary.
 
-(env-var-overrides)=
-### Environment variable overrides
+### Action inputs
 
-For custom builds without editing `pixi.toml` (e.g. via the
-{doc}`GitHub Action <reference/github-action>` or CI),
-`build.rs` supports environment variable overrides:
+| Input | Format |
+|---|---|
+| `packages` | Comma-separated [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html) strings |
+| `channels` | Comma-separated channel names |
+| `exclude` | Comma-separated package names |
+| `embed-bundle` | `"true"` to build the `cxz` embedded-bundle variant |
 
-| Variable | Overrides | Format |
-|---|---|---|
-| `CX_PACKAGES` | `packages` | Comma-separated [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html) strings |
-| `CX_CHANNELS` | `channels` | Comma-separated channel names |
-| `CX_EXCLUDE` | `exclude` | Comma-separated package names |
-| `CX_INSTALL_METHOD` | *(none)* | Installation method name (e.g. `homebrew`, `cargo`). Baked into the binary; used by `cx uninstall` to show a context-aware removal hint |
-
-Empty values are ignored (the `pixi.toml` defaults are used).
-
-| Variable | Overrides | Format |
-|---|---|---|
-| `CX_EMBED_PAYLOAD` | *(none)* | Set to `1` to download and embed all locked packages into the binary (produces `cxz`) |
-
-```bash
-# Build with extra packages baked in
-CX_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy" pixi run build
-
-# Build with a different channel
-CX_CHANNELS="conda-forge, bioconda" pixi run build
-
-# Build cxz (self-contained binary with embedded payload)
-CX_EMBED_PAYLOAD=1 pixi run build
-```
-
-When overrides are active:
-
-- The checked-in `cx.lock` is skipped (a fresh solve is performed)
-- The lockfile cache still works based on a hash of the config + overrides
-- The repo-root `cx.lock` is **not** overwritten (the solve is one-off)
+Empty values use the conda-express defaults.
 
 ### Runtime environment variables
 
 These environment variables control bootstrap behavior at runtime. They are
-particularly useful in native installer post-install scripts (macOS PKG,
-Windows MSI) and CI pipelines.
+particularly useful in native installer post-install scripts and CI pipelines.
 
 | Variable | Effect |
 |---|---|
-| `CX_PAYLOAD` | Directory of `.conda` / `.tar.bz2` archives to pre-populate the package cache from (equivalent to `--payload`) |
+| `CX_BUNDLE` | Directory of `.conda` / `.tar.bz2` archives to pre-populate the package cache from (equivalent to `--bundle`) |
 | `CX_OFFLINE` | Disable network access during bootstrap when set to any truthy value (equivalent to `--offline`). Values `0` and `false` are treated as unset |
 
 ```bash
 # Native installer post-install script example
-CX_PAYLOAD=/Library/Application\ Support/cx/packages CX_OFFLINE=1 cx bootstrap
+CX_BUNDLE=/Library/Application\ Support/cx/packages CX_OFFLINE=1 cx bootstrap
 ```
 
 ## Default prefix

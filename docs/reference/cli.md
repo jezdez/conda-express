@@ -34,22 +34,22 @@ cx bootstrap [OPTIONS]
 `--lockfile PATH`
 : Use an external lockfile instead of the embedded one. The file must be in rattler-lock v6 format.
 
-`--payload DIR`
+`--bundle DIR`
 : Directory containing pre-downloaded `.conda` and/or `.tar.bz2` package archives.
   When set, cx pre-populates the package cache from this directory before installing.
   Paired with `--offline`, this enables fully air-gapped bootstrap from a bundled
-  payload. Can also be set via the `CX_PAYLOAD` environment variable.
+  package bundle. Can also be set via the `CX_BUNDLE` environment variable.
 
 `--offline`
 : Disable all network access during bootstrap. Packages must already be available in
-  the local package cache (from a previous bootstrap) or supplied via `--payload`.
+  the local package cache (from a previous bootstrap) or supplied via `--bundle`.
   Incompatible with `--no-lock` (offline mode requires a lockfile). Can also be set
   via the `CX_OFFLINE` environment variable.
 
 :::{note}
-When the binary was built with `CX_EMBED_PAYLOAD=1` (i.e. `cxz`), the embedded
-package payload is detected automatically. `--payload` and `--offline` are
-implied — no flags or environment variables are needed.
+When using `cxz`, the embedded package bundle is detected automatically.
+`--bundle` and `--offline` are implied; no flags or environment variables are
+needed.
 :::
 
 ### Examples
@@ -70,10 +70,10 @@ cx bootstrap --prefix /opt/conda
 # Offline bootstrap from cache (after a previous online bootstrap)
 cx bootstrap --prefix /opt/conda --offline
 
-# Offline bootstrap from a payload directory
-cx bootstrap --payload ./packages/ --offline
+# Offline bootstrap from a bundle directory
+cx bootstrap --bundle ./packages/ --offline
 
-# Bootstrap with cxz (embedded payload, auto-detected)
+# Bootstrap with cxz (embedded bundle, auto-detected)
 cxz bootstrap
 ```
 

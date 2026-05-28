@@ -1,7 +1,7 @@
 # Build a custom cx binary
 
-This guide shows how to build a cx binary with your own set of conda packages
-baked in. This is useful when you want to distribute a bootstrapper that
+This guide shows how to build a Pronto-backed cx binary with your own set of
+conda packages. This is useful when you want to distribute a bootstrapper that
 includes domain-specific packages (e.g. numpy, pandas) out of the box.
 
 ## Using the GitHub Action
@@ -25,11 +25,17 @@ jobs:
         id: cx
         with:
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
+          embed-bundle: "false"
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.cx.outputs.asset-name }}
-          path: ${{ steps.cx.outputs.binary-path }}
+          path: |
+            ${{ steps.cx.outputs.binary-path }}
+            ${{ steps.cx.outputs.checksums-path }}
+            ${{ steps.cx.outputs.info-path }}
+            ${{ steps.cx.outputs.lock-path }}
+            ${{ steps.cx.outputs.package-list-path }}
 ```
 
 The action builds cx for the runner's platform and outputs the path to the
@@ -53,34 +59,26 @@ jobs:
       packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
       channels: "conda-forge"
       exclude: "conda-libmamba-solver"
+      embed-bundle: "false"
 ```
 
 Binary artifacts for all platforms are uploaded automatically.
 
 ## Building locally
 
-Set environment variables to override the default package list, then build:
+Use Pronto directly when building locally:
 
 ```bash
-git clone https://github.com/jezdez/conda-express.git
-cd conda-express
+git clone https://github.com/jezdez/pronto.git
+cd pronto
 
-CX_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy" \
-  pixi run build
+cargo run -p pronto -- configure \
+  --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy"
+pixi lock
+cargo run -p pronto -- build --layout none --name cx
 ```
 
-The binary is at `target/release/cx`.
-
-### Available overrides
-
-| Variable | Effect |
-|---|---|
-| `CX_PACKAGES` | Replace the default package list |
-| `CX_CHANNELS` | Replace the default channels |
-| `CX_EXCLUDE` | Replace the default exclusions |
-
-Empty values are ignored. See the {ref}`configuration reference <env-var-overrides>`
-for details on how overrides interact with the lockfile cache.
+The staged binary and metadata files are written to `dist/`.
 
 ## Choosing packages
 
@@ -90,29 +88,29 @@ When specifying packages, keep in mind:
   and `conda-spawn` (cx depends on these at runtime)
 - Use [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html)
   syntax for version constraints (e.g. `numpy >=1.26`)
-- The build performs a full dependency solve at compile time, so all
-  transitive dependencies are resolved and locked
+- Pronto performs a full dependency solve at build time, so all transitive
+  dependencies are resolved and locked
 - The resulting binary is self-contained with an embedded lockfile
 
-## Bundling a payload for offline bootstrap
+## Pairing a bundle for offline bootstrap
 
 A custom cx binary can be paired with a pre-downloaded set of package archives
 for fully offline, air-gapped installation. This is useful for native installers
 (macOS PKG, Windows MSI) and restricted-network deployments.
 
-### Preparing the payload
+### Preparing the bundle
 
 Run an online bootstrap once to populate the rattler package cache, then
-copy the archives into a payload directory:
+copy the archives into a bundle directory:
 
 ```bash
 # Bootstrap online to populate the cache
 cx bootstrap --prefix /tmp/seed
 
 # Collect the cached archives
-mkdir payload
-cp ~/Library/Caches/rattler/cache/pkgs/*.conda payload/
-cp ~/Library/Caches/rattler/cache/pkgs/*.tar.bz2 payload/ 2>/dev/null || true
+mkdir bundle
+cp ~/Library/Caches/rattler/cache/pkgs/*.conda bundle/
+cp ~/Library/Caches/rattler/cache/pkgs/*.tar.bz2 bundle/ 2>/dev/null || true
 ```
 
 :::{note}
@@ -121,31 +119,31 @@ on macOS, `~/.cache/rattler` on Linux, and `%LOCALAPPDATA%\rattler` on
 Windows.
 :::
 
-### Using the payload
+### Using the bundle
 
-Bundle the cx binary and the payload directory in your installer. In the
-post-install script, bootstrap from the payload:
+Bundle the cx binary and the bundle directory in your installer. In the
+post-install script, bootstrap from the bundle:
 
 ```bash
-cx bootstrap --payload /path/to/payload --offline
+cx bootstrap --bundle /path/to/bundle --offline
 ```
 
 Or using environment variables (convenient for installer scripts):
 
 ```bash
-CX_PAYLOAD=/path/to/payload CX_OFFLINE=1 cx bootstrap
+CX_BUNDLE=/path/to/bundle CX_OFFLINE=1 cx bootstrap
 ```
 
-### Payload with network fallback
+### Bundle with network fallback
 
-If you want the payload to cover most packages but allow network fallback for
+If you want the bundle to cover most packages but allow network fallback for
 any missing ones, omit `--offline`:
 
 ```bash
-cx bootstrap --payload /path/to/payload
+cx bootstrap --bundle /path/to/bundle
 ```
 
-This pre-populates the cache from the payload, then downloads anything not
+This pre-populates the cache from the bundle, then downloads anything not
 found locally.
 
 ## Building cxz (self-contained binary)
@@ -157,17 +155,11 @@ network access — drop it on any machine and run `cxz bootstrap`.
 ### Building locally
 
 ```bash
-CX_EMBED_PAYLOAD=1 pixi run build
-cp target/release/cx cxz
+cargo run -p pronto -- build --layout embedded --name cx
 ```
 
-The build downloads all locked packages and bundles them as a zstd-compressed
-tar archive inside the binary. This composes with `CX_PACKAGES`, `CX_CHANNELS`,
-and `CX_EXCLUDE` — you can build a custom package set and embed it in one step:
-
-```bash
-CX_PACKAGES="python >=3.12, conda, numpy" CX_EMBED_PAYLOAD=1 pixi run build
-```
+The build downloads all locked packages and stores them as a zstd-compressed
+tar archive inside the binary.
 
 ### Building via the GitHub Action
 
@@ -175,7 +167,7 @@ CX_PACKAGES="python >=3.12, conda, numpy" CX_EMBED_PAYLOAD=1 pixi run build
 - uses: jezdez/conda-express@main
   with:
     packages: "python >=3.12, conda, conda-rattler-solver, conda-spawn"
-    embed-payload: "true"
+    embed-bundle: "true"
 ```
 
 The action produces a `cxz-<target>` artifact instead of `cx-<target>`.
@@ -188,7 +180,7 @@ jobs:
     uses: jezdez/conda-express/.github/workflows/build.yml@main
     with:
       packages: "python >=3.12, conda, conda-rattler-solver, conda-spawn"
-      embed-payload: "true"
+      embed-bundle: "true"
 ```
 
 ### Using cxz
@@ -197,9 +189,9 @@ jobs:
 ./cxz bootstrap
 ```
 
-No `--payload`, no `--offline`, no environment variables needed. `cxz` detects
-its embedded payload automatically and uses it. All other `cx` flags and
+No `--bundle`, no `--offline`, no environment variables needed. `cxz` detects
+its embedded bundle automatically and uses it. All other `cx` flags and
 subcommands work identically.
 
-Explicit `--payload` still takes priority over the embedded payload, so you can
+Explicit `--bundle` still takes priority over the embedded bundle, so you can
 override the built-in packages at runtime if needed.

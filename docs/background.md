@@ -18,8 +18,8 @@ required to start; no installer framework; no shell profile modifications.
 
 For air-gapped or restricted-network environments, `cxz` goes further: it
 embeds all locked package archives directly into the binary (50-95 MB depending
-on platform). One file, zero network access — `cxz bootstrap` installs conda
-entirely from the embedded payload. See {ref}`Self-contained binary (cxz) <features:Self-contained binary (cxz)>` for details.
+on platform). One file, zero network access; `cxz bootstrap` installs conda
+entirely from the embedded bundle. See {doc}`features` for details.
 
 ## conda-rattler-solver
 

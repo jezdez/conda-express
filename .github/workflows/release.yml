@@ -26,46 +26,26 @@ jobs:
             os: macos-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-    env:
-      TARGET: ${{ matrix.target }}
-      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
-        with:
-          cache: true
-
-      - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
-
       - name: Build release binary
-        run: pixi run build
-
-      - name: Test
-        run: pixi run test
-
-      - name: Stage binary and compute checksums
-        shell: bash
-        run: |
-          if [[ "$TARGET" == *"windows"* ]]; then
-            BIN_NAME="cx.exe"
-            ASSET_NAME="cx-${TARGET}.exe"
-          else
-            BIN_NAME="cx"
-            ASSET_NAME="cx-${TARGET}"
-          fi
-          cp "target/release/${BIN_NAME}" "${ASSET_NAME}"
-          sha256sum "${ASSET_NAME}" > "${ASSET_NAME}.sha256"
-          echo "ASSET_NAME=${ASSET_NAME}" >> "$GITHUB_ENV"
+        id: build
+        uses: ./
+        with:
+          embed-bundle: "false"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ env.ASSET_NAME }}
+          name: ${{ steps.build.outputs.asset-name }}
           path: |
-            ${{ env.ASSET_NAME }}
-            ${{ env.ASSET_NAME }}.sha256
+            ${{ steps.build.outputs.binary-path }}
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
           retention-days: 1
 
   build-cxz-binaries:
@@ -85,47 +65,26 @@ jobs:
             os: macos-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-    env:
-      TARGET: ${{ matrix.target }}
-      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
+      - name: Build cxz
+        id: build
+        uses: ./
         with:
-          cache: true
-
-      - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
-
-      - name: Build cxz (embedded payload)
-        env:
-          CX_EMBED_PAYLOAD: "1"
-        run: |
-          pixi run -- cargo run -p cx-build -- payload
-          pixi run build
-
-      - name: Stage binary and compute checksums
-        shell: bash
-        run: |
-          if [[ "$TARGET" == *"windows"* ]]; then
-            BIN_NAME="cx.exe"
-            ASSET_NAME="cxz-${TARGET}.exe"
-          else
-            BIN_NAME="cx"
-            ASSET_NAME="cxz-${TARGET}"
-          fi
-          cp "target/release/${BIN_NAME}" "${ASSET_NAME}"
-          sha256sum "${ASSET_NAME}" > "${ASSET_NAME}.sha256"
-          echo "ASSET_NAME=${ASSET_NAME}" >> "$GITHUB_ENV"
+          embed-bundle: "true"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ env.ASSET_NAME }}
+          name: ${{ steps.build.outputs.asset-name }}
           path: |
-            ${{ env.ASSET_NAME }}
-            ${{ env.ASSET_NAME }}.sha256
+            ${{ steps.build.outputs.binary-path }}
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
           retention-days: 1
 
   build-wheels:

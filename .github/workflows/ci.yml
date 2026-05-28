@@ -5,42 +5,53 @@ on:
     branches: [main]
     paths:
       - ".github/workflows/ci.yml"
+      - ".github/workflows/build.yml"
       - "action.yml"
-      - "src/**"
-      - "crates/**"
-      - "tests/**"
-      - "python/**"
-      - "build.rs"
-      - "Cargo.toml"
-      - "Cargo.lock"
+      - "docs/**"
+      - "scripts/**"
+      - "Formula/**"
+      - "docker/**"
+      - "README.md"
+      - "DESIGN.md"
+      - "PLAN.md"
       - "pixi.toml"
       - "pixi.lock"
-      - "pyproject.toml"
-      - "cx.lock"
-      - "cx.lock.hash"
   pull_request:
     branches: [main]
     paths:
       - ".github/workflows/ci.yml"
+      - ".github/workflows/build.yml"
       - "action.yml"
-      - "src/**"
-      - "crates/**"
-      - "tests/**"
-      - "python/**"
-      - "build.rs"
-      - "Cargo.toml"
-      - "Cargo.lock"
+      - "docs/**"
+      - "scripts/**"
+      - "Formula/**"
+      - "docker/**"
+      - "README.md"
+      - "DESIGN.md"
+      - "PLAN.md"
       - "pixi.toml"
       - "pixi.lock"
-      - "pyproject.toml"
-      - "cx.lock"
-      - "cx.lock.hash"
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
+        with:
+          environments: docs
+          cache: true
+      - name: Validate workflow YAML
+        run: |
+          ruby -e 'require "yaml"; Dir[".github/workflows/*.yml"].each { |path| YAML.load_file(path); puts "ok #{path}" }; YAML.load_file("action.yml"); puts "ok action.yml"'
+      - name: Build docs
+        run: pixi run -e docs docs
+
   build:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
@@ -58,108 +69,60 @@ jobs:
             os: macos-latest
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-    env:
-      TARGET: ${{ matrix.target }}
-      SCCACHE_GHA_ENABLED: "true"
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
+      - name: Build cx
+        id: build
+        uses: ./
         with:
-          cache: true
-
-      - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
-
-      - name: Build
-        run: pixi run build
-
-      - name: Test
-        run: pixi run test
+          embed-bundle: "false"
 
       - name: Smoke test
         shell: bash
         run: |
-          if [[ "$TARGET" == *"windows"* ]]; then
-            BIN="target/release/cx.exe"
-          else
-            BIN="target/release/cx"
-          fi
-          "$BIN" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
-          "$BIN" status --prefix "$RUNNER_TEMP/cx-smoke"
-
-      - name: Build cxz (embedded payload)
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        env:
-          CX_EMBED_PAYLOAD: "1"
-        run: |
-          pixi run -- cargo run -p cx-build -- payload
-          pixi run build
-
-      - name: Smoke test cxz
-        if: matrix.target == 'x86_64-unknown-linux-gnu'
-        shell: bash
-        run: |
-          cp target/release/cx cxz
-          ./cxz bootstrap --prefix "$RUNNER_TEMP/cxz-smoke"
-          ./cxz status --prefix "$RUNNER_TEMP/cxz-smoke"
-
-      - name: Stage binary
-        shell: bash
-        run: |
-          if [[ "$TARGET" == *"windows"* ]]; then
-            BIN_NAME="cx.exe"
-            ASSET_NAME="cx-${TARGET}.exe"
-          else
-            BIN_NAME="cx"
-            ASSET_NAME="cx-${TARGET}"
-          fi
-          cp "target/release/${BIN_NAME}" "${ASSET_NAME}"
-          echo "ASSET_NAME=${ASSET_NAME}" >> "$GITHUB_ENV"
+          "${{ steps.build.outputs.binary-path }}" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
+          "${{ steps.build.outputs.binary-path }}" status --prefix "$RUNNER_TEMP/cx-smoke"
 
       - name: Upload canary binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: ${{ env.ASSET_NAME }}
-          path: ${{ env.ASSET_NAME }}
+          name: ${{ steps.build.outputs.asset-name }}
+          path: |
+            ${{ steps.build.outputs.binary-path }}
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
           retention-days: 3
 
-  coverage:
-    name: Coverage
+  embedded:
+    name: Build cxz
     runs-on: ubuntu-latest
-    env:
-      SCCACHE_GHA_ENABLED: "true"
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
+      - name: Build cxz
+        id: build
+        uses: ./
         with:
-          cache: true
+          embed-bundle: "true"
 
-      - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
+      - name: Smoke test cxz
+        shell: bash
+        run: |
+          "${{ steps.build.outputs.binary-path }}" bootstrap --prefix "$RUNNER_TEMP/cxz-smoke"
+          "${{ steps.build.outputs.binary-path }}" status --prefix "$RUNNER_TEMP/cxz-smoke"
 
-      - name: Generate coverage
-        run: pixi run coverage
-
-      - name: Upload to Codecov
-        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+      - name: Upload canary binary
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          files: lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: ${{ github.event_name != 'pull_request' }}
-
-  lint:
-    name: Lint
-    runs-on: ubuntu-latest
-    env:
-      SCCACHE_GHA_ENABLED: "true"
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-      - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
-        with:
-          cache: true
-      - uses: mozilla-actions/sccache-action@9e7fa8a12102821edf02ca5dbea1acd0f89a2696 # v0.0.10
-      - name: Check cx.lock freshness
-        run: pixi run check-lock
-      - name: Lint
-        run: pixi run lint
+          name: ${{ steps.build.outputs.asset-name }}
+          path: |
+            ${{ steps.build.outputs.binary-path }}
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
+          retention-days: 3

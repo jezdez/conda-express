@@ -43,7 +43,7 @@ All options work as environment variables on both platforms:
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip running `cx bootstrap` |
-| `CX_PAYLOAD` | *(unset)* | Directory of package archives for offline bootstrap |
+| `CX_BUNDLE` | *(unset)* | Directory of package archives for offline bootstrap |
 | `CX_OFFLINE` | *(unset)* | Set to disable network during bootstrap |
 
 Unix example:

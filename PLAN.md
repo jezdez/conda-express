@@ -16,16 +16,18 @@ creates two companion repositories:
 - Removed WebAssembly, Emscripten, JupyterLite, and demo source files from this
   repo.
 - Kept `conda-express` focused on native `cx` and `cxz` binaries.
+- Switched the conda-express composite action, reusable build workflow, CI
+  canaries, and release binary jobs to build `cx` / `cxz` through Pronto.
 
 ## Remaining
 
 ### Rebuild on Pronto
 
-- Move remaining generic builder behavior out of this repository.
-- Replace `cx-build` usage with Pronto once Pronto's public interface is ready.
+- Move remaining legacy generic builder/runtime source out of this repository.
 - Keep `conda-express` configuration as the input to Pronto.
 - Preserve `cx` as the online/bootstrap binary name.
 - Preserve `cxz` as the embedded compressed-bundle binary name.
+- Update PyPI and crates.io packaging to consume Pronto-built artifacts.
 
 ### Distribution Policy
 
@@ -38,8 +40,8 @@ creates two companion repositories:
 ### Terminology
 
 - Use "bundle" for compressed package archives.
-- Stop adding new `payload` terminology.
-- Rename existing payload internals once Pronto owns the builder flow.
+- Stop adding new `payload` terminology in the Pronto-backed build flow.
+- Rename any remaining legacy runtime/docs payload surfaces to bundle.
 
 ### Documentation
 
