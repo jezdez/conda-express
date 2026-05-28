@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use clap::{Parser, Subcommand};
 use rattler_conda_types::{PackageName, Platform};
@@ -136,8 +137,7 @@ fn prepare(check: bool, root_override: Option<PathBuf>) {
         toml::from_str(&pixi_toml).expect("failed to parse [tool.cx] from pixi.toml");
     let excludes = &config.tool.cx.exclude;
 
-    let pixi_lock = LockFile::from_path(&pixi_lock_path)
-        .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_lock_path.display()));
+    let pixi_lock = parse_pixi_lock(&pixi_lock_content, &pixi_lock_path);
 
     let cx_env = pixi_lock.environment("cx-env").unwrap_or_else(|| {
         panic!(
@@ -196,6 +196,21 @@ fn prepare(check: bool, root_override: Option<PathBuf>) {
         platforms.len(),
         total_excluded
     );
+}
+
+fn parse_pixi_lock(pixi_lock_content: &str, pixi_lock_path: &Path) -> LockFile {
+    let normalized_lock;
+    let lock_content = if pixi_lock_content.starts_with("version: 7\n") {
+        // Pixi lock v7 is backwards-compatible with rattler_lock's v6 parser for
+        // the conda package data cx-build consumes.
+        normalized_lock = pixi_lock_content.replacen("version: 7\n", "version: 6\n", 1);
+        normalized_lock.as_str()
+    } else {
+        pixi_lock_content
+    };
+
+    LockFile::from_str(lock_content)
+        .unwrap_or_else(|e| panic!("failed to parse {}: {e}", pixi_lock_path.display()))
 }
 
 /// Remove explicitly excluded packages and any transitive dependencies that

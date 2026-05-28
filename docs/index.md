@@ -55,7 +55,7 @@ See the {doc}`quickstart <quickstart>` for all installation methods.
 
 ## Quick example
 
-![Bootstrap conda, create an environment, and activate it](demos/quickstart.gif)
+![Bootstrap conda, create an environment, and activate it](../demos/quickstart.gif)
 
 ```bash
 # Bootstrap a conda installation (~3–5 seconds)

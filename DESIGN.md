@@ -1,521 +1,102 @@
 # Design
 
-## What is conda-express?
-
-conda-express (cx) is a lightweight, single-binary bootstrapper for conda, written in Rust using the [rattler](https://github.com/conda/rattler) crate ecosystem. It replaces the miniconda/constructor install pattern with a 7-11 MB static binary that can install a fully functional conda environment in seconds.
-
-Inspired by uv's single-binary distribution model, cx aims to be the fastest way to get a working conda installation.
-
-The project also includes **cx-wasm**, a WebAssembly build of the same rattler-based solver and extractor, enabling `conda install` to run entirely client-side in the browser via JupyterLite.
-
-## Current status
-
-### cx CLI bootstrapper
-
-**Working PoC** — all core functionality is implemented and tested on macOS ARM64.
-
-| Feature | Status |
-|---|---|
-| Single-binary bootstrapper | Done |
-| Compile-time lockfile (rattler-lock v6) | Done |
-| Post-solve package exclusion | Done |
-| conda-libmamba-solver removal | Done |
-| conda-rattler-solver as default | Done |
-| conda-spawn activation model | Done (installed) |
-| `cx shell` alias for `conda spawn` | Done |
-| Disabled commands (`activate`, `deactivate`, `init`) | Done |
-| Auto-bootstrap on first `conda` command | Done |
-| `.condarc` with `solver: rattler` | Done |
-| External lockfile override (`--lockfile`) | Done |
-| Live solve fallback (`--no-lock`) | Done |
-| Multi-platform CI (via pixi) | Done |
-| Release binary builds | Done |
-| CEP 22 frozen base prefix | Done |
-| `cx help` (clap auto-generated) | Done |
-| Output filtering (create/env create) | Done |
-| Installer scripts (get-cx.sh, get-cx.ps1) | Done |
-| `cx uninstall` (anti-bootstrap) | Done |
-| Reusable GitHub Action / composite action | Done |
-| Build-time env var overrides (`CX_PACKAGES`, etc.) | Done |
-| Homebrew formula (same-repo tap) | Done |
-| Self-update (via conda-self plugin) | Not started |
-
-### cx-wasm (browser)
-
-**Working end-to-end** — `%conda install lz4` runs in a JupyterLite notebook, solving via resolvo, downloading from emscripten-forge/conda-forge, extracting via WASM, installing to MEMFS, and loading C extension shared libraries so `import lz4` works immediately.
-
-| Feature | Status |
-|---|---|
-| cx-wasm crate (solver + extractor compiled to WASM) | Done |
-| Sharded repodata (CEP-16) fetch and decode in Rust | Done |
-| Combined fetch-and-solve (`cx_fetch_and_solve`) | Done |
-| Async shard prefetch at kernel startup | Done |
-| Streaming package extraction (`.conda` + `.tar.bz2`) | Done |
-| conda-emscripten plugin (solver, extractor, virtual packages) | Done |
-| `%cx` / `%conda` IPython magics (via `%load_ext conda_emscripten`) | Done |
-| cx-wasm-kernel conda package (WASM bridge for xeus-python) | Done |
-| cx-jupyterlite extension (intercepts bare `conda` commands) | Done |
-| Shared library loading after install (`ctypes.CDLL` + `RTLD_GLOBAL`) | Done |
-| MEMFS compatibility patches (no-seek download, subprocess no-op) | Done |
-| JupyterLite demo site with `lite/build.py` | Done |
-| GitHub Pages deployment (docs + demo) | Done |
-| Web Worker architecture (Comlink RPC, IndexedDB caching) | Done |
-| Submit packages to emscripten-forge | Not started |
-| npm package for standalone browser embedding | Not started |
-
-### Numbers (macOS ARM64)
-
-| Metric | Value |
-|---|---|
-| Release binary size | 7-11 MB |
-| Installed packages (base) | 86 |
-| Excluded packages (libmamba tree) | 27 |
-| Bootstrap time (embedded lockfile) | ~3-5 s |
-| Bootstrap time (live solve) | ~7-8 s |
-| Lockfile size | ~1050 lines (rattler-lock v6) |
-
----
-
-## Architecture
-
-### cx CLI
-
-```
-pixi.toml              [tool.cx]: packages, channels, excludes
-       |
-       v
-    build.rs           Compile-time: solve + filter + write lockfile
-       |
-       v
-    cx.lock            rattler-lock v6 (embedded via include_str!)
-       |
-       v
-      cx               Single binary (7-11 MB release)
-       |
-       +---> bootstrap -----> install from lockfile (fast path)
-       |                       or live solve (fallback)
-       |                       write CEP 22 frozen marker
-       |
-       +---> status -----------> show cx prefix metadata
-       |
-       +---> shell -----------> alias for `conda spawn` (activate via subshell)
-       |
-       +---> uninstall -------> remove prefix, envs, binary, PATH entries
-       |
-       +---> help -----------> clap auto-generated help with quick start
-       |
-       +---> activate/deactivate/init --> disabled (guides to conda-spawn)
-       |
-       +---> <any conda arg> --> hand off to installed conda binary
-       |                         (includes `conda self update` via conda-self)
-```
+`conda-express` is the opinionated native conda distribution that ships the
+`cx` binary and its compressed-bundle sibling, `cxz`.
 
-### Compile-time lockfile
+The reusable builder and browser-specific projects now live elsewhere:
 
-`build.rs` performs the full solve at `cargo build` time:
-
-1. Reads `[tool.cx]` from `pixi.toml` (packages, channels, excludes)
-2. Applies environment variable overrides if set (`CX_PACKAGES`, `CX_CHANNELS`, `CX_EXCLUDE`)
-3. Hashes the config (including overrides); skips solve if cached lockfile matches
-4. Fetches repodata via `rattler_repodata_gateway` (sharded)
-5. Solves via `rattler_solve` (resolvo)
-6. Filters out excluded packages and their exclusive dependencies
-7. Writes a rattler-lock v6 lockfile to `$OUT_DIR/cx.lock`
-8. Binary embeds it via `include_str!`
-
-At runtime, bootstrap parses the embedded lockfile, extracts `RepoDataRecord`s, and passes them directly to `rattler::install::Installer` — no repodata fetch, no solve.
-
-### Package exclusion
-
-conda on conda-forge hard-depends on `conda-libmamba-solver`. Since cx uses `conda-rattler-solver` instead, it removes libmamba and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) via a post-solve transitive dependency pruning algorithm. This happens both at compile time (in `build.rs`) and optionally at runtime (for live solve or external lockfiles).
-
-### Disabled commands
-
-cx intercepts three conda commands that conflict with the conda-spawn activation model:
-
-- **`activate` / `deactivate`** — prints a message directing users to `conda spawn` instead.
-- **`init`** — explains that shell profile modifications are unnecessary; guides the user to add `condabin` to their PATH.
-
-These commands exit with a non-zero status to prevent scripts from silently succeeding.
-
-### Process hand-off
-
-When cx receives a command it doesn't own (anything other than `bootstrap`, `status`, `shell`, `help`, or a disabled command), it replaces its own process with the installed `conda` binary using the Unix execvp syscall. For `create` and `env create`, cx runs conda as a subprocess to filter misleading `conda activate` hints from the output, replacing them with `cx shell` guidance. This means conda's full feature set is available transparently — cx is invisible after bootstrap.
-
-### Frozen base prefix (CEP 22)
-
-After bootstrap, cx writes a `conda-meta/frozen` marker file per [CEP 22](https://conda.org/learn/ceps/cep-0022/). This protects the base prefix from accidental modification — users should create named environments for their work. Updating the base installation is handled by `conda self update` (via conda-self), which internally overrides the frozen check.
-
-### cx-wasm (browser)
-
-cx-wasm compiles the same rattler-based solver and conda package extractor to `wasm32-unknown-unknown` via `wasm-pack`. In the browser, it runs inside a Web Worker (xeus-python kernel worker) and communicates with Python via pyjs. Real conda runs in WASM — this is not a reimplementation.
-
-#### Two-phase architecture: async fetch, sync solve
-
-Sharded repodata (CEP-16) requires fetching individual shards for each package name. In a Web Worker, only synchronous XHR is available during the solve phase (Python blocks the worker thread). Making hundreds of sequential sync XHR requests made solves take 10-12 seconds.
-
-The solution is a two-phase architecture that separates fetching (async, parallel) from solving (sync, pure computation):
-
-**Phase 1 — Async shard prefetch (kernel startup):**  
-During kernel initialization (before the user types anything), `cx_wasm_bridge.setup()` runs `_prefetch_installed()`. This performs a breadth-first traversal of the dependency graph:
-
-1. Collects seed package names from `conda-meta/` (installed packages)
-2. Calls `cx_get_shard_urls()` (Rust) to compute shard URLs from the cached index
-3. Fetches all shard URLs in parallel via JavaScript `fetch()` API (`_cx_prefetch_batch`)
-4. Decodes each fetched shard with `cx_decode_shard_deps()` (Rust) to extract dependency names
-5. Queues newly discovered dependencies for the next level
-6. Repeats until no new dependencies are found
-
-All fetched shards are stored in a JavaScript `Map` (`_cxPrefetchCache`) keyed by URL.
-
-**Phase 2 — Sync solve (user command):**  
-When the user runs `%conda install lz4`, the cx-wasm solver's sync XHR callback checks `_cxPrefetchCache` first. Since all shards for installed packages (and their transitive dependencies) were pre-fetched, the solve phase makes zero network requests — it runs as pure computation against cached data.
-
-This reduced solve time from **11.85s to 0.21s** (56x speedup).
-
-#### Command flow
-
-```
-  KERNEL STARTUP (async, before user interaction)
-       |
-  cx_wasm_bridge.setup()
-       |
-       v
-  _prefetch_installed()  Dependency-graph traversal:
-       |                  - get shard URLs from Rust (cx_get_shard_urls)
-       |                  - parallel fetch via JS fetch() → _cxPrefetchCache
-       |                  - decode deps via Rust (cx_decode_shard_deps)
-       |                  - repeat until no new deps found
-       v
-  All repodata shards cached in JS Map (zero-copy on solve)
-
-  ─────────────────────────────────────────────────────────
-
-  USER COMMAND: %conda install lz4
-       |
-       v
-  cx-jupyterlite         JupyterLite extension (main thread):
-       |                  rewrites bare "conda" → "%cx" in cell source
-       v
-  magic.py              IPython %cx / %conda magic
-       |                  auto-injects --yes, snapshots .so files
-       v
-  _bootstrap_prefix()    One-time MEMFS setup: conda-meta/, .condarc,
-       |                  env vars (CONDA_ROOT_PREFIX, CONDA_SUBDIR, etc.)
-       v
-  patches.py             Runtime patches for Emscripten:
-       |                  - urllib3: sync XHR instead of async fetch
-       |                  - download_inner: no-seek HTTP fetch
-       |                  - ExtractPackageAction: WASM extractor
-       |                  - subprocess: silent no-op
-       v
-  conda.cli.main.main()  Real conda CLI — full command support
-       |
-       v
-  solver.py              CxWasmSolver (CONDA_SOLVER=cx-wasm)
-       |                  builds request JSON, calls js.fetch_and_solve()
-       v
-  cx_wasm_bridge         Loads cx-wasm WASM via blob URLs, registers
-       |                  js.fetch_and_solve + js.cx_extract_package
-       v
-  cx-wasm (Rust/WASM)   gateway.rs: sync XHR reads from _cxPrefetchCache
-       |                  solve.rs: resolvo solver (pure computation)
-       |                  extract.rs: streaming .conda/.tar.bz2 extraction
-       v
-  extractor.py           Calls js.cx_extract_package (Uint8Array conversion),
-       |                  writes to MEMFS; Python tarfile fallback for .tar.bz2
-       v
-  conda links package    Files copied to prefix in MEMFS
-       |
-       v
-  _load_new_shared_libs  Finds new .so files (including versioned: .so.1.10.0),
-       |                  loads via ctypes.CDLL with RTLD_GLOBAL (shallowest
-       |                  first, one retry pass for dependency ordering)
-       v
-  Package installed, C extensions importable in the same kernel session
-```
-
-#### MEMFS compatibility patches
-
-Emscripten's in-memory filesystem (MEMFS) has fundamental limitations that conda assumes won't exist: no `seek()`, no `subprocess`, no `fcntl.lockf`. The `patches.py` module applies runtime monkey-patches:
-
-| Patch | What it fixes |
-|---|---|
-| `download_inner` | Replaces conda's partial-download + checksum-via-seek with a simple fetch-verify-write |
-| `ExtractPackageAction.execute` | Routes extraction through cx-wasm's Rust extractor instead of `conda_package_handling` (which needs `seek()`) |
-| `subprocess` | No-ops `any_subprocess` and `subprocess_call` — post-link scripts can't run in the browser |
-| `RepodataCache.save` | Swallows `OSError` from repodata cache writes (MEMFS limitation) |
-| `_notify_conda_outdated` | Suppresses outdated conda check (irrelevant in browser) |
-
-#### Shared library loading
-
-After a mutating conda command (`install`, `update`, `create`), newly installed `.so` files need to be registered with Emscripten's dynamic linker before Python can `import` them. The `_load_new_shared_libs()` function in `magic.py`:
-
-1. Snapshots all `.so` files before the command
-2. After the command, finds new `.so` files (matching versioned names like `liblz4.so.1.10.0`)
-3. Sorts by directory depth (C runtime libs before Python extension modules)
-4. Loads each via `ctypes.CDLL(path, mode=ctypes.RTLD_GLOBAL)`, which calls Emscripten's `dlopen` → `loadDynamicLibrary`
-5. Retries failed loads once (handles dependency ordering)
-
-This enables packages with C extensions (like `lz4`) to work after runtime installation.
-
-#### Performance characteristics
-
-| Phase | Typical time | Notes |
-|---|---|---|
-| Prefetch (kernel startup) | ~2-4 s | Async, parallel; runs before user interaction |
-| Solve | ~0.2 s | Pure computation against cached shards |
-| Download + extract | ~0.3 s | Per-package, sequential sync XHR |
-| Transaction (link) | ~1.5 s | File copy in MEMFS |
-| Shared lib load | ~0.1 s | `ctypes.CDLL` + retry pass |
-| **Total (`%conda install lz4`)** | **~3.5 s** | |
-
-The Web Worker demo (`crates/cx-wasm/www/conda-test.html`) uses Comlink for RPC and IndexedDB for caching the bootstrap filesystem snapshot (~50 MB). JupyterLite integration uses the same WASM module but loaded through the xeus-python kernel worker, with the `cx_wasm_bridge` Python package handling blob URL initialization.
-
----
-
-## File structure
-
-```
-conda-express/
-  Cargo.toml            Rust project manifest (crate: conda-express, binary: cx)
-  pyproject.toml        maturin config for PyPI wheel builds
-  pixi.toml             Dev environment + [tool.cx] config + [feature.cx-env] + pixi tasks
-  action.yml            Composite GitHub Action for building custom cx binaries
-  Formula/cx.rb         Homebrew formula (same-repo tap)
-  pixi.lock             Locked dev + cx-env dependencies
-  build.rs              Copies cx.lock (and optional payload.tar.zst) into OUT_DIR for embedding
-  cx.lock               rattler-lock v6 lockfile extracted from pixi.lock (checked in)
-  cx.lock.hash          SHA-256 of pixi.toml for cx.lock cache invalidation
-  CHANGELOG.md          Release changelog
-  LICENSE               BSD 3-Clause
-  README.md             User-facing documentation
-  DESIGN.md             This file
-  PLAN.md               Feasibility analysis and implementation plan
-
-  src/                  cx CLI (Rust)
-    main.rs             Entry point, command dispatch, disabled commands
-    cli.rs              CLI definitions (clap)
-    config.rs           Embedded config, prefix metadata, .condarc, CEP 22 frozen
-    install.rs          Package installation (lockfile + live-solve paths)
-    exec.rs             Process replacement (exec into installed conda)
-    commands.rs         Bootstrap, status, uninstall implementations
-
-  crates/cx-build/      Internal build tools (binary: cx-build)
-    Cargo.toml          Workspace member (clap, rattler_lock, rattler_conda_types, reqwest, tokio, toml_edit)
-    src/
-      main.rs           Subcommands: prepare (extracts cx.lock from pixi.lock's
-                        cx-env environment + applies excludes), payload (downloads
-                        packages and bundles into payload.tar.zst for cxz), and
-                        configure (overrides cx-env packages/channels/exclude in
-                        pixi.toml for custom builds)
-
-  crates/cx-wasm/       cx-wasm WASM crate
-    Cargo.toml          Workspace member (rattler, wasm-bindgen, web-sys)
-    build.rs            Embeds lockfile + platform at compile time
-    src/
-      lib.rs            WASM entry points (bootstrap, extract, solve)
-      error.rs          CxWasmError enum
-      extract.rs        .conda and .tar.bz2 streaming extraction
-      bootstrap.rs      Full bootstrap loop with progress callbacks
-      solve.rs          resolvo-based solver with virtual package merging
-      gateway.rs        Combined fetch + solve + shard URL computation
-      sharded.rs        CEP-16 sharded repodata: index/shard fetch, decode, dep extraction
-    www/                Browser demo and Web Worker
-      cx-worker.js      Web Worker (WASM init, pyjs, bootstrap, conda ops)
-      cx-bootstrap.js   Comlink client (thin proxy to Worker)
-      conda-test.html   End-to-end browser test UI
-      vendor/           Vendored Comlink v4
-
-  conda-emscripten/     conda plugin for Emscripten environments
-    pyproject.toml      Registered as conda-emscripten = conda_emscripten.plugin
-    conda_emscripten/
-      __init__.py       IPython extension entry point (%load_ext conda_emscripten)
-      plugin.py         conda @hookimpl hooks (solver, extractor, vpkgs, pre-command)
-      solver.py         CxWasmSolver (CONDA_SOLVER=cx-wasm) with JSON round-trip
-      extractor.py      WASM extraction (Uint8Array) + streaming tarfile fallback
-      patches.py        urllib3 sync XHR, no-seek download, WASM extractor,
-                        subprocess no-op, MEMFS stubs
-      magic.py          %cx / %conda magics, MEMFS bootstrap, shared lib loading
-
-  cx-jupyterlite/       JupyterLite extension (TypeScript)
-    src/index.ts        Disables default xeus kernel, registers CxWebWorkerKernel
-    src/kernel.ts       Intercepts execute_request messages, rewrites bare
-                        "conda" commands to "%cx" so the IPython magic handles them
-    package.json        @cx/jupyterlite-extension
-
-  recipes/              conda package build recipes
-    conda-emscripten/   Patched conda for emscripten (8 patches)
-    conda-emscripten-plugin/  conda-emscripten plugin package
-    cx-wasm-kernel/     WASM files + Python bridge for xeus-python
-      cx_wasm_bridge/   Loads cx-wasm via blob URLs, registers JS bridge,
-                        runs shard prefetch at startup
-    frozendict-noarch/  frozendict 2.4.6 as noarch
-
-  lite/                 JupyterLite demo site
-    build.py            Builds site; --with-local adds cx-wasm-kernel + cx-jupyterlite
-    jupyter_lite_config.json  Includes cx-jupyterlite as federated extension
-    jupyter-lite.json   Runtime config (disables default xeus kernel registration)
-    files/notebooks/    Demo notebooks
-
-  python/               PyPI wrapper
-    conda_express/
-      __init__.py       Exposes find_cx_bin()
-      __main__.py       python -m conda_express -> exec cx
-      _find_cx.py       Locate cx binary in sysconfig paths
-      py.typed          PEP 561 type marker
-
-  scripts/
-    get-cx.sh           Installer script for macOS/Linux
-    get-cx.ps1          Installer script for Windows (PowerShell)
-
-  docs/                 Sphinx documentation (conda-sphinx-theme)
-    conf.py             Sphinx config
-    index.md            Homepage with install tabs, live demo link
-    quickstart.md       Installation and first steps
-    features.md         Feature descriptions
-    configuration.md    Build-time and runtime config reference
-    design.md           Includes DESIGN.md via MyST include
-    changelog.md        Symlink to ../CHANGELOG.md
-    guides/
-      custom-builds.md  How to build custom cx binaries
-    reference/
-      cli.md            CLI reference
-      github-action.md  Composite action and reusable workflow reference
-      installer.md      Installer script reference
-
-  .github/workflows/
-    ci.yml              CI: build, test, lint on all platforms (canary artifacts)
-    release.yml         Publish to GitHub Releases, PyPI, crates.io
-    build.yml           Reusable workflow for custom cx binaries (workflow_call)
-    docs.yml            Build docs + JupyterLite demo, deploy to GitHub Pages
-```
-
-## Development environment
-
-cx uses [pixi](https://pixi.sh) to manage the Rust toolchain from conda-forge, ensuring consistent builds across local development and CI:
+- `pronto`: generic build system for ready-to-run conda bootstrap binaries
+- `conda-wasm`: browser, WebAssembly, Emscripten, and JupyterLite pipeline
+
+This repository keeps the distribution policy for `cx`: the package set,
+default prefix behavior, activation policy, release artifacts, and user-facing
+documentation.
+
+## Runtime Model
+
+`cx` is a single native Rust binary. It embeds:
+
+- a lockfile generated from the configured conda package set
+- build-time metadata from `pixi.toml`
+- optionally, a compressed package bundle for `cxz`
+
+On first use, `cx bootstrap` installs conda into the target prefix, writes
+prefix metadata, configures the selected solver and plugins, and freezes the
+base prefix. Later invocations delegate to the installed `conda` executable.
+
+## Distribution Policy
+
+`conda-express` intentionally keeps opinions that do not belong in `pronto`:
+
+- binary names: `cx` and `cxz`
+- default prefix: `~/.cx`
+- default conda channel: `conda-forge`
+- default package set: conda, conda-rattler-solver, conda-spawn, and selected
+  conda ecosystem plugins
+- frozen base prefix behavior
+- `cx shell` as the conda-spawn based activation command
+- user-facing install methods such as Homebrew, shell scripts, Docker, PyPI,
+  crates.io, and GitHub Releases
+
+The current implementation still contains some builder internals because the
+split is incremental. Those internals should move behind `pronto` so this repo
+can become a consumer of Pronto-built artifacts.
+
+## Build Flow
+
+The current build flow is:
+
+1. `cx-build prepare` reads `pixi.toml`, extracts the `cx-env` environment from
+   `pixi.lock`, applies exclusions, and writes `cx.lock`.
+2. `build.rs` embeds `cx.lock` and the distribution metadata into the binary.
+3. Standard `cx` builds ship only the binary and embedded lockfile.
+4. `cxz` builds run `cx-build payload`, produce `payload.tar.zst`, and compile
+   with `CX_EMBED_PAYLOAD=1`.
+
+The intended split flow is:
+
+1. `pronto` owns the lock, bundle, build, inspect, and artifact metadata steps.
+2. `conda-express` supplies distribution configuration and release policy.
+3. CI builds `cx` and `cxz` by invoking Pronto rather than keeping builder
+   logic in this repo.
+
+## Bootstrap Flow
+
+At runtime, `cx bootstrap`:
+
+1. Determines the target prefix.
+2. Validates lockfile, offline, and bundle inputs.
+3. Uses the embedded lockfile unless an external lockfile is supplied.
+4. Installs packages through rattler using locked package records.
+5. Pre-populates the package cache from an external or embedded bundle when
+   requested.
+6. Writes `.cx.json` metadata and `.condarc`.
+7. Writes the CEP 22 `conda-meta/frozen` marker for the base prefix.
+
+After bootstrap, pass-through commands run the installed conda executable.
+
+## Activation
+
+`conda-express` keeps activation as distribution behavior, not builder
+behavior. The default user workflow is:
 
 ```bash
-# Install pixi (if not already installed)
-curl -fsSL https://pixi.sh/install.sh | bash
-
-# Build, test, lint
-pixi run build         # cargo build --release
-pixi run test          # cargo test
-pixi run lint          # fmt-check + clippy
+cx shell myenv
 ```
 
-The `pixi.toml` pins `rust >= 1.85` from conda-forge. CI workflows use `prefix-dev/setup-pixi` to replicate the same environment on all platforms.
+That command delegates to conda-spawn and avoids shell-profile initialization.
+The classic `conda activate`, `conda deactivate`, and `conda init` commands are
+intercepted with guidance because they do not match the `cx` distribution
+model.
 
-## Configuration
+## Repository Boundaries
 
-The `[tool.cx]` section in `pixi.toml` is the single source of truth for what gets installed:
+This repo should not contain:
 
-```toml
-[tool.cx]
-channels = ["conda-forge"]
-packages = [
-    "python >=3.12",
-    "conda >=25.1",
-    "conda-rattler-solver",
-    "conda-spawn >=0.1.0",
-    "conda-pypi",
-    "conda-self",
-    "conda-global",
-    "conda-workspaces >=0.4.0",
-]
-exclude = ["conda-libmamba-solver"]
-```
+- WebAssembly crates
+- Emscripten conda patches
+- JupyterLite extensions or demo sites
+- generic builder product naming
+- Constructor-style `.sh`, `.pkg`, or `.msi` output generation
 
-Both `cx-build prepare` (which regenerates `cx.lock` from `pixi.lock`) and the runtime binary read from `pixi.toml`. Changing it requires re-running `pixi run lock` (to refresh `pixi.lock`) and `cargo run -p cx-build -- prepare` (to refresh `cx.lock`).
-
-### Build-time environment variable overrides
-
-For custom builds (e.g. via the reusable GitHub Action), `build.rs` supports environment variable overrides that replace the `pixi.toml` values:
-
-| Variable | Overrides | Format |
-|---|---|---|
-| `CX_PACKAGES` | `[tool.cx].packages` | Comma-separated match specs |
-| `CX_CHANNELS` | `[tool.cx].channels` | Comma-separated channel names |
-| `CX_EXCLUDE` | `[tool.cx].exclude` | Comma-separated package names |
-
-When overrides are active, the checked-in `cx.lock` is skipped (a fresh solve runs) and the repo-root lockfile is not overwritten.
-
-## CLI
-
-```
-cx bootstrap [--force] [--prefix DIR] [--channel CH] [--package PKG]
-             [--exclude PKG] [--no-exclude] [--no-lock] [--lockfile PATH]
-cx status [--prefix DIR]
-cx shell [ENV]           # alias for conda spawn (activate via subshell)
-cx uninstall [--prefix DIR] [--yes]  # remove prefix, envs, binary, PATH entries
-cx <any-conda-command>   # transparently delegates to conda
-```
-
-Default prefix: `~/.cx`
-
-### Disabled commands
-
-| Command | Behavior |
-|---|---|
-| `cx activate` | Prints guidance to use `conda spawn` instead |
-| `cx deactivate` | Prints guidance to use `conda spawn` instead |
-| `cx init` | Explains `conda init` is unnecessary with conda-spawn |
-
-## Default installed plugins
-
-| Plugin | Purpose |
-|---|---|
-| conda-rattler-solver | Rust-based solver (replaces libmamba) |
-| conda-spawn | Subprocess-based activation (replaces `conda activate`) |
-| conda-pypi | PyPI interoperability (install, solve, convert) |
-| conda-self | Base environment self-management |
-| conda-global | Global tool installation and PATH management |
-| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) | Multi-environment workspace and task management |
-
-## Lockfile compatibility
-
-The embedded `cx.lock` is a standard rattler-lock v6 file, compatible with:
-
-- pixi (same lockfile format)
-- conda-lockfiles (`RattlerLockV6Loader`)
-- Version control (can be checked in for audit)
-
-## Key dependencies
-
-All from the [rattler](https://github.com/conda/rattler) ecosystem:
-
-| Crate | Role |
-|---|---|
-| `rattler` | Package installation engine |
-| `rattler_solve` (resolvo) | SAT-based dependency solver |
-| `rattler_repodata_gateway` | Repodata fetching (sharded) |
-| `rattler_conda_types` | conda type definitions |
-| `rattler_lock` | Lockfile read/write (v6 format) |
-| `rattler_virtual_packages` | Virtual package detection |
-| `rattler_networking` | Auth middleware, OCI support |
-| `rattler_cache` | Cache directory management |
-
-## PyPI distribution
-
-cx is published to PyPI as platform wheels via [maturin](https://github.com/PyO3/maturin) (`bindings = "bin"`), following the same pattern as [uv](https://github.com/astral-sh/uv). A tiny Python wrapper in `python/conda_express/` provides:
-
-- `find_cx_bin()` — locates the binary via sysconfig
-- `python -m conda_express` — finds and exec's the cx binary
-
-## CI/CD
-
-All workflows use `pixi` for toolchain management:
-
-- **`ci.yml`** — runs on push to `main` and PRs. Builds and tests across 5 targets (linux-x64, linux-aarch64, macos-x64, macos-arm64, windows-x64). Uploads canary binaries as artifacts. Runs `pixi run lint` separately. Uses `sccache` for Rust compilation caching.
-- **`release.yml`** — triggers on tag push (`v*`). Orchestrates the full release pipeline: builds native binaries, builds maturin platform wheels and sdist, creates a GitHub Release with binary assets, publishes wheels to PyPI via trusted publishing (OIDC), and publishes the crate to crates.io via trusted publishing (`rust-lang/crates-io-auth-action`). All steps run as separate jobs with dependency ordering.
-- **`build.yml`** — reusable workflow (`workflow_call`) for building custom cx binaries. Accepts `packages`, `channels`, `exclude`, and `ref` inputs. Builds all 5 platforms using the composite action and uploads binary artifacts with checksums.
-- **`docs.yml`** — triggers on push to `main` and PRs (docs, lite, cx-wasm, conda-emscripten, recipes paths). Builds Sphinx documentation and JupyterLite demo (cx-wasm WASM build + conda recipes + `lite/build.py`). Deploys docs to GitHub Pages root and demo to `/demo/` subdirectory.
-
-### Composite action (`action.yml`)
-
-The repo root contains a composite GitHub Action that lets other repos build custom cx binaries with `uses: jezdez/conda-express@main`. It accepts `packages`, `channels`, `exclude`, and `ref` inputs, checks out conda-express, builds with env var overrides, and outputs the `binary-path` and `asset-name`. Callers handle their own platform matrix.
-
-## Future work
-
-See [PLAN.md](https://github.com/jezdez/conda-express/blob/main/PLAN.md) for the full roadmap, including the conda-self updater plugin design, offline bootstrap from a bundled payload (PKG / MSI, [#11](https://github.com/jezdez/conda-express/issues/11)), homebrew-core submission, conda-forge feedstock, and upstream work.
+Those belong in `conda-wasm`, `pronto`, or downstream distribution channels.

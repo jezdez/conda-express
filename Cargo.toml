@@ -1,6 +1,6 @@
 [workspace]
-members = [".", "crates/cx-wasm", "crates/cx-build"]
-default-members = [".", "crates/cx-wasm"]
+members = [".", "crates/cx-build"]
+default-members = [".", "crates/cx-build"]
 
 [package]
 name = "conda-express"

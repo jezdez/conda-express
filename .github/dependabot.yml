@@ -18,24 +18,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: npm
-    directory: /cx-jupyterlite
-    schedule:
-      interval: weekly
-    groups:
-      npm-jupyterlite:
-        patterns:
-          - "*"
-
-  - package-ecosystem: npm
-    directory: /crates/cx-wasm/www
-    schedule:
-      interval: weekly
-    groups:
-      npm-wasm-www:
-        patterns:
-          - "*"
-
   - package-ecosystem: pip
     directory: /
     schedule:
