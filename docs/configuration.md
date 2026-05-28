@@ -2,8 +2,8 @@
 
 ## Build-time configuration
 
-The conda-express GitHub Action passes this distribution package set to Pronto
-when building official `cx` and `cxz` artifacts:
+The conda-express release and release-prep workflows pass this distribution
+package set to Pronto when building `cx` and `cxz` artifacts:
 
 ```toml
 channels = ["conda-forge"]
@@ -79,30 +79,10 @@ accidental modification of the base prefix:
 
 ## Customizing the build
 
-To change what cx installs in CI, pass package, channel, and exclude inputs to
-the conda-express action or reusable workflow:
-
-```yaml
-- uses: jezdez/conda-express@main
-  with:
-    packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy"
-    channels: "conda-forge"
-    exclude: "conda-libmamba-solver"
-```
-
-Pronto resolves the package set, writes the runtime lock, and embeds that lock
-into the staged binary.
-
-### Action inputs
-
-| Input | Format |
-|---|---|
-| `packages` | Comma-separated [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html) strings |
-| `channels` | Comma-separated channel names |
-| `exclude` | Comma-separated package names |
-| `embed-bundle` | `"true"` to build the `cxz` embedded-bundle variant |
-
-Empty values use the conda-express defaults.
+To change the official conda-express package set, update the distribution
+defaults in the release and release-prep workflows. For custom package sets or
+new distributions, use Pronto directly instead of treating this repository as a
+generic builder.
 
 ### Runtime environment variables
 

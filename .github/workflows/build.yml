@@ -1,50 +1,17 @@
-name: Build custom cx
+name: Prepare conda-express binaries
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
-      packages:
-        description: >
-          Comma-separated conda package specs to include in cx. Defaults to the
-          conda-express distribution package set.
-        required: false
-        type: string
-        default: ""
-      channels:
-        description: >
-          Comma-separated conda channels. Defaults to the conda-express channel
-          set.
-        required: false
-        type: string
-        default: ""
-      exclude:
-        description: >
-          Comma-separated packages to exclude from cx along with their exclusive
-          dependencies. Defaults to the conda-express exclusions.
-        required: false
-        type: string
-        default: ""
-      pronto-ref:
-        description: "Git ref of Pronto to use for the build."
-        required: false
-        type: string
-        default: "f705d0b2a5c180a3381692d6cb6715196af738b4"
       retention-days:
         description: "Number of days to retain build artifacts."
         required: false
         type: number
         default: 7
-      embed-bundle:
-        description: >
-          Embed package archives into the binary for offline bootstrap. The
-          output binary uses the cxz artifact name.
-        required: false
-        type: string
-        default: "false"
 
 jobs:
   build:
-    name: Build (${{ matrix.target }})
+    name: Build ${{ matrix.variant }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -52,56 +19,56 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            variant: cx
+            embed_bundle: "false"
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
+            variant: cx
+            embed_bundle: "false"
           - target: x86_64-apple-darwin
             os: macos-15
+            variant: cx
+            embed_bundle: "false"
           - target: aarch64-apple-darwin
             os: macos-latest
+            variant: cx
+            embed_bundle: "false"
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            variant: cx
+            embed_bundle: "false"
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            variant: cxz
+            embed_bundle: "true"
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm
+            variant: cxz
+            embed_bundle: "true"
+          - target: x86_64-apple-darwin
+            os: macos-15
+            variant: cxz
+            embed_bundle: "true"
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            variant: cxz
+            embed_bundle: "true"
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            variant: cxz
+            embed_bundle: "true"
 
     steps:
-      - name: Resolve conda-express distribution inputs
-        id: config
-        shell: bash
-        env:
-          INPUT_PACKAGES: ${{ inputs.packages }}
-          INPUT_CHANNELS: ${{ inputs.channels }}
-          INPUT_EXCLUDE: ${{ inputs.exclude }}
-        run: |
-          DEFAULT_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
-          DEFAULT_CHANNELS="conda-forge"
-          DEFAULT_EXCLUDE="conda-libmamba-solver"
-
-          packages="$INPUT_PACKAGES"
-          channels="$INPUT_CHANNELS"
-          exclude="$INPUT_EXCLUDE"
-
-          if [[ -z "$packages" ]]; then
-            packages="$DEFAULT_PACKAGES"
-          fi
-          if [[ -z "$channels" ]]; then
-            channels="$DEFAULT_CHANNELS"
-          fi
-          if [[ -z "$exclude" ]]; then
-            exclude="$DEFAULT_EXCLUDE"
-          fi
-
-          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
-          echo "channels=${channels}" >> "$GITHUB_OUTPUT"
-          echo "exclude=${exclude}" >> "$GITHUB_OUTPUT"
-
-      - name: Build cx
+      - name: Build ${{ matrix.variant }}
         id: build
         uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
         with:
           name: cx
-          packages: ${{ steps.config.outputs.packages }}
-          channels: ${{ steps.config.outputs.channels }}
-          exclude: ${{ steps.config.outputs.exclude }}
-          ref: ${{ inputs.pronto-ref }}
-          embed-bundle: ${{ inputs.embed-bundle }}
+          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
+          channels: "conda-forge"
+          exclude: "conda-libmamba-solver"
+          ref: f705d0b2a5c180a3381692d6cb6715196af738b4
+          embed-bundle: ${{ matrix.embed_bundle }}
           docs-url: "https://jezdez.github.io/conda-express/"
 
       - name: Upload binary artifact
@@ -114,4 +81,4 @@ jobs:
             ${{ steps.build.outputs.lock-path }}
             ${{ steps.build.outputs.package-list-path }}
             ${{ steps.build.outputs.checksums-path }}
-          retention-days: ${{ inputs.retention-days }}
+          retention-days: ${{ inputs['retention-days'] }}

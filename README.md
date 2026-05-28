@@ -228,57 +228,10 @@ Updating the base installation is handled by `conda self update` (via conda-self
 
 ## Building custom cx binaries
 
-`conda-express` builds `cx` and `cxz` with
-[Pronto](https://github.com/jezdez/pronto). Use the composite GitHub Action or
-the reusable workflow to build the distribution package set, or override it for
-your own binaries.
-
-### Composite action (`uses: jezdez/conda-express@main`)
-
-Use in a step within your own workflow. You control the platform matrix:
-
-```yaml
-jobs:
-  build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: jezdez/conda-express@main
-        id: cx
-        with:
-          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
-          embed-bundle: "false"
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: ${{ steps.cx.outputs.asset-name }}
-          path: |
-            ${{ steps.cx.outputs.binary-path }}
-            ${{ steps.cx.outputs.checksums-path }}
-            ${{ steps.cx.outputs.info-path }}
-            ${{ steps.cx.outputs.lock-path }}
-            ${{ steps.cx.outputs.package-list-path }}
-```
-
-### Reusable workflow
-
-Builds all 5 platforms in one call:
-
-```yaml
-jobs:
-  build-cx:
-    uses: jezdez/conda-express/.github/workflows/build.yml@main
-    with:
-      packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas"
-      embed-bundle: "false"
-```
-
-Set `embed-bundle: "true"` to build the compressed-bundle `cxz` variant.
-
-Pronto writes the binary plus `.sha256`, `.info.json`, `.runtime.lock`, and
-`.packages.txt` files for auditing and downstream packaging.
+For custom package sets or new distributions, use
+[Pronto](https://github.com/jezdez/pronto) directly. This repository's build
+workflow is release preparation for official conda-express `cx` and `cxz`
+binaries, not a generic downstream builder interface.
 
 ## Uninstalling
 

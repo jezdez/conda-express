@@ -223,15 +223,12 @@ This will:
 4. Remove the cx binary
 5. Clean up PATH entries from shell profiles
 
-## GitHub Action for custom builds
+## Release artifacts
 
-cx ships a composite GitHub Action and a reusable workflow that let you build
-custom cx binaries with your own package set. The build is powered by Pronto
-and produces a binary plus artifact metadata for downstream packaging.
-
-See the [GitHub Action reference](reference/github-action.md) for inputs,
-outputs, and behavior. For a step-by-step walkthrough, see the
-[custom builds guide](guides/custom-builds.md).
+Official `cx` and `cxz` release artifacts are built in GitHub Actions with
+Pronto. Each release artifact includes the binary plus `.sha256`, `.info.json`,
+`.runtime.lock`, and `.packages.txt` metadata for auditing and downstream
+packaging.
 
 ## PyPI and crates.io distribution
 

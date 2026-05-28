@@ -157,13 +157,6 @@ Bake your own packages into a cx binary.
 All commands and options.
 :::
 
-:::{grid-item-card} {octicon}`play` GitHub Action
-:link: reference/github-action
-:link-type: doc
-
-Build custom cx binaries in CI with the composite action.
-:::
-
 :::{grid-item-card} {octicon}`gear` Configuration
 :link: configuration
 :link-type: doc
@@ -199,7 +192,6 @@ guides/custom-builds
 :caption: Reference
 
 reference/cli
-reference/github-action
 reference/installer
 configuration
 ```

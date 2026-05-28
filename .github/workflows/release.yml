@@ -32,9 +32,15 @@ jobs:
 
       - name: Build release binary
         id: build
-        uses: ./
+        uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
         with:
+          name: cx
+          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
+          channels: "conda-forge"
+          exclude: "conda-libmamba-solver"
+          ref: f705d0b2a5c180a3381692d6cb6715196af738b4
           embed-bundle: "false"
+          docs-url: "https://jezdez.github.io/conda-express/"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -71,9 +77,15 @@ jobs:
 
       - name: Build cxz
         id: build
-        uses: ./
+        uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
         with:
+          name: cx
+          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
+          channels: "conda-forge"
+          exclude: "conda-libmamba-solver"
+          ref: f705d0b2a5c180a3381692d6cb6715196af738b4
           embed-bundle: "true"
+          docs-url: "https://jezdez.github.io/conda-express/"
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -47,7 +47,7 @@ The Pronto-backed distribution flow is:
 
 1. `conda-express` supplies distribution defaults: package specs, channels,
    exclusions, artifact names, release policy, and downstream packaging.
-2. The conda-express composite action invokes the pinned Pronto action.
+2. CI, release, and release-prep workflows invoke the pinned Pronto action.
 3. Pronto owns the lock, bundle, build, inspect, and artifact metadata steps.
 4. CI and release jobs build `cx` and `cxz` by invoking Pronto rather than the
    legacy in-repo builder path.

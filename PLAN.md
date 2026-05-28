@@ -16,8 +16,8 @@ creates two companion repositories:
 - Removed WebAssembly, Emscripten, JupyterLite, and demo source files from this
   repo.
 - Kept `conda-express` focused on native `cx` and `cxz` binaries.
-- Switched the conda-express composite action, reusable build workflow, CI
-  canaries, and release binary jobs to build `cx` / `cxz` through Pronto.
+- Switched CI canaries, release prep, and release binary jobs to build `cx` /
+  `cxz` through Pronto.
 - Removed the legacy in-repo Cargo workspace, `cx-build`, runtime source,
   checked-in `cx.lock`, and maturin/PyPI wrapper path now that Pronto owns the
   runtime and builder implementation.
