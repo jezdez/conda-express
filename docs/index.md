@@ -188,7 +188,6 @@ quickstart
 :hidden:
 :caption: How-to guides
 
-guides/browser
 guides/custom-builds
 ```
 

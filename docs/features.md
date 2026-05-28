@@ -228,15 +228,6 @@ See the [GitHub Action reference](reference/github-action.md) for inputs,
 outputs, and behavior. For a step-by-step walkthrough, see the
 [custom builds guide](guides/custom-builds.md).
 
-## Browser and WebAssembly support
-
-The browser/JupyterLite pipeline now lives in the dedicated
-[`conda-wasm`](https://github.com/jezdez/conda-wasm) repository.
-`conda-express` keeps its focus on native `cx` and `cxz` distribution binaries.
-
-See the {doc}`browser migration note <guides/browser>` for the new docs and
-demo paths.
-
 ## Multi-platform support
 
 cx builds and tests on 5 platforms via GitHub Actions:
