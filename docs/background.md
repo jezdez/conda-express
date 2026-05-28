@@ -86,6 +86,7 @@ has commented out the libmamba dependency in its PyPI config.
 | Plugin | PyPI status |
 |---|---|
 | conda-pypi | 0.5.0 on PyPI and conda-forge |
+| conda-completion | conda-forge only |
 | conda-rattler-solver | Not yet (pure Python + py-rattler) |
 | conda-spawn | conda-forge only (pure Python) |
 | conda-self | conda-forge only (pure Python) |

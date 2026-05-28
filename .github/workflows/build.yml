@@ -70,7 +70,7 @@ jobs:
           INPUT_CHANNELS: ${{ inputs.channels }}
           INPUT_EXCLUDE: ${{ inputs.exclude }}
         run: |
-          DEFAULT_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
+          DEFAULT_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
           DEFAULT_CHANNELS="conda-forge"
           DEFAULT_EXCLUDE="conda-libmamba-solver"
 

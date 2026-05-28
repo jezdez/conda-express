@@ -12,6 +12,7 @@ packages = [
     "conda >=25.1",
     "conda-rattler-solver",
     "conda-spawn >=0.1.0",
+    "conda-completion >=0.2.0",
     "conda-pypi",
     "conda-self",
     "conda-global",

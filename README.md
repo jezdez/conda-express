@@ -36,6 +36,7 @@ cx installs a minimal conda stack from conda-forge:
 | conda >= 25.1 | Package manager |
 | conda-rattler-solver | Rust-based solver (replaces libmamba) |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
+| conda-completion >= 0.2.0 | Shell completion support |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
 | conda-global | Global tool installation and PATH management |
@@ -138,7 +139,7 @@ git clone https://github.com/jezdez/pronto.git
 cd pronto
 
 cargo run -p pronto -- configure \
-  --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0" \
+  --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0" \
   --channels "conda-forge" \
   --exclude "conda-libmamba-solver"
 pixi lock
@@ -159,6 +160,7 @@ packages = [
     "conda >=25.1",
     "conda-rattler-solver",
     "conda-spawn >=0.1.0",
+    "conda-completion >=0.2.0",
     "conda-pypi",
     "conda-self",
     "conda-global",

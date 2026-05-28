@@ -71,6 +71,7 @@ cx installs a minimal conda stack from conda-forge:
 | conda >= 25.1 | Package manager |
 | conda-rattler-solver | Rust-based solver (replaces libmamba) |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
+| conda-completion >= 0.2.0 | Shell completion support |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
 | conda-global | Global tool installation and PATH management |

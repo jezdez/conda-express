@@ -61,6 +61,11 @@ your `PATH`.
 cx shell myenv          # same as: conda spawn myenv
 ```
 
+## conda-completion
+
+cx includes `conda-completion` so the bootstrapped conda installation can offer
+shell completion support for conda commands and plugin subcommands.
+
 ## conda-workspaces
 
 ![Workspaces and tasks with cx](../demos/workspaces.gif)
