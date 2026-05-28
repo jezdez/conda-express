@@ -55,7 +55,7 @@ uses: jezdez/conda-express@<ref>
 : Absolute path to the artifact info JSON.
 
 `lock-path`
-: Absolute path to the staged artifact lock.
+: Absolute path to the staged runtime lock.
 
 `package-list-path`
 : Absolute path to the package list.
@@ -68,8 +68,8 @@ uses: jezdez/conda-express@<ref>
 1. Resolves the conda-express defaults unless package, channel, or exclude
    inputs are supplied.
 2. Invokes the pinned Pronto action.
-3. Builds either the online `cx` artifact or the embedded-bundle `cxz` artifact.
-4. Stages the binary plus `.sha256`, `.info.json`, `.artifact.lock`, and
+3. Builds either the default `cx` artifact or the embedded-bundle `cxz` artifact.
+4. Stages the binary plus `.sha256`, `.info.json`, `.runtime.lock`, and
    `.packages.txt` metadata.
 
 ---

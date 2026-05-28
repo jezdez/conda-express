@@ -28,7 +28,7 @@ on:
         description: "Git ref of Pronto to use for the build."
         required: false
         type: string
-        default: "c679dd6e25f3eb6e4ef6e13192b31b8f469708a7"
+        default: "f705d0b2a5c180a3381692d6cb6715196af738b4"
       retention-days:
         description: "Number of days to retain build artifacts."
         required: false

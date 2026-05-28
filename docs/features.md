@@ -8,11 +8,11 @@ cx is a single static binary (7-11 MB depending on platform) written in Rust. It
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
 
-## Pronto artifact lockfile
+## Pronto runtime lockfile
 
 Pronto performs a full dependency solve at build time and produces a
 [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock)
-artifact lockfile that is embedded into the binary. At runtime, bootstrap skips
+runtime lockfile that is embedded into the binary. At runtime, bootstrap skips
 repodata fetching and solving entirely; it downloads and installs packages
 directly from the locked URLs.
 

@@ -89,7 +89,7 @@ the conda-express action or reusable workflow:
     exclude: "conda-libmamba-solver"
 ```
 
-Pronto resolves the package set, writes the artifact lock, and embeds that lock
+Pronto resolves the package set, writes the runtime lock, and embeds that lock
 into the staged binary.
 
 ### Action inputs

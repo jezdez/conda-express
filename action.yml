@@ -28,7 +28,7 @@ inputs:
   pronto-ref:
     description: "Git ref of Pronto to use for the build."
     required: false
-    default: "c679dd6e25f3eb6e4ef6e13192b31b8f469708a7"
+    default: "f705d0b2a5c180a3381692d6cb6715196af738b4"
   embed-bundle:
     description: >
       Embed package archives into the binary for offline bootstrap. The output
@@ -47,7 +47,7 @@ outputs:
     description: "Absolute path to the artifact info JSON."
     value: ${{ steps.build.outputs.info-path }}
   lock-path:
-    description: "Absolute path to the staged artifact lock."
+    description: "Absolute path to the staged runtime lock."
     value: ${{ steps.build.outputs.lock-path }}
   package-list-path:
     description: "Absolute path to the package list."
@@ -87,8 +87,9 @@ runs:
 
     - name: Build cx with Pronto
       id: build
-      uses: jezdez/pronto@c679dd6e25f3eb6e4ef6e13192b31b8f469708a7
+      uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
       with:
+        name: cx
         packages: ${{ steps.config.outputs.packages }}
         channels: ${{ steps.config.outputs.channels }}
         exclude: ${{ steps.config.outputs.exclude }}

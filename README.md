@@ -277,7 +277,7 @@ jobs:
 
 Set `embed-bundle: "true"` to build the compressed-bundle `cxz` variant.
 
-Pronto writes the binary plus `.sha256`, `.info.json`, `.artifact.lock`, and
+Pronto writes the binary plus `.sha256`, `.info.json`, `.runtime.lock`, and
 `.packages.txt` files for auditing and downstream packaging.
 
 ## Uninstalling
@@ -292,7 +292,7 @@ This will show what will be removed and ask for confirmation. Use `--yes` to ski
 
 ## How it works
 
-1. **Build time**: Pronto resolves the conda-express package set, filters excluded packages, and embeds an artifact lockfile into the binary.
+1. **Build time**: Pronto resolves the conda-express package set, filters excluded packages, and embeds a runtime lockfile into the binary.
 
 2. **First run**: cx parses the embedded lockfile, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.
 
