@@ -62,17 +62,43 @@ jobs:
             os: windows-latest
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Resolve conda-express distribution inputs
+        id: config
+        shell: bash
+        run: |
+          DEFAULT_PACKAGES="python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
+          DEFAULT_CHANNELS="conda-forge"
+          DEFAULT_EXCLUDE="conda-libmamba-solver"
+
+          packages="${{ inputs.packages }}"
+          channels="${{ inputs.channels }}"
+          exclude="${{ inputs.exclude }}"
+
+          if [[ -z "$packages" ]]; then
+            packages="$DEFAULT_PACKAGES"
+          fi
+          if [[ -z "$channels" ]]; then
+            channels="$DEFAULT_CHANNELS"
+          fi
+          if [[ -z "$exclude" ]]; then
+            exclude="$DEFAULT_EXCLUDE"
+          fi
+
+          echo "packages=${packages}" >> "$GITHUB_OUTPUT"
+          echo "channels=${channels}" >> "$GITHUB_OUTPUT"
+          echo "exclude=${exclude}" >> "$GITHUB_OUTPUT"
 
       - name: Build cx
         id: build
-        uses: ./
+        uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
         with:
-          packages: ${{ inputs.packages }}
-          channels: ${{ inputs.channels }}
-          exclude: ${{ inputs.exclude }}
-          pronto-ref: ${{ inputs.pronto-ref }}
+          name: cx
+          packages: ${{ steps.config.outputs.packages }}
+          channels: ${{ steps.config.outputs.channels }}
+          exclude: ${{ steps.config.outputs.exclude }}
+          ref: ${{ inputs.pronto-ref }}
           embed-bundle: ${{ inputs.embed-bundle }}
+          docs-url: "https://jezdez.github.io/conda-express/"
 
       - name: Upload binary artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

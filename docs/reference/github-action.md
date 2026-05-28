@@ -77,7 +77,7 @@ uses: jezdez/conda-express@<ref>
 ## Reusable workflow
 
 The reusable workflow builds cx for all 5 supported platforms in a single call,
-using the composite action internally.
+using Pronto directly with the conda-express distribution defaults.
 
 ```
 uses: jezdez/conda-express/.github/workflows/build.yml@<ref>
