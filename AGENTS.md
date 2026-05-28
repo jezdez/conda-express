@@ -19,7 +19,7 @@
 
 ## Lockfile maintenance
 
-- After any change to `pixi.toml` that affects pixi metadata
+- After any change to Pixi metadata in `pyproject.toml`
   (dependencies, features, tasks, or workspace settings), always run
   `pixi lock` and commit the updated `pixi.lock` alongside the
   change. CI will fail if the lockfile is out of date.

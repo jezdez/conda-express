@@ -1,15 +1,52 @@
-[workspace]
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
 name = "conda-express"
+version = "0.6.0"
 description = "A lightweight, single-binary conda bootstrapper"
+readme = "README.md"
+requires-python = ">=3.8"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+authors = [{ name = "conda community" }]
+keywords = ["conda", "bootstrapper", "rattler", "package-manager"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Programming Language :: Python :: 3",
+    "Topic :: System :: Installation/Setup",
+    "Topic :: System :: Software Distribution",
+]
+
+[project.urls]
+Repository = "https://github.com/jezdez/conda-express"
+Documentation = "https://jezdez.github.io/conda-express/"
+Issues = "https://github.com/jezdez/conda-express/issues"
+
+[project.scripts]
+cx = "conda_express.__main__:main"
+
+[tool.setuptools]
+package-dir = { "" = "python" }
+packages = ["conda_express"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+conda_express = ["py.typed", "bin/cx", "bin/cx.exe"]
+
+[tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
-license = "BSD-3-Clause"
 
-[tasks]
+[tool.pixi.feature.dev.tasks]
 validate-workflows = "ruby -e 'require \"yaml\"; Dir[\".github/workflows/*.yml\"].each { |path| YAML.load_file(path); puts \"ok #{path}\" }; YAML.load_file(\"action.yml\"); puts \"ok action.yml\"'"
 demos = { cmd = """bash -c 'if [ -n "$1" ]; then vhs "demos/$1.tape"; else for tape in demos/*.tape; do [[ "$(basename "$tape")" == _* ]] && continue; vhs "$tape"; done; fi' -- {{ name }}""", args = [{ arg = "name", default = "" }], description = "Record demo GIFs" }
 
-[feature.docs.dependencies]
+[tool.pixi.feature.docs.dependencies]
 sphinx = ">=7.0"
 conda-sphinx-theme = ">=0.2"
 myst-parser = ">=3.0"
@@ -18,12 +55,12 @@ sphinx-copybutton = ">=0.5"
 sphinx-reredirects = ">=0.1"
 sphinx-sitemap = ">=2.5"
 
-[feature.docs.tasks]
+[tool.pixi.feature.docs.tasks]
 docs = { cmd = "sphinx-build -b dirhtml . _build/dirhtml", cwd = "docs" }
 docs-serve = { cmd = "python -m http.server", cwd = "docs/_build/dirhtml" }
 docs-clean = { cmd = "rm -rf _build", cwd = "docs" }
 
-[feature.cx-env.dependencies]
+[tool.pixi.feature.cx-env.dependencies]
 python = ">=3.12"
 conda = ">=25.1"
 conda-rattler-solver = "*"
@@ -34,8 +71,9 @@ conda-self = "*"
 conda-global = "*"
 conda-workspaces = ">=0.4.0"
 
-[environments]
-docs = ["docs"]
+[tool.pixi.environments]
+default = { features = ["dev"], no-default-feature = true }
+docs = { features = ["docs", "dev"], no-default-feature = true }
 cx-env = { features = ["cx-env"], no-default-feature = true }
 
 [tool.cx]

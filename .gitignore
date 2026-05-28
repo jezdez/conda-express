@@ -1,10 +1,13 @@
 target/
 /dist
+/build
 /.pixi
 /docs/_build
 .DS_Store
 __pycache__/
 *.py[cod]
+*.egg-info/
+/python/conda_express/bin
 /output
 
 # Demo recordings are committed for docs (regenerate with: pixi run demos)
