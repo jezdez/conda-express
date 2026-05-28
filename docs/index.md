@@ -175,13 +175,6 @@ Build-time and runtime settings.
 Design decisions and internals.
 :::
 
-:::{grid-item-card} {octicon}`globe` Browser
-:link: guides/browser
-:link-type: doc
-
-Real conda in WebAssembly — no server required. [Live demo →](https://jezdez.github.io/conda-express/demo/lab/index.html)
-:::
-
 ::::::
 
 ```{toctree}

@@ -232,30 +232,14 @@ See the [GitHub Action reference](reference/github-action.md) for inputs,
 outputs, and behavior. For a step-by-step walkthrough, see the
 [custom builds guide](guides/custom-builds.md).
 
-## conda in the browser (cx-wasm)
+## Browser and WebAssembly support
 
-cx-wasm compiles the same rattler-based solver and package extractor to
-WebAssembly, enabling `conda install` to run entirely client-side in a
-[JupyterLite](https://jupyterlite.readthedocs.io/) notebook.
+The browser/JupyterLite pipeline now lives in the dedicated
+[`conda-wasm`](https://github.com/jezdez/conda-wasm) repository.
+`conda-express` keeps its focus on native `cx` and `cxz` distribution binaries.
 
-```python
-%load_ext conda_emscripten
-%conda install lz4
-import lz4
-```
-
-This runs **real conda** — the actual Python package manager, not a
-reimplementation — with cx-wasm replacing the native-code bottlenecks via
-conda's plugin API. Packages with C extensions (like `lz4`) work after
-installation thanks to automatic shared library loading.
-
-A shard prefetch runs at kernel startup, fetching all repodata shards
-in parallel via async JavaScript `fetch()`. This means the solve phase makes
-zero network requests — a typical `%conda install lz4` completes in ~3.5
-seconds.
-
-See the {doc}`browser guide <guides/browser>` for details, or try the
-[live demo](https://jezdez.github.io/conda-express/demo/lab/index.html).
+See the {doc}`browser migration note <guides/browser>` for the new docs and
+demo paths.
 
 ## Multi-platform support
 
