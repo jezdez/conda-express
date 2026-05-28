@@ -84,16 +84,6 @@ sudo mv cx-* /usr/local/bin/cx
 ```
 ::::
 
-::::{tab-item} pip / cargo
-```bash
-pip install conda-express
-```
-
-```bash
-cargo install conda-express
-```
-::::
-
 ::::{tab-item} Docker
 A minimal, hardened multi-arch image (~37 MB) is published to GHCR:
 
@@ -114,17 +104,6 @@ no bootstrap step needed:
 
 ```bash
 docker run --rm ghcr.io/jezdez/conda-express:latest-cxz create -n myenv python=3.12
-```
-::::
-
-::::{tab-item} Source
-[pixi](https://pixi.sh) manages the Rust toolchain from conda-forge:
-
-```bash
-git clone https://github.com/jezdez/conda-express.git
-cd conda-express
-pixi run build
-# Binary is at target/release/cx
 ```
 ::::
 

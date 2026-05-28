@@ -1,10 +1,5 @@
 """Sphinx configuration for conda-express documentation."""
 
-import os
-import sys
-
-sys.path.insert(0, os.path.abspath(".."))
-
 project = html_title = "conda-express"
 copyright = "2026, conda community"
 author = "conda community"
@@ -32,12 +27,6 @@ html_theme_options = {
             "name": "GitHub",
             "url": "https://github.com/jezdez/conda-express",
             "icon": "fa-brands fa-square-github",
-            "type": "fontawesome",
-        },
-        {
-            "name": "PyPI",
-            "url": "https://pypi.org/project/conda-express/",
-            "icon": "fa-brands fa-python",
             "type": "fontawesome",
         },
     ],

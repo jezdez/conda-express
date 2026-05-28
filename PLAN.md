@@ -18,30 +18,29 @@ creates two companion repositories:
 - Kept `conda-express` focused on native `cx` and `cxz` binaries.
 - Switched the conda-express composite action, reusable build workflow, CI
   canaries, and release binary jobs to build `cx` / `cxz` through Pronto.
+- Removed the legacy in-repo Cargo workspace, `cx-build`, runtime source,
+  checked-in `cx.lock`, and maturin/PyPI wrapper path now that Pronto owns the
+  runtime and builder implementation.
+- Removed legacy `payload`, `cx.lock`, and `cx.lock.hash` runtime/build
+  surfaces from this repo; remaining references are historical notes.
 
 ## Remaining
 
 ### Rebuild on Pronto
 
-- Move remaining legacy generic builder/runtime source out of this repository.
 - Keep `conda-express` configuration as the input to Pronto.
 - Preserve `cx` as the online/bootstrap binary name.
 - Preserve `cxz` as the embedded compressed-bundle binary name.
-- Update PyPI and crates.io packaging to consume Pronto-built artifacts.
 
 ### Distribution Policy
 
 - Decide the final default package and plugin set.
 - Keep conda-spawn activation as distribution policy.
 - Keep frozen base prefix behavior.
-- Keep Homebrew, shell script, Docker, PyPI, crates.io, and GitHub Releases as
-  distribution channels for `cx` / `cxz`.
-
-### Terminology
-
-- Use "bundle" for compressed package archives.
-- Stop adding new `payload` terminology in the Pronto-backed build flow.
-- Rename any remaining legacy runtime/docs payload surfaces to bundle.
+- Keep Homebrew, shell script, Docker, and GitHub Releases as distribution
+  channels for `cx` / `cxz`.
+- Decide whether and how PyPI and crates.io packaging should consume
+  Pronto-built artifacts.
 
 ### Documentation
 

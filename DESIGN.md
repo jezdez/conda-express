@@ -14,10 +14,10 @@ documentation.
 
 ## Runtime Model
 
-`cx` is a single native Rust binary. It embeds:
+`cx` is a single native Rust binary built by Pronto. It embeds:
 
 - a lockfile generated from the configured conda package set
-- build-time metadata from `pixi.toml`
+- build-time metadata from the conda-express distribution defaults
 - optionally, a compressed package bundle for `cxz`
 
 On first use, `cx bootstrap` installs conda into the target prefix, writes
@@ -35,12 +35,11 @@ base prefix. Later invocations delegate to the installed `conda` executable.
   conda ecosystem plugins
 - frozen base prefix behavior
 - `cx shell` as the conda-spawn based activation command
-- user-facing install methods such as Homebrew, shell scripts, Docker, PyPI,
-  crates.io, and GitHub Releases
+- user-facing install methods such as Homebrew, shell scripts, Docker, and
+  GitHub Releases
 
-The current implementation still contains some builder internals because the
-split is incremental. Those internals should move behind `pronto` so this repo
-can become a consumer of Pronto-built artifacts.
+PyPI and crates.io packaging are not part of the active release path until they
+can consume Pronto-built artifacts without reintroducing a local runtime build.
 
 ## Build Flow
 
@@ -53,8 +52,8 @@ The Pronto-backed distribution flow is:
 4. CI and release jobs build `cx` and `cxz` by invoking Pronto rather than the
    legacy in-repo builder path.
 
-The source tree still contains legacy builder/runtime code while the split is
-incremental. New distribution artifacts are produced through Pronto.
+This repository does not carry the generic runtime or builder source. Changes
+to that implementation belong in Pronto.
 
 ## Bootstrap Flow
 

@@ -239,16 +239,3 @@ cx builds and tests on 5 platforms via GitHub Actions:
 | macos-x64 | `macos-15-large` |
 | macos-arm64 | `macos-latest` |
 | windows-x64 | `windows-latest` |
-
-## PyPI and crates.io distribution
-
-cx is published as `conda-express` on both
-[PyPI](https://pypi.org/project/conda-express/) and
-[crates.io](https://crates.io/crates/conda-express):
-
-```bash
-pip install conda-express       # from PyPI
-cargo install conda-express     # from crates.io
-```
-
-Both use trusted publishing (OIDC) for secure, tokenless releases.

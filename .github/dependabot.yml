@@ -8,21 +8,3 @@ updates:
       actions:
         patterns:
           - "*"
-
-  - package-ecosystem: cargo
-    directory: /
-    schedule:
-      interval: weekly
-    groups:
-      rust:
-        patterns:
-          - "*"
-
-  - package-ecosystem: pip
-    directory: /
-    schedule:
-      interval: weekly
-    groups:
-      python:
-        patterns:
-          - "*"

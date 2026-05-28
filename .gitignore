@@ -4,7 +4,5 @@
 __pycache__/
 *.py[cod]
 /output
-/payload
-payload.tar.zst
 
 # Demo recordings are committed for docs (regenerate with: pixi run demos)

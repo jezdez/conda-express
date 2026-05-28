@@ -45,29 +45,7 @@ uses a post-solve transitive dependency pruning algorithm to remove libmamba
 and its exclusive dependencies, reducing the install from ~125 to ~95
 packages (varies by platform).
 
-## PyPI distribution (the uv pattern)
-
-cx is distributed on PyPI using the same technique as
-[uv](https://github.com/astral-sh/uv):
-
-1. [maturin](https://github.com/PyO3/maturin) with `bindings = "bin"` compiles
-   the Rust binary and packages it into a wheel's `scripts/` directory
-2. A tiny Python wrapper (`python/conda_express/`) ships alongside with
-   `find_cx_bin()` and `__main__.py` for `python -m conda_express`
-3. Pre-built platform wheels (7-11 MB each) are uploaded to PyPI for every target
-4. An sdist fallback builds from source if no wheel is available
-
-### Comparison: cx on PyPI vs. conda on PyPI
-
-| Dimension | cx on PyPI (maturin wheel) | conda on PyPI (Python wheel) |
-|---|---|---|
-| Upstream changes needed | None | pycosat optional, menuinst optional, solver plugin publishing |
-| What ships | Single Rust binary (7-11 MB wheel) | conda + all deps as Python wheels |
-| Solver | rattler (compiled in) + conda-rattler-solver (from conda-forge) | conda-rattler-solver (from PyPI, needs py-rattler) |
-| conda-forge packages | Full access (bootstraps a real conda env) | Limited to what's on PyPI |
-| Install experience | `pip install conda-express && cx bootstrap` | `pip install conda` |
-
-### What blocks conda itself on PyPI
+## What blocks conda itself on PyPI
 
 The conda community has explored publishing conda directly to PyPI. The
 [old conda 4.3.16 package](https://pypi.org/project/conda/) is yanked — the
