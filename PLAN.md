@@ -25,35 +25,31 @@ creates two companion repositories:
   surfaces from this repo; remaining references are historical notes.
 - Rebuilt PyPI and crates.io distribution around Pronto-built release binaries
   instead of local runtime source builds.
+- Removed the `conda-express` composite GitHub Action; this repo's
+  `.github/workflows/build.yml` is release preparation for official `cx` /
+  `cxz` binaries, not a downstream builder interface.
+- Moved Pixi metadata and Python package metadata into `pyproject.toml`.
 
 ## Remaining
 
-### Rebuild on Pronto
+### Verification
 
-- Keep `conda-express` configuration as the input to Pronto.
-- Preserve `cx` as the online/bootstrap binary name.
-- Preserve `cxz` as the embedded compressed-bundle binary name.
+- Run the release-prep workflow on GitHub runners once to verify the direct
+  Pronto action path for all `cx` and `cxz` platforms.
+- Exercise the full release workflow before the next public release.
 
 ### Distribution Policy
 
-- Decide the final default package and plugin set.
-- Keep conda-spawn activation as distribution policy.
-- Keep frozen base prefix behavior.
-- Keep Homebrew, shell script, Docker, and GitHub Releases as distribution
-  channels for `cx` / `cxz`.
-- Keep PyPI and crates.io as distribution channels backed by Pronto artifacts.
-
-### Documentation
-
-- Keep this documentation user-facing and distribution-focused.
-- Keep browser/WASM docs in `conda-wasm`.
-- Keep builder docs in `pronto`.
-- Follow the `conda-workspaces` / `conda-exec` documentation pattern across all
-  three repositories.
+- Keep the default package set synchronized across release workflows,
+  `pyproject.toml`'s `cx-env`, and docs.
+- Add `conda-exec` to the default package set once the intended new release is
+  available on conda-forge.
+- Keep Homebrew, shell script, Docker, GitHub Releases, PyPI, and crates.io as
+  distribution channels backed by Pronto artifacts.
 
 ## Tracking Issues
 
 - Umbrella split: <https://github.com/jezdez/conda-express/issues/81>
-- Rebuild this repo on Pronto: <https://github.com/jezdez/conda-express/issues/82>
-- Finish Pronto builder migration: <https://github.com/jezdez/pronto/issues/1>
+- Add `conda-exec` once released: <https://github.com/jezdez/conda-express/issues/85>
+- Channel presets follow-up: <https://github.com/jezdez/pronto/issues/2>
 - Complete conda-wasm migration: <https://github.com/jezdez/conda-wasm/issues/1>
