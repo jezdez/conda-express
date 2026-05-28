@@ -6,8 +6,11 @@
   that bootstraps conda from scratch using rattler.
 
 - The Cargo workspace has two members: the root crate
-  (`conda-express` / `cx` binary) and `crates/cx-wasm` (WebAssembly
-  build for JupyterLite).
+  (`conda-express` / `cx` binary) and `crates/cx-build` (native
+  distribution build helper).
+
+- Browser, WebAssembly, Emscripten, and JupyterLite work belongs in the
+  separate `conda-wasm` repository, not here.
 
 - Tests for Rust live in `tests/` and inline `#[cfg(test)]` modules.
   Integration tests for the Python wheel go in `python/tests/`.
