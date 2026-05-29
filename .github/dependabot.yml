@@ -22,3 +22,15 @@ updates:
       rust:
         patterns:
           - "*"
+
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 21
+    groups:
+      python:
+        patterns:
+          - "*"
