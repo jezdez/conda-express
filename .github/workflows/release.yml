@@ -17,6 +17,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+      id-token: write # mint the OIDC token required for artifact attestations
+      attestations: write # publish provenance attestations for release assets
+      artifact-metadata: write # create artifact storage records for attestations
     strategy:
       fail-fast: false
       matrix:
@@ -49,6 +52,16 @@ jobs:
           embed-bundle: "false"
           docs-url: "https://jezdez.github.io/conda-express/"
 
+      - name: Attest release binary
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            ${{ steps.build.outputs.binary-path }}
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
+
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -66,6 +79,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
+      id-token: write # mint the OIDC token required for artifact attestations
+      attestations: write # publish provenance attestations for release assets
+      artifact-metadata: write # create artifact storage records for attestations
     strategy:
       fail-fast: false
       matrix:
@@ -98,6 +114,16 @@ jobs:
           embed-bundle: "true"
           docs-url: "https://jezdez.github.io/conda-express/"
 
+      - name: Attest cxz release binary
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: |
+            ${{ steps.build.outputs.binary-path }}
+            ${{ steps.build.outputs.info-path }}
+            ${{ steps.build.outputs.lock-path }}
+            ${{ steps.build.outputs.package-list-path }}
+            ${{ steps.build.outputs.checksums-path }}
+
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -116,6 +142,9 @@ jobs:
     needs: [build-binaries]
     permissions:
       contents: read
+      id-token: write # mint the OIDC token required for artifact attestations
+      attestations: write # publish provenance attestations for wheel artifacts
+      artifact-metadata: write # create artifact storage records for attestations
     strategy:
       fail-fast: false
       matrix:
@@ -174,6 +203,11 @@ jobs:
           python3 -m pip wheel --no-deps --wheel-dir dist . \
             --config-settings=--build-option=--plat-name \
             --config-settings=--build-option="${PLATFORM_TAG}"
+
+      - name: Attest wheel
+        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        with:
+          subject-path: dist/*.whl
 
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
@@ -359,6 +393,7 @@ jobs:
       packages: write # push versioned container images to GHCR
       id-token: write # required for artifact attestation
       attestations: write # publish provenance for the pushed image
+      artifact-metadata: write # create artifact storage records for attestations
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -415,7 +450,7 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}
@@ -438,6 +473,7 @@ jobs:
       packages: write # push versioned container images to GHCR
       id-token: write # required for artifact attestation
       attestations: write # publish provenance for the pushed image
+      artifact-metadata: write # create artifact storage records for attestations
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -495,7 +531,7 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
+      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}

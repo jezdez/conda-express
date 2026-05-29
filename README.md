@@ -95,7 +95,13 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
 
-Each file has a matching `.sha256` checksum.
+Each file has a matching `.sha256` checksum and GitHub Artifact Attestation:
+
+```bash
+gh attestation verify ./cx-x86_64-unknown-linux-gnu \
+  -R jezdez/conda-express \
+  --signer-workflow jezdez/conda-express/.github/workflows/release.yml
+```
 
 ### Docker
 

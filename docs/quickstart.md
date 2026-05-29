@@ -73,8 +73,17 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` | `cxz-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` | `cxz-x86_64-pc-windows-msvc.exe` |
 
-Each file has a matching `.sha256` checksum. `cxz` is the self-contained
-variant with all packages embedded — see {doc}`features` for details.
+Each file has a matching `.sha256` checksum and GitHub Artifact Attestation.
+Verify a downloaded binary with:
+
+```bash
+gh attestation verify ./cx-x86_64-unknown-linux-gnu \
+  -R jezdez/conda-express \
+  --signer-workflow jezdez/conda-express/.github/workflows/release.yml
+```
+
+`cxz` is the self-contained variant with all packages embedded — see
+{doc}`features` for details.
 
 After downloading, make it executable and move it to your `PATH`:
 
