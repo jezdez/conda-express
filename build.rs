@@ -38,19 +38,10 @@ fn main() {
         let bytes = download(&binary_url);
         if let Some(expected) = expected_sha256.as_deref() {
             verify_expected_checksum(&asset_name, &bytes, expected);
-        } else if base_url_env_is_set() {
-            panic!(
-                "CONDA_EXPRESS_RELEASE_BASE_URL requires CONDA_EXPRESS_BINARY_SHA256 \
-                 or a committed checksum for {asset_name}"
-            );
-        } else if has_git_checkout() {
-            let checksum_url = format!("{binary_url}.sha256");
-            let checksum = download_text(&checksum_url);
-            verify_checksum_file(&asset_name, &bytes, &checksum);
         } else {
             panic!(
-                "missing committed checksum for conda-express {version} {target}; \
-                 update binary-sha256.txt before publishing"
+                "missing trusted checksum for conda-express {version} {target}; \
+                 update binary-sha256.txt or set CONDA_EXPRESS_BINARY_SHA256"
             );
         }
         fs::write(&binary_path, bytes)
@@ -72,25 +63,6 @@ fn asset_name(target: &str) -> String {
     }
 }
 
-fn manifest_dir() -> PathBuf {
-    PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set"))
-}
-
-fn has_git_checkout() -> bool {
-    let mut current = Some(manifest_dir());
-    while let Some(path) = current {
-        if path.join(".git").exists() {
-            return true;
-        }
-        current = path.parent().map(PathBuf::from);
-    }
-    false
-}
-
-fn base_url_env_is_set() -> bool {
-    env::var_os("CONDA_EXPRESS_RELEASE_BASE_URL").is_some()
-}
-
 fn download(url: &str) -> Vec<u8> {
     let response = ureq::get(url)
         .call()
@@ -101,10 +73,6 @@ fn download(url: &str) -> Vec<u8> {
         .read_to_end(&mut bytes)
         .unwrap_or_else(|e| panic!("failed to read {url}: {e}"));
     bytes
-}
-
-fn download_text(url: &str) -> String {
-    String::from_utf8(download(url)).unwrap_or_else(|e| panic!("invalid UTF-8 from {url}: {e}"))
 }
 
 fn expected_sha256(version: &str, target: &str) -> Option<String> {
@@ -135,14 +103,6 @@ fn expected_sha256(version: &str, target: &str) -> Option<String> {
     }
 
     None
-}
-
-fn verify_checksum_file(asset_name: &str, bytes: &[u8], checksum: &str) {
-    let expected = checksum
-        .split_whitespace()
-        .next()
-        .unwrap_or_else(|| panic!("empty checksum for {asset_name}"));
-    verify_expected_checksum(asset_name, bytes, expected);
 }
 
 fn verify_expected_checksum(asset_name: &str, bytes: &[u8], expected: &str) {
