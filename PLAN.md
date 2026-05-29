@@ -8,7 +8,7 @@ creates two companion repositories:
 
 ## Done
 
-- Created `jezdez/pronto`.
+- Created `jezdez/conda-pronto`.
 - Created `jezdez/conda-wasm`.
 - Moved the browser/JupyterLite code path to `conda-wasm`.
 - Removed JupyterLite demo publishing from this repo's docs workflow.
@@ -17,13 +17,13 @@ creates two companion repositories:
   repo.
 - Kept `conda-express` focused on native `cx` and `cxz` binaries.
 - Switched CI canaries, release prep, and release binary jobs to build `cx` /
-  `cxz` through Pronto.
+  `cxz` through conda-pronto.
 - Removed the legacy in-repo Cargo workspace, `cx-build`, runtime source,
-  checked-in `cx.lock`, and maturin/PyPI wrapper path now that Pronto owns the
+  checked-in `cx.lock`, and maturin/PyPI wrapper path now that conda-pronto owns the
   runtime and builder implementation.
 - Removed legacy `payload`, `cx.lock`, and `cx.lock.hash` runtime/build
   surfaces from this repo; remaining references are historical notes.
-- Rebuilt PyPI and crates.io distribution around Pronto-built release binaries
+- Rebuilt PyPI and crates.io distribution around release binaries built with conda-pronto
   instead of local runtime source builds.
 - Removed the `conda-express` composite GitHub Action; this repo's
   `.github/workflows/build.yml` is release preparation for official `cx` /
@@ -35,7 +35,7 @@ creates two companion repositories:
 ### Verification
 
 - Run the release-prep workflow on GitHub runners once to verify the direct
-  Pronto action path for all `cx` and `cxz` platforms.
+  conda-pronto action path for all `cx` and `cxz` platforms.
 - Exercise the full release workflow before the next public release.
 
 ### Distribution Policy
@@ -45,11 +45,11 @@ creates two companion repositories:
 - Add `conda-exec` to the default package set once the intended new release is
   available on conda-forge.
 - Keep Homebrew, shell script, Docker, GitHub Releases, PyPI, and crates.io as
-  distribution channels backed by Pronto artifacts.
+  distribution channels backed by conda-pronto artifacts.
 
 ## Tracking Issues
 
 - Umbrella split: <https://github.com/jezdez/conda-express/issues/81>
 - Add `conda-exec` once released: <https://github.com/jezdez/conda-express/issues/85>
-- Channel presets follow-up: <https://github.com/jezdez/pronto/issues/2>
+- Channel presets follow-up: <https://github.com/jezdez/conda-pronto/issues/2>
 - Complete conda-wasm migration: <https://github.com/jezdez/conda-wasm/issues/1>

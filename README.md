@@ -141,20 +141,20 @@ pip install conda-express
 cargo install conda-express
 ```
 
-Both packages install the Pronto-built `cx` release binary for your platform.
+Both packages install the `cx` release binary built with conda-pronto for your platform.
 
 ## Reproducing distribution artifacts
 
 Official `cx` and `cxz` artifacts are built with
-[Pronto](https://github.com/jezdez/pronto). This repository keeps the
+[conda-pronto](https://github.com/jezdez/conda-pronto). This repository keeps the
 conda-express distribution defaults and delegates the generic runtime and
-builder implementation to Pronto.
+builder implementation to conda-pronto.
 
 For local reproduction or experimentation:
 
 ```bash
-git clone https://github.com/jezdez/pronto.git
-cd pronto
+git clone https://github.com/jezdez/conda-pronto.git
+cd conda-pronto
 
 pronto configure \
   --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0" \
@@ -233,7 +233,7 @@ Updating the base installation is handled by `conda self update` (via conda-self
 ## Building custom binaries
 
 For custom package sets or new distributions, use
-[Pronto](https://github.com/jezdez/pronto) directly. This repository's build
+[conda-pronto](https://github.com/jezdez/conda-pronto) directly. This repository's build
 workflow is release preparation for official conda-express `cx` and `cxz`
 binaries, not a generic downstream builder interface.
 
@@ -253,7 +253,7 @@ through your original install method.
 ## How it works
 
 1. **Build time**: the conda-express release workflow solves the package set,
-   then Pronto filters excluded packages and stamps the runtime lock into the
+   then conda-pronto filters excluded packages and stamps the runtime lock into the
    staged binary.
 
 2. **First run**: cx reads the stamped runtime lock, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.

@@ -11,7 +11,7 @@ you have a working conda installation.
 ## Build-time lockfile
 
 The conda-express release workflow solves the package set at build time.
-Pronto derives a
+conda-pronto derives a
 [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock)
 runtime lock that is stamped into the staged binary. At runtime, bootstrap
 skips repodata fetching and solving entirely; it downloads and installs
@@ -200,12 +200,12 @@ cx (7-11 MB)              cxz (50-95 MB)
 └──────────────┘          └──────────────────┘
 ```
 
-`cxz` is the official conda-express embedded-bundle variant built by Pronto. It
+`cxz` is the official conda-express embedded-bundle variant built by conda-pronto. It
 detects its embedded bundle automatically and behaves as if `--bundle
 --offline` were passed. All other flags and subcommands work identically.
 
 It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
-Docker image. For non-conda-express embedded variants, use Pronto directly; see
+Docker image. For non-conda-express embedded variants, use conda-pronto directly; see
 the [custom builds guide](guides/custom-builds.md).
 
 ## Uninstall (`cx uninstall`)
@@ -227,7 +227,7 @@ This will:
 ## Release artifacts
 
 Official `cx` and `cxz` release artifacts are built in GitHub Actions with
-Pronto. The conda-express workflows are for CI, release, and release
+conda-pronto. The conda-express workflows are for CI, release, and release
 preparation; they are not the public generic builder interface. Each release
 artifact includes the binary plus `.sha256`, `.info.json`, `.runtime.lock`, and
 `.packages.txt` metadata for auditing and downstream packaging.
@@ -243,7 +243,7 @@ pip install conda-express       # from PyPI
 cargo install conda-express     # from crates.io
 ```
 
-Both distributions consume the Pronto-built `cx` release artifacts instead of
+Both distributions consume the `cx` release artifacts built with conda-pronto instead of
 building the runtime source in this repository.
 
 ## Multi-platform support

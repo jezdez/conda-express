@@ -32,7 +32,7 @@ jobs:
 
       - name: Build release binary
         id: build
-        uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
+        uses: jezdez/conda-pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
         with:
           name: cx
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
@@ -77,7 +77,7 @@ jobs:
 
       - name: Build cxz
         id: build
-        uses: jezdez/pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
+        uses: jezdez/conda-pronto@f705d0b2a5c180a3381692d6cb6715196af738b4
         with:
           name: cx
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
@@ -131,7 +131,7 @@ jobs:
           name: ${{ matrix.asset }}
           path: binary-artifact
 
-      - name: Build wheel from Pronto binary
+      - name: Build wheel from conda-pronto binary
         shell: bash
         run: |
           export VERSION="${GITHUB_REF_NAME#v}"

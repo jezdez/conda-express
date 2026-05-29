@@ -11,7 +11,7 @@
   Do not reintroduce a local Cargo workspace for the runtime or builder.
 
 - `crates/cargo-package` is only the crates.io installer package. It embeds
-  a Pronto-built release binary; it must not grow a local runtime or builder
+  a release binary built with conda-pronto; it must not grow a local runtime or builder
   implementation.
 
 - Browser, WebAssembly, Emscripten, and JupyterLite work belongs in the

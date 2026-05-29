@@ -116,7 +116,7 @@ pip install conda-express
 cargo install conda-express
 ```
 
-Both packages install the Pronto-built `cx` release binary for your platform.
+Both packages install the `cx` release binary built with conda-pronto for your platform.
 ::::
 
 :::::

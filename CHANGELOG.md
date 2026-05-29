@@ -3,7 +3,7 @@
 ## 0.6.0 (2026-05-06)
 
 Generic builder changes from this release now live in
-[`pronto`](https://github.com/jezdez/pronto). See the `pronto` changelog for
+[`pronto`](https://github.com/jezdez/conda-pronto). See the `pronto` changelog for
 the moved `cx-build`, lock derivation, bundle, and build pipeline history.
 
 ### Features

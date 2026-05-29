@@ -10,7 +10,7 @@ binary so it can bootstrap without network access.
 
 `conda-express` is the distribution project for the official `cx` and `cxz`
 binaries. Custom bootstrap binaries are built with
-{external+pronto:doc}`Pronto <index>`.
+{external+conda-pronto:doc}`conda-pronto <index>`.
 
 ## Install `cx`
 
@@ -41,7 +41,7 @@ Install `cx`, bootstrap the prefix, create an environment, and activate it.
 :link: guides/custom-builds
 :link-type: doc
 
-Build a separate Pronto bootstrapper with a different name or package set.
+Build a separate conda-pronto bootstrapper with a different name or package set.
 :::
 
 :::{grid-item-card} Reference

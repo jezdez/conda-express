@@ -8,7 +8,7 @@ Those responsibilities now live in separate repositories:
 | Project | Role |
 |---|---|
 | `conda-express` | Opinionated native conda distribution that publishes `cx` and `cxz` |
-| {external+pronto:doc}`pronto <index>` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
+| {external+conda-pronto:doc}`conda-pronto <index>` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
 | {external+conda-wasm:doc}`conda-wasm <index>` | Browser, WebAssembly, Emscripten, and JupyterLite conda tooling |
 
 ## What conda-express owns
@@ -26,12 +26,12 @@ This repository keeps the pieces that make `cx` a specific conda distribution:
 - release and release-prep workflows for official `cx` / `cxz` artifacts
 
 The generic build implementation is deliberately outside this repository.
-`conda-express` consumes Pronto-built artifacts; it does not carry the runtime
+`conda-express` consumes artifacts built with conda-pronto; it does not carry the runtime
 or builder source.
 
-## What belongs in Pronto
+## What belongs in conda-pronto
 
-Use Pronto when you want to build a different bootstrap binary:
+Use conda-pronto when you want to build a different bootstrap binary:
 
 - a different package set
 - a different binary name
@@ -39,11 +39,11 @@ Use Pronto when you want to build a different bootstrap binary:
 - a product-specific distribution that is not `cx`
 - an embedded-bundle variant for another distribution
 
-Pronto owns lock generation, bundle creation, binary building, artifact
+conda-pronto owns lock generation, bundle creation, binary building, artifact
 metadata, and the public builder interface. See
-{external+pronto:doc}`Pronto's project-boundary notes <explanation/project-boundaries>`
+{external+conda-pronto:doc}`conda-pronto's project-boundary notes <explanation/project-boundaries>`
 for the builder/runtime side of the split. The conda-express release workflows
-call Pronto with the `cx` distribution defaults.
+call conda-pronto with the `cx` distribution defaults.
 
 ## What belongs in conda-wasm
 
@@ -63,7 +63,7 @@ Those pieces are intentionally not part of the native `cx` distribution repo.
 If you want a fast conda distribution, install `cx` or `cxz` from this project.
 
 If you want to build your own `cx`-like binary, use
-{external+pronto:doc}`Pronto <index>` directly. The result should have its own
+{external+conda-pronto:doc}`conda-pronto <index>` directly. The result should have its own
 name and release channel unless it is an official conda-express release
 artifact.
 
@@ -76,7 +76,7 @@ Changes to the package choices, install methods, documentation, release
 packaging, or `cx` distribution policy belong here.
 
 Changes to generic runtime behavior, bundle layouts, lockfile derivation,
-artifact metadata, or builder interfaces belong in Pronto.
+artifact metadata, or builder interfaces belong in conda-pronto.
 
 Changes to JupyterLite, Emscripten, WebAssembly, or browser-specific package
 handling belong in conda-wasm.

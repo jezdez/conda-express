@@ -1,7 +1,7 @@
-# Build a custom Pronto bootstrapper
+# Build a custom conda-pronto bootstrapper
 
 This guide shows how to build a `cx`-like binary with your own package set.
-That is Pronto's job, not conda-express's job.
+That is conda-pronto's job, not conda-express's job.
 
 Use this guide when you want to distribute a separate bootstrapper with
 domain-specific packages such as `numpy`, `pandas`, or internal packages
@@ -10,11 +10,11 @@ channel unless it is an official conda-express `cx` or `cxz` artifact.
 
 ## Building locally
 
-Use Pronto directly when building locally:
+Use conda-pronto directly when building locally:
 
 ```bash
-git clone https://github.com/jezdez/pronto.git
-cd pronto
+git clone https://github.com/jezdez/conda-pronto.git
+cd conda-pronto
 
 pronto configure \
   --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn, numpy, pandas" \
@@ -35,7 +35,7 @@ When specifying packages, keep in mind:
   and `conda-spawn` if you want conda-express-like behavior
 - Use [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html)
   syntax for version constraints (e.g. `numpy >=1.26`)
-- The source lockfile records the solved package set; Pronto derives the
+- The source lockfile records the solved package set; conda-pronto derives the
   runtime lock from that solved environment
 - The resulting binary is stamped with a runtime lock
 
@@ -52,7 +52,7 @@ mean the official conda-express distribution artifacts.
 
 ## Pairing a bundle for offline bootstrap
 
-A custom Pronto binary can be paired with a pre-downloaded set of package
+A custom bootstrap binary built with conda-pronto can be paired with a pre-downloaded set of package
 archives for fully offline, air-gapped installation. This is useful for native
 installers and restricted-network deployments.
 
@@ -100,7 +100,7 @@ found locally.
 
 ## Building an embedded-bundle binary
 
-Pronto can also embed all package archives directly into the binary. The result
+conda-pronto can also embed all package archives directly into the binary. The result
 is a larger single file that bootstraps conda with zero network access.
 
 In conda-express, this variant is named `cxz`. For your own distribution, use
