@@ -29,10 +29,10 @@ cx bootstrap [OPTIONS]
 : Disable all default exclusions. Installs everything including `conda-libmamba-solver`.
 
 `--no-lock`
-: Ignore the embedded lockfile and perform a live solve instead. Requires network access for repodata fetching.
+: Ignore the stamped runtime lock and perform a live solve instead. Requires network access for repodata fetching.
 
 `--lockfile PATH`
-: Use an external lockfile instead of the embedded one. The file must be in rattler-lock v6 format.
+: Use an external lockfile instead of the stamped runtime lock. The file must be in rattler-lock v6 format.
 
 `--bundle DIR`
 : Directory containing pre-downloaded `.conda` and/or `.tar.bz2` package archives.
@@ -99,7 +99,7 @@ cx status [OPTIONS]
 :class: dropdown
 
 ```
-cx 0.1.0
+cx 0.6.0
   prefix:   /Users/you/.cx
   channels: conda-forge
   packages: python >=3.12, conda >=25.1, ...
@@ -140,8 +140,9 @@ exit    # or Ctrl+D
 (cli-cx-uninstall)=
 ## `cx uninstall`
 
-Completely remove cx: the conda prefix (including all named environments),
-the cx binary itself, and PATH entries from shell profiles.
+Remove the conda prefix managed by cx, including all named environments, and
+clean PATH entries from shell profiles. The command prints a hint for removing
+the `cx` binary through the package manager or install method you used.
 
 ```
 cx uninstall [OPTIONS]
@@ -158,8 +159,7 @@ cx uninstall [OPTIONS]
 ### What gets removed
 
 1. The conda prefix directory (e.g. `~/.cx`) including all named environments
-2. The `cx` binary (detected via the running executable path)
-3. PATH entries added by the installer from `~/.bashrc`, `~/.zshrc`, and
+2. PATH entries added by the installer from `~/.bashrc`, `~/.zshrc`, and
    `~/.config/fish/config.fish`
 
 ### Examples
@@ -182,15 +182,15 @@ cx uninstall --prefix /opt/conda
 ! This will permanently remove:
    Conda prefix: /home/user/.cx
    Named environments (2): myenv, data-science
-   cx binary: /home/user/.local/bin/cx
 
    Continue? [y/N] y
 
 >> Removing conda prefix at /home/user/.cx
->> Removing cx binary at /home/user/.local/bin/cx
 >> Cleaned PATH entry from /home/user/.zshrc
 
 ✔ cx has been uninstalled.
+Remove the cx binary with your original install method, for example:
+  brew uninstall cx
 ```
 :::
 

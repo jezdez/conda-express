@@ -4,6 +4,11 @@ A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/c
 
 cx replaces the miniconda/constructor installation pattern with a single static binary (7-11 MB depending on platform) that bootstraps a fully functional conda environment in seconds. For air-gapped environments, the self-contained `cxz` variant (50-95 MB) embeds all packages directly in the binary.
 
+`conda-express` is the distribution project for the official `cx` and `cxz`
+binaries. Custom bootstrap binaries are built with
+[Pronto](https://github.com/jezdez/pronto); browser and WebAssembly work lives
+in [conda-wasm](https://github.com/jezdez/conda-wasm).
+
 ## Install
 
 ::::{tab-set}
@@ -71,7 +76,9 @@ cx shell science
 cx install -n science pandas matplotlib
 ```
 
-On first use, cx automatically installs conda and its plugins into `~/.cx` from an embedded lockfile. Subsequent invocations hand off directly to the installed `conda` binary.
+On first use, cx automatically installs conda and its plugins into `~/.cx`
+from the built-in runtime lock. Subsequent invocations hand off directly to
+the installed `conda` binary.
 
 ## What gets installed
 
@@ -100,7 +107,8 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies are exclude
 :link: features
 :link-type: doc
 
-Bootstrap a full conda environment in ~3–5 seconds from an embedded lockfile. No repodata fetch, no solve at runtime.
+Bootstrap a full conda environment in ~3–5 seconds from a built-in runtime
+lock. No repodata fetch, no solve at runtime.
 :::
 
 :::{grid-item-card} {octicon}`package` Small
@@ -143,11 +151,11 @@ One binary, one command. No Python, no installer, no shell modifications require
 Get up and running in minutes.
 :::
 
-:::{grid-item-card} {octicon}`tools` Custom builds
+:::{grid-item-card} {octicon}`tools` Custom Pronto Builds
 :link: guides/custom-builds
 :link-type: doc
 
-Bake your own packages into a cx binary.
+Use Pronto when you need your own package set or binary name.
 :::
 
 :::{grid-item-card} {octicon}`terminal` CLI
@@ -162,6 +170,13 @@ All commands and options.
 :link-type: doc
 
 Build-time and runtime settings.
+:::
+
+:::{grid-item-card} {octicon}`repo` Project scope
+:link: scope
+:link-type: doc
+
+What belongs in conda-express, Pronto, and conda-wasm.
 :::
 
 :::{grid-item-card} {octicon}`cpu` Architecture
@@ -201,6 +216,7 @@ configuration
 :caption: Explanation
 
 features
+scope
 design
 background
 ```

@@ -8,13 +8,14 @@ cx is a single static binary (7-11 MB depending on platform) written in Rust. It
 no installer framework, and no shell modifications. Download it, run it, and
 you have a working conda installation.
 
-## Pronto runtime lockfile
+## Build-time lockfile
 
-Pronto performs a full dependency solve at build time and produces a
+The conda-express release workflow solves the package set at build time.
+Pronto derives a
 [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock)
-runtime lockfile that is embedded into the binary. At runtime, bootstrap skips
-repodata fetching and solving entirely; it downloads and installs packages
-directly from the locked URLs.
+runtime lock that is stamped into the staged binary. At runtime, bootstrap
+skips repodata fetching and solving entirely; it downloads and installs
+packages directly from the locked URLs.
 
 This gives cx deterministic, reproducible bootstraps with ~3–5 second install
 times.
@@ -140,7 +141,7 @@ cx create -n myenv python=3.12
 
 ## External lockfile support
 
-For custom deployments, you can override the embedded lockfile:
+For custom deployments, you can override the stamped runtime lock:
 
 ```bash
 cx bootstrap --lockfile /path/to/custom.lock
@@ -199,13 +200,13 @@ cx (7-11 MB)              cxz (50-95 MB)
 └──────────────┘          └──────────────────┘
 ```
 
-`cxz` is the embedded-bundle variant built by Pronto. It detects its embedded
-bundle automatically and behaves as if `--bundle --offline` were passed. All
-other flags and subcommands work identically.
+`cxz` is the official conda-express embedded-bundle variant built by Pronto. It
+detects its embedded bundle automatically and behaves as if `--bundle
+--offline` were passed. All other flags and subcommands work identically.
 
 It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
-Docker image. See the [custom builds guide](guides/custom-builds.md) for
-build instructions.
+Docker image. For non-conda-express embedded variants, use Pronto directly; see
+the [custom builds guide](guides/custom-builds.md).
 
 ## Uninstall (`cx uninstall`)
 
@@ -217,18 +218,19 @@ cx uninstall
 
 This will:
 
-1. List what will be removed (prefix, named environments, cx binary)
+1. List what will be removed (prefix and named environments)
 2. Ask for confirmation (`--yes` to skip)
 3. Remove the conda prefix and all environments
-4. Remove the cx binary
-5. Clean up PATH entries from shell profiles
+4. Clean up PATH entries from shell profiles
+5. Print a hint for removing the `cx` binary through the install method you used
 
 ## Release artifacts
 
 Official `cx` and `cxz` release artifacts are built in GitHub Actions with
-Pronto. Each release artifact includes the binary plus `.sha256`, `.info.json`,
-`.runtime.lock`, and `.packages.txt` metadata for auditing and downstream
-packaging.
+Pronto. The conda-express workflows are for CI, release, and release
+preparation; they are not the public generic builder interface. Each release
+artifact includes the binary plus `.sha256`, `.info.json`, `.runtime.lock`, and
+`.packages.txt` metadata for auditing and downstream packaging.
 
 ## PyPI and crates.io distribution
 

@@ -35,6 +35,20 @@ strings defining the packages to install in the base prefix.
 List of package names to exclude from the installation. Pronto also removes any
 dependencies that are *exclusively* required by the excluded packages.
 
+### Where this configuration lives
+
+There is no public `conda-express` build manifest and no `[tool.cx]` section in
+`pyproject.toml`. The official distribution defaults are maintained in the
+release workflows and mirrored in the docs.
+
+`pyproject.toml` is used for Python packaging metadata and Pixi maintenance
+tasks for this repository. Its `cx-env` environment is a development aid that
+tracks the intended conda-express package set; it is not a runtime
+configuration file consumed by `cx`.
+
+Custom package sets and new binary distributions should be built with Pronto
+directly.
+
 ## Runtime configuration
 
 ### `.condarc`

@@ -49,13 +49,13 @@ All options work as environment variables on both platforms:
 Unix example:
 
 ```bash
-CX_VERSION=0.1.3 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
+CX_VERSION=0.6.0 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 ```
 
 PowerShell example:
 
 ```powershell
-$Env:CX_VERSION = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
+$Env:CX_VERSION = "0.6.0"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 ```
 :::
 
@@ -79,8 +79,8 @@ variant with all packages embedded — see {doc}`features` for details.
 After downloading, make it executable and move it to your `PATH`:
 
 ```bash
-chmod +x cx-*
-sudo mv cx-* /usr/local/bin/cx
+chmod +x cx-x86_64-unknown-linux-gnu
+sudo mv cx-x86_64-unknown-linux-gnu /usr/local/bin/cx
 ```
 ::::
 
@@ -132,7 +132,7 @@ Otherwise, run it manually:
 cx bootstrap
 ```
 
-This takes ~3–5 seconds using the embedded lockfile. The prefix is protected
+This takes ~3–5 seconds using the built-in runtime lock. The prefix is protected
 with a [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker to
 prevent accidental modification.
 
@@ -204,12 +204,13 @@ update command. See the [design document](design.md) for details.
 
 ## Uninstalling
 
-To completely remove cx, the conda prefix, and all environments:
+To remove the conda prefix and all environments managed by cx:
 
 ```bash
 cx uninstall
 ```
 
 This shows what will be removed and asks for confirmation. It also cleans up
-PATH entries from shell profiles. See the {ref}`CLI reference <cli-cx-uninstall>`
-for all options.
+PATH entries from shell profiles and prints a hint for removing the `cx` binary
+through your original install method. See the
+{ref}`CLI reference <cli-cx-uninstall>` for all options.

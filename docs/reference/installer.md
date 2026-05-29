@@ -58,7 +58,7 @@ All options are set via environment variables and work on both platforms.
 | Variable | Default | Description |
 |---|---|---|
 | `CX_INSTALL_DIR` | `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) | Directory to place the `cx` binary |
-| `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `0.1.3`) |
+| `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `0.6.0`) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to any value to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip running `cx bootstrap` after install |
 | `CX_BUNDLE` | *(unset)* | Directory of `.conda`/`.tar.bz2` archives for offline bootstrap (passed to `cx bootstrap --bundle`) |
@@ -75,7 +75,7 @@ and requires no separate bundle directory. See {doc}`../features` for details.
 Install a specific version:
 
 ```bash
-CX_VERSION=0.1.3 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
+CX_VERSION=0.6.0 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 ```
 
 Install to a custom directory without bootstrap:
@@ -87,13 +87,13 @@ CX_INSTALL_DIR=/opt/bin CX_NO_BOOTSTRAP=1 curl -fsSL https://jezdez.github.io/co
 PowerShell with options:
 
 ```powershell
-$Env:CX_VERSION = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
+$Env:CX_VERSION = "0.6.0"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 ```
 
 The PowerShell script also accepts named parameters when invoked directly:
 
 ```powershell
-.\get-cx.ps1 -Version 0.1.3 -InstallDir C:\tools -NoBootstrap
+.\get-cx.ps1 -Version 0.6.0 -InstallDir C:\tools -NoBootstrap
 ```
 
 ## Platform detection

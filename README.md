@@ -26,7 +26,9 @@ cx create -n science python=3.12 scipy
 cx shell myenv
 ```
 
-On first use, cx automatically installs conda and its plugins into `~/.cx` from an embedded lockfile. Subsequent invocations hand off directly to the installed `conda` binary with no overhead.
+On first use, cx automatically installs conda and its plugins into `~/.cx` from
+the built-in runtime lock. Subsequent invocations hand off directly to the
+installed `conda` binary with no overhead.
 
 ## What gets installed
 
@@ -141,24 +143,26 @@ cargo install conda-express
 
 Both packages install the Pronto-built `cx` release binary for your platform.
 
-## Building distribution artifacts
+## Reproducing distribution artifacts
 
 Official `cx` and `cxz` artifacts are built with
 [Pronto](https://github.com/jezdez/pronto). This repository keeps the
 conda-express distribution defaults and delegates the generic runtime and
-builder implementation to Pronto:
+builder implementation to Pronto.
+
+For local reproduction or experimentation:
 
 ```bash
 git clone https://github.com/jezdez/pronto.git
 cd pronto
 
-cargo run -p pronto -- configure \
+pronto configure \
   --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0" \
   --channels "conda-forge" \
   --exclude "conda-libmamba-solver"
 pixi lock
-cargo run -p pronto -- build --layout none --name cx
-cargo run -p pronto -- build --layout embedded --name cx
+pronto build --layout none --name cx
+pronto build --layout embedded --name cx
 ```
 
 Staged binaries and metadata files are written to `dist/`.
@@ -193,7 +197,7 @@ cx bootstrap [OPTIONS]           Bootstrap a fresh conda installation
   --package PKG                  Additional packages to install
   --exclude PKG                  Packages to exclude (default: conda-libmamba-solver)
   --no-exclude                   Disable default exclusions
-  --no-lock                      Ignore embedded lockfile, do a live solve
+  --no-lock                      Ignore built-in runtime lock, do a live solve
   --lockfile PATH                Use an external lockfile instead
 
 cx status [--prefix DIR]         Show cx installation status
@@ -226,7 +230,7 @@ cx shell myenv
 
 Updating the base installation is handled by `conda self update` (via conda-self).
 
-## Building custom cx binaries
+## Building custom binaries
 
 For custom package sets or new distributions, use
 [Pronto](https://github.com/jezdez/pronto) directly. This repository's build
@@ -235,19 +239,24 @@ binaries, not a generic downstream builder interface.
 
 ## Uninstalling
 
-To completely remove cx, the conda prefix, all environments, and the cx binary:
+To remove the conda prefix and all environments managed by cx:
 
 ```bash
 cx uninstall
 ```
 
-This will show what will be removed and ask for confirmation. Use `--yes` to skip the prompt. The command also cleans up PATH entries from shell profiles that were added by the installer.
+This will show what will be removed and ask for confirmation. Use `--yes` to
+skip the prompt. The command also cleans up PATH entries from shell profiles
+that were added by the installer and prints a hint for removing the `cx` binary
+through your original install method.
 
 ## How it works
 
-1. **Build time**: Pronto resolves the conda-express package set, filters excluded packages, and embeds a runtime lockfile into the binary.
+1. **Build time**: the conda-express release workflow solves the package set,
+   then Pronto filters excluded packages and stamps the runtime lock into the
+   staged binary.
 
-2. **First run**: cx parses the embedded lockfile, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.
+2. **First run**: cx reads the stamped runtime lock, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.
 
 3. **Subsequent runs**: cx detects the existing prefix and replaces its own process with the installed `conda` binary, passing all arguments through.
 
@@ -270,7 +279,7 @@ exit
 
 ## Lockfile format
 
-The embedded lockfile uses the [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock) format (same as `pixi.lock`). It can be:
+The stamped runtime lock uses the [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock) format (same as `pixi.lock`). It can be:
 
 - Read by pixi
 - Imported by conda-lockfiles

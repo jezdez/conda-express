@@ -13,7 +13,7 @@ environment that includes the `conda-libmamba-solver` and its 27 exclusive
 native dependencies (libsolv, libarchive, libcurl, spdlog, etc.).
 
 cx takes a different approach: a single Rust binary (7-11 MB) that bootstraps a
-minimal conda installation in seconds using an embedded lockfile. No Python
+minimal conda installation in seconds using a built-in runtime lock. No Python
 required to start; no installer framework; no shell profile modifications.
 
 For air-gapped or restricted-network environments, `cxz` goes further: it
