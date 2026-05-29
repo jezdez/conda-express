@@ -4,6 +4,8 @@ use std::{
     process::Command,
 };
 
+use sha2::{Digest, Sha256};
+
 const CX_BYTES: &[u8] = include_bytes!(env!("CONDA_EXPRESS_EMBEDDED_BINARY"));
 const TARGET: &str = env!("CONDA_EXPRESS_TARGET");
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -39,7 +41,7 @@ fn main() {
 
 fn ensure_binary() -> io::Result<PathBuf> {
     let binary = cache_dir().join(VERSION).join(TARGET).join(binary_name());
-    if binary.exists() && fs::metadata(&binary)?.len() == CX_BYTES.len() as u64 {
+    if binary.exists() && cached_binary_matches(&binary)? {
         return Ok(binary);
     }
 
@@ -52,6 +54,14 @@ fn ensure_binary() -> io::Result<PathBuf> {
     make_executable(&tmp)?;
     fs::rename(&tmp, &binary)?;
     Ok(binary)
+}
+
+fn cached_binary_matches(path: &Path) -> io::Result<bool> {
+    if fs::metadata(path)?.len() != CX_BYTES.len() as u64 {
+        return Ok(false);
+    }
+    let bytes = fs::read(path)?;
+    Ok(Sha256::digest(&bytes).as_slice() == Sha256::digest(CX_BYTES).as_slice())
 }
 
 fn cache_dir() -> PathBuf {

@@ -10,6 +10,7 @@
 #   CX_VERSION           — version to install, without "v" prefix (default: latest)
 #   CX_NO_PATH_UPDATE    — set to non-empty to skip shell profile modification
 #   CX_NO_BOOTSTRAP      — set to non-empty to skip running `cx bootstrap`
+#   CX_SKIP_VERIFY       — set to non-empty to skip checksum verification
 
 set -eu
 
@@ -137,11 +138,15 @@ download() {
 verify_checksum() {
     local _url="$1" _file="$2" _expected _actual _tmp_sha
 
+    if [ -n "${CX_SKIP_VERIFY:-}" ]; then
+        warn "Skipping checksum verification because CX_SKIP_VERIFY is set"
+        return 0
+    fi
+
     _tmp_sha="$(mktemp "${TMPDIR:-/tmp}/.cx_sha.XXXXXXXX")"
     if ! download "${_url}.sha256" "$_tmp_sha" 2>/dev/null; then
-        warn "Checksum file not available, skipping verification"
         rm -f "$_tmp_sha"
-        return 0
+        err "Checksum file not available: %s.sha256" "$_url"
     fi
 
     _expected="$(awk '{print $1}' "$_tmp_sha")"
@@ -152,8 +157,7 @@ verify_checksum() {
     elif check_cmd shasum; then
         _actual="$(shasum -a 256 "$_file" | awk '{print $1}')"
     else
-        warn "No sha256sum or shasum found, skipping verification"
-        return 0
+        err "No sha256sum or shasum found; install one or set CX_SKIP_VERIFY=1"
     fi
 
     if [ "$_expected" != "$_actual" ]; then

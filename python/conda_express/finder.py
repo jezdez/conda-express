@@ -12,13 +12,20 @@ class CxNotFound(FileNotFoundError): ...
 def find_cx_bin() -> str:
     """Return the path to the cx binary installed by the wheel."""
     cx_exe = "cx" + (sysconfig.get_config_var("EXE") or "")
+    module_bin = join_path(module_path(), "bin")
+
+    if module_bin and os.path.isdir(module_bin):
+        path = os.path.join(module_bin, cx_exe)
+        if os.path.isfile(path):
+            ensure_executable(path)
+            return path
+        raise CxNotFound(f"Package-owned cx binary is missing: {path}")
 
     targets = [
-        _join(_module_path(), "bin"),
         sysconfig.get_path("scripts"),
         sysconfig.get_path("scripts", vars={"base": sys.base_prefix}),
-        _join(_matching_parents(_module_path(), "conda_express"), "bin"),
-        sysconfig.get_path("scripts", scheme=_user_scheme()),
+        join_path(matching_parents(module_path(), "conda_express"), "bin"),
+        sysconfig.get_path("scripts", scheme=user_scheme()),
     ]
 
     seen: list[str] = []
@@ -28,7 +35,7 @@ def find_cx_bin() -> str:
         seen.append(target)
         path = os.path.join(target, cx_exe)
         if os.path.isfile(path):
-            _ensure_executable(path)
+            ensure_executable(path)
             return path
 
     locations = "\n".join(f"  - {target}" for target in seen)
@@ -37,11 +44,11 @@ def find_cx_bin() -> str:
     )
 
 
-def _module_path() -> str:
+def module_path() -> str:
     return os.path.dirname(__file__)
 
 
-def _matching_parents(path: str | None, match: str) -> str | None:
+def matching_parents(path: str | None, match: str) -> str | None:
     """Walk backwards through path segments matching a glob pattern."""
     from fnmatch import fnmatch
 
@@ -56,13 +63,13 @@ def _matching_parents(path: str | None, match: str) -> str | None:
     return os.sep.join(parts[: -len(match_parts)])
 
 
-def _join(path: str | None, *parts: str) -> str | None:
+def join_path(path: str | None, *parts: str) -> str | None:
     if not path:
         return None
     return os.path.join(path, *parts)
 
 
-def _ensure_executable(path: str) -> None:
+def ensure_executable(path: str) -> None:
     if os.name == "nt":
         return
     mode = os.stat(path).st_mode
@@ -71,7 +78,7 @@ def _ensure_executable(path: str) -> None:
     os.chmod(path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def _user_scheme() -> str:
+def user_scheme() -> str:
     if sys.version_info >= (3, 10):
         return sysconfig.get_preferred_scheme("user")
     if os.name == "nt":

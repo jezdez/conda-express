@@ -34,12 +34,17 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   validate:
     name: Validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
       - uses: prefix-dev/setup-pixi@1b2de7f3351f171c8b4dfeb558c639cb58ed4ec0 # v0.9.5
         with:
           environments: docs
@@ -70,6 +75,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Build cx
         id: build
@@ -85,9 +92,11 @@ jobs:
 
       - name: Smoke test
         shell: bash
+        env:
+          BINARY_PATH: ${{ steps.build.outputs.binary-path }}
         run: |
-          "${{ steps.build.outputs.binary-path }}" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
-          "${{ steps.build.outputs.binary-path }}" status --prefix "$RUNNER_TEMP/cx-smoke"
+          "$BINARY_PATH" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
+          "$BINARY_PATH" status --prefix "$RUNNER_TEMP/cx-smoke"
 
       - name: Upload canary binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -121,6 +130,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
 
       - name: Build cxz
         id: build
@@ -136,9 +147,11 @@ jobs:
 
       - name: Smoke test cxz
         shell: bash
+        env:
+          BINARY_PATH: ${{ steps.build.outputs.binary-path }}
         run: |
-          "${{ steps.build.outputs.binary-path }}" bootstrap --prefix "$RUNNER_TEMP/cxz-smoke"
-          "${{ steps.build.outputs.binary-path }}" status --prefix "$RUNNER_TEMP/cxz-smoke"
+          "$BINARY_PATH" bootstrap --prefix "$RUNNER_TEMP/cxz-smoke"
+          "$BINARY_PATH" status --prefix "$RUNNER_TEMP/cxz-smoke"
 
       - name: Upload canary binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -4,15 +4,20 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns:
           - "*"
 
   - package-ecosystem: cargo
-    directory: /crates/cargo-package
+    directory: /
     schedule:
       interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 21
     groups:
       rust:
         patterns:

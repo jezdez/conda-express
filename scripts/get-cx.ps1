@@ -16,6 +16,9 @@
 .PARAMETER NoBootstrap
     If specified, skip running "cx bootstrap" after installation.
     Can also be set via the CX_NO_BOOTSTRAP environment variable.
+.PARAMETER SkipVerify
+    If specified, skip checksum verification.
+    Can also be set via the CX_SKIP_VERIFY environment variable.
 .EXAMPLE
     irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 .EXAMPLE
@@ -27,7 +30,8 @@ param (
     [string] $Version = "latest",
     [string] $InstallDir = "",
     [switch] $NoPathUpdate,
-    [switch] $NoBootstrap
+    [switch] $NoBootstrap,
+    [switch] $SkipVerify
 )
 
 Set-StrictMode -Version Latest
@@ -40,6 +44,7 @@ if ($Env:CX_VERSION) { $Version = $Env:CX_VERSION }
 if ($Env:CX_INSTALL_DIR) { $InstallDir = $Env:CX_INSTALL_DIR }
 if ($Env:CX_NO_PATH_UPDATE) { $NoPathUpdate = $true }
 if ($Env:CX_NO_BOOTSTRAP) { $NoBootstrap = $true }
+if ($Env:CX_SKIP_VERIFY) { $SkipVerify = $true }
 
 if (-not $InstallDir) {
     $InstallDir = Join-Path $Env:USERPROFILE ".local\bin"
@@ -138,23 +143,27 @@ try {
     throw "Download failed: $DownloadUrl`n$_"
 }
 
-# Verify checksum
-$ChecksumUrl = "${DownloadUrl}.sha256"
-$TempSha = [System.IO.Path]::GetTempFileName()
-try {
-    Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempSha -UseBasicParsing
-    $Expected = (Get-Content $TempSha -Raw).Trim().Split()[0]
-    $Actual = (Get-FileHash -Path $TempFile -Algorithm SHA256).Hash.ToLower()
+if ($SkipVerify) {
+    Write-Warning "Skipping checksum verification because CX_SKIP_VERIFY is set"
+} else {
+    $ChecksumUrl = "${DownloadUrl}.sha256"
+    $TempSha = [System.IO.Path]::GetTempFileName()
+    try {
+        Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempSha -UseBasicParsing
+        $Expected = (Get-Content $TempSha -Raw).Trim().Split()[0]
+        $Actual = (Get-FileHash -Path $TempFile -Algorithm SHA256).Hash.ToLower()
 
-    if ($Expected -ne $Actual) {
+        if ($Expected -ne $Actual) {
+            Remove-Item -Path $TempFile, $TempSha -ErrorAction SilentlyContinue
+            throw "Checksum mismatch!`n  expected: $Expected`n  actual:   $Actual"
+        }
+        Write-Host "  Checksum OK"
+    } catch {
         Remove-Item -Path $TempFile, $TempSha -ErrorAction SilentlyContinue
-        throw "Checksum mismatch!`n  expected: $Expected`n  actual:   $Actual"
+        throw "Checksum verification failed: $ChecksumUrl`n$_"
+    } finally {
+        Remove-Item -Path $TempSha -ErrorAction SilentlyContinue
     }
-    Write-Host "  Checksum OK"
-} catch [System.Net.WebException] {
-    Write-Host "  Checksum file not available, skipping verification"
-} finally {
-    Remove-Item -Path $TempSha -ErrorAction SilentlyContinue
 }
 
 # Install

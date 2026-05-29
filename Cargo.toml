@@ -8,10 +8,22 @@ repository = "https://github.com/jezdez/conda-express"
 homepage = "https://jezdez.github.io/conda-express/"
 keywords = ["conda", "bootstrapper", "rattler", "package-manager"]
 categories = ["command-line-utilities", "development-tools"]
+include = [
+  "/Cargo.lock",
+  "/Cargo.toml",
+  "/LICENSE",
+  "/README.md",
+  "/binary-sha256.txt",
+  "/build.rs",
+  "/src/main.rs",
+]
 
 [[bin]]
 name = "cx"
 path = "src/main.rs"
+
+[dependencies]
+sha2 = "0.10"
 
 [build-dependencies]
 sha2 = "0.10"

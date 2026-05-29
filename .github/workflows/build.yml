@@ -9,6 +9,13 @@ on:
         type: number
         default: 7
 
+permissions:
+  contents: read
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     name: Build ${{ matrix.variant }} (${{ matrix.target }})
