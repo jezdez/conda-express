@@ -10,8 +10,7 @@ binary so it can bootstrap without network access.
 
 `conda-express` is the distribution project for the official `cx` and `cxz`
 binaries. Custom bootstrap binaries are built with
-[Pronto](https://github.com/jezdez/pronto); browser and WebAssembly work lives
-in [conda-wasm](https://github.com/jezdez/conda-wasm).
+[Pronto](https://github.com/jezdez/pronto).
 
 ## Install `cx`
 
@@ -62,31 +61,6 @@ artifacts.
 :::
 
 ::::
-
-## What Lives Here
-
-::::{grid} 1 1 3 3
-:gutter: 3
-
-:::{grid-item-card} conda-express
-
-Official `cx` and `cxz` binaries, package choices, release workflows,
-installers, Docker images, and user docs.
-:::
-
-:::{grid-item-card} Pronto
-
-Generic builder/runtime machinery for custom native bootstrap binaries.
-:::
-
-:::{grid-item-card} conda-wasm
-
-Browser, WebAssembly, Emscripten, and JupyterLite conda tooling.
-:::
-
-::::
-
-See {doc}`scope` for the full project boundary.
 
 ```{toctree}
 :hidden:
