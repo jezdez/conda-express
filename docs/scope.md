@@ -8,8 +8,8 @@ Those responsibilities now live in separate repositories:
 | Project | Role |
 |---|---|
 | `conda-express` | Opinionated native conda distribution that publishes `cx` and `cxz` |
-| `pronto` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
-| `conda-wasm` | Browser, WebAssembly, Emscripten, and JupyterLite conda tooling |
+| {external+pronto:doc}`pronto <index>` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
+| {external+conda-wasm:doc}`conda-wasm <index>` | Browser, WebAssembly, Emscripten, and JupyterLite conda tooling |
 
 ## What conda-express owns
 
@@ -40,12 +40,15 @@ Use Pronto when you want to build a different bootstrap binary:
 - an embedded-bundle variant for another distribution
 
 Pronto owns lock generation, bundle creation, binary building, artifact
-metadata, and the public builder interface. The conda-express release workflows
+metadata, and the public builder interface. See
+{external+pronto:doc}`Pronto's project-boundary notes <explanation/project-boundaries>`
+for the builder/runtime side of the split. The conda-express release workflows
 call Pronto with the `cx` distribution defaults.
 
 ## What belongs in conda-wasm
 
-Browser and WebAssembly work lives in `conda-wasm`:
+Browser and WebAssembly work lives in
+{external+conda-wasm:doc}`conda-wasm <index>`:
 
 - WASM crates
 - Emscripten conda patches
@@ -59,11 +62,13 @@ Those pieces are intentionally not part of the native `cx` distribution repo.
 
 If you want a fast conda distribution, install `cx` or `cxz` from this project.
 
-If you want to build your own `cx`-like binary, use Pronto directly. The result
-should have its own name and release channel unless it is an official
-conda-express release artifact.
+If you want to build your own `cx`-like binary, use
+{external+pronto:doc}`Pronto <index>` directly. The result should have its own
+name and release channel unless it is an official conda-express release
+artifact.
 
-If you want conda in the browser, use `conda-wasm`.
+If you want conda in the browser, use
+{external+conda-wasm:doc}`conda-wasm <index>`.
 
 ## What this means for contributors
 

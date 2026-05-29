@@ -10,7 +10,7 @@ binary so it can bootstrap without network access.
 
 `conda-express` is the distribution project for the official `cx` and `cxz`
 binaries. Custom bootstrap binaries are built with
-[Pronto](https://github.com/jezdez/pronto).
+{external+pronto:doc}`Pronto <index>`.
 
 ## Install `cx`
 

@@ -6,6 +6,7 @@ author = "conda community"
 
 extensions = [
     "myst_parser",
+    "sphinx.ext.intersphinx",
     "sphinx_copybutton",
     "sphinx_design",
     "sphinx_reredirects",
@@ -50,5 +51,10 @@ html_extra_path = ["../scripts/get-cx.sh", "../scripts/get-cx.ps1"]
 html_css_files = ["css/custom.css"]
 
 html_baseurl = "https://jezdez.github.io/conda-express/"
+
+intersphinx_mapping = {
+    "conda-wasm": ("https://jezdez.github.io/conda-wasm/", None),
+    "pronto": ("https://jezdez.github.io/pronto/", None),
+}
 
 exclude_patterns = ["_build"]
