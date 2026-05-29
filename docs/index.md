@@ -1,192 +1,92 @@
 # conda-express
 
-A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
+`conda-express` publishes `cx`, a small native bootstrapper for
+[conda](https://github.com/conda/conda). It installs a working conda
+environment from a built-in runtime lock, then passes commands through to the
+installed `conda` executable.
 
-cx replaces the miniconda/constructor installation pattern with a single static binary (7-11 MB depending on platform) that bootstraps a fully functional conda environment in seconds. For air-gapped environments, the self-contained `cxz` variant (50-95 MB) embeds all packages directly in the binary.
+`cxz` is the offline variant. It carries the locked package archives in the
+binary so it can bootstrap without network access.
 
 `conda-express` is the distribution project for the official `cx` and `cxz`
 binaries. Custom bootstrap binaries are built with
 [Pronto](https://github.com/jezdez/pronto); browser and WebAssembly work lives
 in [conda-wasm](https://github.com/jezdez/conda-wasm).
 
-## Install
+## Install `cx`
 
-::::{tab-set}
+Homebrew is the shortest path on macOS and Linux:
 
-:::{tab-item} Homebrew
 ```bash
 brew tap jezdez/conda-express https://github.com/jezdez/conda-express
 brew install jezdez/conda-express/cx
+cx bootstrap
 ```
 
-Works on macOS and Linux. Upgrades via `brew upgrade cx`.
+See {doc}`quickstart` for shell scripts, GitHub Releases, Docker, PyPI,
+crates.io, `cxz`, and the first environment workflow.
+
+## Choose A Path
+
+::::{grid} 1 1 2 4
+:gutter: 3
+
+:::{grid-item-card} Tutorial
+:link: quickstart
+:link-type: doc
+
+Install `cx`, bootstrap the prefix, create an environment, and activate it.
 :::
 
-:::{tab-item} Shell script
-**macOS / Linux:**
+:::{grid-item-card} How-To Guide
+:link: guides/custom-builds
+:link-type: doc
 
-```bash
-curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
-```
-
-**Windows (PowerShell):**
-
-```powershell
-powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
-```
+Build a separate Pronto bootstrapper with a different name or package set.
 :::
 
-:::{tab-item} Docker
-```bash
-docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootstrap
-```
+:::{grid-item-card} Reference
+:link: reference/cli
+:link-type: doc
 
-Works on Linux, macOS, and Windows via Docker Desktop.
+Look up `cx bootstrap`, `status`, `shell`, `uninstall`, and pass-through
+behavior.
 :::
 
-:::{tab-item} PyPI / crates.io
-```bash
-pip install conda-express
-```
+:::{grid-item-card} Explanation
+:link: features
+:link-type: doc
 
-```bash
-cargo install conda-express
-```
-
-Both packages install the Pronto-built `cx` release binary for your platform.
+Understand runtime locks, package exclusions, activation, `cxz`, and release
+artifacts.
 :::
 
 ::::
 
-See the {doc}`quickstart <quickstart>` for all installation methods.
+## What Lives Here
 
-## Quick example
-
-![Bootstrap conda, create an environment, and activate it](../demos/quickstart.gif)
-
-```bash
-# Bootstrap a conda installation (~3–5 seconds)
-cx bootstrap
-
-# Create and activate an environment
-cx create -n science python=3.12 numpy scipy
-cx shell science
-
-# Use conda normally — cx delegates transparently
-cx install -n science pandas matplotlib
-```
-
-On first use, cx automatically installs conda and its plugins into `~/.cx`
-from the built-in runtime lock. Subsequent invocations hand off directly to
-the installed `conda` binary.
-
-## What gets installed
-
-cx installs a minimal conda stack from conda-forge:
-
-| Package | Role |
-|---|---|
-| python >= 3.12 | Runtime |
-| conda >= 25.1 | Package manager |
-| conda-rattler-solver | Rust-based solver (replaces libmamba) |
-| conda-spawn >= 0.1.0 | Subprocess-based environment activation |
-| conda-completion >= 0.2.0 | Shell completion support |
-| conda-pypi | PyPI interoperability |
-| conda-self | Base environment self-management |
-| conda-global | Global tool installation and PATH management |
-| conda-workspaces >= 0.4.0 | Multi-environment workspace and task management |
-
-The `conda-libmamba-solver` and its 27 exclusive native dependencies are excluded by default, reducing the install size significantly.
-
-## Why conda-express?
-
-::::::{grid} 1 1 2 2
+::::{grid} 1 1 3 3
 :gutter: 3
 
-:::{grid-item-card} {octicon}`zap` Fast
-:link: features
-:link-type: doc
+:::{grid-item-card} conda-express
 
-Bootstrap a full conda environment in ~3–5 seconds from a built-in runtime
-lock. No repodata fetch, no solve at runtime.
+Official `cx` and `cxz` binaries, package choices, release workflows,
+installers, Docker images, and user docs.
 :::
 
-:::{grid-item-card} {octicon}`package` Small
-:link: features
-:link-type: doc
+:::{grid-item-card} Pronto
 
-7-11 MB single binary. Installs ~95 packages instead of ~125 by excluding unnecessary native dependencies.
+Generic builder/runtime machinery for custom native bootstrap binaries.
 :::
 
-:::{grid-item-card} {octicon}`rocket` Modern
-:link: features
-:link-type: doc
+:::{grid-item-card} conda-wasm
 
-Uses conda-rattler-solver (resolvo) instead of libmamba. conda-spawn for activation instead of shell profile hacks.
+Browser, WebAssembly, Emscripten, and JupyterLite conda tooling.
 :::
 
-:::{grid-item-card} {octicon}`check-circle` Simple
-:link: quickstart
-:link-type: doc
+::::
 
-One binary, one command. No Python, no installer, no shell modifications required.
-:::
-
-:::{grid-item-card} {octicon}`cloud-offline` Air-gapped
-:link: features
-:link-type: doc
-
-`cxz` embeds all packages in a single 50-95 MB binary. Drop it anywhere, run `cxz bootstrap` — zero network access.
-:::
-
-::::::
-
-::::::{grid} 1 1 2 3
-:gutter: 3
-
-:::{grid-item-card} {octicon}`rocket` Quick start
-:link: quickstart
-:link-type: doc
-
-Get up and running in minutes.
-:::
-
-:::{grid-item-card} {octicon}`tools` Custom Pronto Builds
-:link: guides/custom-builds
-:link-type: doc
-
-Use Pronto when you need your own package set or binary name.
-:::
-
-:::{grid-item-card} {octicon}`terminal` CLI
-:link: reference/cli
-:link-type: doc
-
-All commands and options.
-:::
-
-:::{grid-item-card} {octicon}`gear` Configuration
-:link: configuration
-:link-type: doc
-
-Build-time and runtime settings.
-:::
-
-:::{grid-item-card} {octicon}`repo` Project scope
-:link: scope
-:link-type: doc
-
-What belongs in conda-express, Pronto, and conda-wasm.
-:::
-
-:::{grid-item-card} {octicon}`cpu` Architecture
-:link: design
-:link-type: doc
-
-Design decisions and internals.
-:::
-
-::::::
+See {doc}`scope` for the full project boundary.
 
 ```{toctree}
 :hidden:
