@@ -205,8 +205,8 @@ detects its embedded bundle automatically and behaves as if `--bundle
 --offline` were passed. All other flags and subcommands work identically.
 
 It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
-Docker image. For non-conda-express embedded variants, use conda-pronto directly; see
-the [custom builds guide](guides/custom-builds.md).
+Docker image. Non-conda-express embedded variants belong in
+{external+conda-pronto:doc}`conda-pronto <index>`.
 
 ## Uninstall (`cx uninstall`)
 

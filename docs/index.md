@@ -37,11 +37,11 @@ crates.io, `cxz`, and the first environment workflow.
 Install `cx`, bootstrap the prefix, create an environment, and activate it.
 :::
 
-:::{grid-item-card} How-To Guide
-:link: guides/custom-builds
+:::{grid-item-card} Project Scope
+:link: scope
 :link-type: doc
 
-Build a separate conda-pronto bootstrapper with a different name or package set.
+See what belongs in conda-express and what belongs in conda-pronto.
 :::
 
 :::{grid-item-card} Reference
@@ -67,13 +67,6 @@ artifacts.
 :caption: Tutorials
 
 quickstart
-```
-
-```{toctree}
-:hidden:
-:caption: How-to guides
-
-guides/custom-builds
 ```
 
 ```{toctree}

@@ -156,22 +156,9 @@ Official `cx` and `cxz` artifacts are built with
 conda-express distribution defaults and delegates the generic runtime and
 builder implementation to conda-pronto.
 
-For local reproduction or experimentation:
-
-```bash
-git clone https://github.com/jezdez/conda-pronto.git
-cd conda-pronto
-
-pronto configure \
-  --packages "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0" \
-  --channels "conda-forge" \
-  --exclude "conda-libmamba-solver"
-pixi lock
-pronto build --layout none --name cx
-pronto build --layout embedded --name cx
-```
-
-Staged binaries and metadata files are written to `dist/`.
+Use this repository's release workflow to reproduce official conda-express
+artifacts. For custom package sets, binary names, or release channels, use
+[conda-pronto](https://github.com/jezdez/conda-pronto) directly.
 
 ## Configuration
 
