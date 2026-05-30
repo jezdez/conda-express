@@ -2,14 +2,13 @@
 
 `conda-express` is the distribution repo for `cx` and `cxz`.
 
-It is not the generic builder, and it is not the browser/WASM conda stack.
-Those responsibilities now live in separate repositories:
+It is not the generic builder. That responsibility lives in
+{external+conda-pronto:doc}`conda-pronto <index>`.
 
 | Project | Role |
 |---|---|
 | `conda-express` | Opinionated native conda distribution that publishes `cx` and `cxz` |
 | {external+conda-pronto:doc}`conda-pronto <index>` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
-| {external+conda-wasm:doc}`conda-wasm <index>` | Browser, WebAssembly, Emscripten, and JupyterLite conda tooling |
 
 ## What conda-express owns
 
@@ -29,7 +28,7 @@ The generic build implementation is deliberately outside this repository.
 `conda-express` consumes artifacts built with conda-pronto; it does not carry the runtime
 or builder source.
 
-## What belongs in conda-pronto
+## When to use conda-pronto
 
 Use conda-pronto when you want to build a different bootstrap binary:
 
@@ -45,19 +44,6 @@ metadata, and the public builder interface. See
 for the builder/runtime side of the split. The conda-express release workflows
 call conda-pronto with the `cx` distribution defaults.
 
-## What belongs in conda-wasm
-
-Browser and WebAssembly work lives in
-{external+conda-wasm:doc}`conda-wasm <index>`:
-
-- WASM crates
-- Emscripten conda patches
-- JupyterLite integration
-- browser package extraction and solving behavior
-- emscripten-forge packaging
-
-Those pieces are intentionally not part of the native `cx` distribution repo.
-
 ## What this means for users
 
 If you want a fast conda distribution, install `cx` or `cxz` from this project.
@@ -67,9 +53,6 @@ If you want to build your own `cx`-like binary, use
 name and release channel unless it is an official conda-express release
 artifact.
 
-If you want conda in the browser, use
-{external+conda-wasm:doc}`conda-wasm <index>`.
-
 ## What this means for contributors
 
 Changes to the package choices, install methods, documentation, release
@@ -77,6 +60,3 @@ packaging, or `cx` distribution policy belong here.
 
 Changes to generic runtime behavior, bundle layouts, lockfile derivation,
 artifact metadata, or builder interfaces belong in conda-pronto.
-
-Changes to JupyterLite, Emscripten, WebAssembly, or browser-specific package
-handling belong in conda-wasm.

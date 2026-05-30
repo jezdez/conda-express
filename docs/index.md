@@ -41,7 +41,7 @@ Install `cx`, bootstrap the prefix, create an environment, and activate it.
 :link: scope
 :link-type: doc
 
-See what belongs in conda-express and what belongs in conda-pronto.
+See what conda-express owns and when to use conda-pronto instead.
 :::
 
 :::{grid-item-card} Reference
