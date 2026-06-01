@@ -1,9 +1,0 @@
-# Committed release binary digests for the crates.io wrapper.
-#
-# Format:
-#   <version> <rust-target-triple> <sha256>
-#
-# The conda-express crate embeds the platform-specific cx binary at build time.
-# Before publishing a release, add one line for each supported target so crate
-# builds verify GitHub release downloads against digests carried by the crate
-# source itself.

@@ -35,7 +35,7 @@ def find_cx_bin() -> str:
         seen.append(target)
         path = os.path.join(target, cx_exe)
         if os.path.isfile(path):
-            ensure_executable(path)
+            require_executable(path)
             return path
 
     locations = "\n".join(f"  - {target}" for target in seen)
@@ -76,6 +76,14 @@ def ensure_executable(path: str) -> None:
     if mode & stat.S_IXUSR:
         return
     os.chmod(path, mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+
+
+def require_executable(path: str) -> None:
+    if os.name == "nt":
+        return
+    if os.access(path, os.X_OK):
+        return
+    raise CxNotFound(f"Found cx binary is not executable: {path}")
 
 
 def user_scheme() -> str:
