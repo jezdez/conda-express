@@ -8,7 +8,7 @@
 
 A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
-cx replaces the miniconda/constructor installation pattern with a 7-11 MB static binary that bootstraps a fully functional conda environment in seconds.
+cx offers an alternative to the Anaconda Distribution, Miniconda, and Miniforge constructor-style installer pattern: a 7-11 MB static binary that bootstraps a fully functional conda environment in seconds.
 
 ## Quick start
 
@@ -38,13 +38,23 @@ cx installs a minimal conda stack from conda-forge:
 |---|---|
 | python >= 3.12 | Runtime |
 | conda >= 25.1 | Package manager |
-| conda-rattler-solver | Rust-based solver (replaces libmamba) |
+| conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-completion >= 0.2.0 | Shell completion support |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
 | conda-global | Global tool installation and PATH management |
 | [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.4.0 | Multi-environment workspace and task management |
+
+See the [included plugins reference](https://jezdez.github.io/conda-express/reference/included-plugins/)
+for the commands and workflows these packages add.
+
+Shell completion is available through the included `conda-completion` plugin:
+
+```bash
+cx completion status
+cx completion install --dry-run
+```
 
 The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default, reducing the install size significantly.
 
@@ -147,18 +157,18 @@ pip install conda-express
 cargo install conda-express
 ```
 
-Both packages install the `cx` release binary built with conda-pronto for your platform.
+Both packages install the `cx` release binary built with conda-ship for your platform.
 
 ## Reproducing distribution artifacts
 
-Official `cx` and `cxz` artifacts are built with
-[conda-pronto](https://github.com/jezdez/conda-pronto). This repository keeps the
+The `cx` and `cxz` artifacts published from this repository are built with
+[conda-ship](https://github.com/jezdez/conda-ship). This repository keeps the
 conda-express distribution defaults and delegates the generic runtime and
-builder implementation to conda-pronto.
+builder implementation to conda-ship.
 
-Use this repository's release workflow to reproduce official conda-express
+Use this repository's release workflow to reproduce this conda-express
 artifacts. For custom package sets, binary names, or release channels, use
-[conda-pronto](https://github.com/jezdez/conda-pronto) directly.
+[conda-ship](https://github.com/jezdez/conda-ship) directly.
 
 ## Configuration
 
@@ -226,8 +236,8 @@ Updating the base installation is handled by `conda self update` (via conda-self
 ## Building custom binaries
 
 For custom package sets or new distributions, use
-[conda-pronto](https://github.com/jezdez/conda-pronto) directly. This repository's build
-workflow is release preparation for official conda-express `cx` and `cxz`
+[conda-ship](https://github.com/jezdez/conda-ship) directly. This repository's build
+workflow is release preparation for this repository's `cx` and `cxz`
 binaries, not a generic downstream builder interface.
 
 ## Uninstalling
@@ -246,7 +256,7 @@ through your original install method.
 ## How it works
 
 1. **Build time**: the conda-express release workflow solves the package set,
-   then conda-pronto filters excluded packages and stamps the runtime lock into the
+   then conda-ship filters excluded packages and stamps the runtime lock into the
    staged binary.
 
 2. **First run**: cx reads the stamped runtime lock, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.

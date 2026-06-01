@@ -1,4 +1,4 @@
-# Background & rationale
+# Why cx Exists
 
 This page explains the ecosystem context behind cx: why it exists, how the
 conda solver landscape has evolved, and prior art in single-binary conda
@@ -6,15 +6,18 @@ distribution.
 
 ## Why cx?
 
-conda is traditionally installed via miniconda or miniforge — large installers
-that download and unpack hundreds of megabytes. The process is slow, requires
-running a platform-specific installer, and leaves users with a heavyweight base
-environment that includes the `conda-libmamba-solver` and its 27 exclusive
-native dependencies (libsolv, libarchive, libcurl, spdlog, etc.).
+conda is traditionally installed via Anaconda Distribution, Miniconda, or
+Miniforge: trusted, widely used installer distributions. That path works well,
+but it also makes installation depend on a platform-specific installer and can
+leave users with a heavier base environment. `cx` also excludes
+`conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv,
+libarchive, libcurl, spdlog, etc.) because it configures
+`conda-rattler-solver` instead.
 
-cx takes a different approach: a single Rust binary (7-11 MB) that bootstraps a
-minimal conda installation in seconds using a built-in runtime lock. No Python
-required to start; no installer framework; no shell profile modifications.
+cx evolves that bootstrap path: a single Rust binary (7-11 MB) that bootstraps
+a minimal conda installation in seconds using a built-in runtime lock. No
+Python required to start; no installer framework; no shell profile
+modifications.
 
 For air-gapped or restricted-network environments, `cxz` goes further: it
 embeds all locked package archives directly into the binary (50-95 MB depending

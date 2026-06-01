@@ -8,9 +8,9 @@ installed `conda` executable.
 `cxz` is the offline variant. It carries the locked package archives in the
 binary so it can bootstrap without network access.
 
-`conda-express` is the distribution project for the official `cx` and `cxz`
+`conda-express` is Jannis Leidel's distribution project for the `cx` and `cxz`
 binaries. Custom bootstrap binaries are built with
-{external+conda-pronto:doc}`conda-pronto <index>`.
+{external+conda-ship:doc}`conda-ship <index>`.
 
 ## Install `cx`
 
@@ -22,12 +22,14 @@ brew install jezdez/conda-express/cx
 cx bootstrap
 ```
 
-See {doc}`quickstart` for shell scripts, GitHub Releases, Docker, PyPI,
-crates.io, `cxz`, and the first environment workflow.
+See {doc}`quickstart` for the first environment workflow. See {doc}`guides/index`
+for using `cx` alongside Anaconda Distribution, Miniconda, and Miniforge;
+offline installs; included plugins; and how `cx` fits next to Pixi, uv, and
+Python package managers.
 
 ## Choose A Path
 
-::::{grid} 1 1 2 4
+::::{grid} 1 1 2 3
 :gutter: 3
 
 :::{grid-item-card} Tutorial
@@ -37,11 +39,19 @@ crates.io, `cxz`, and the first environment workflow.
 Install `cx`, bootstrap the prefix, create an environment, and activate it.
 :::
 
+:::{grid-item-card} Guides
+:link: guides/index
+:link-type: doc
+
+Compare `cx` with familiar installers, use offline bootstrap, review included
+plugins, and place it next to project package managers.
+:::
+
 :::{grid-item-card} Project Scope
 :link: scope
 :link-type: doc
 
-See what conda-express owns and when to use conda-pronto instead.
+See what conda-express owns and when to use conda-ship instead.
 :::
 
 :::{grid-item-card} Reference
@@ -71,10 +81,18 @@ quickstart
 
 ```{toctree}
 :hidden:
+:caption: Guides
+
+guides/index
+```
+
+```{toctree}
+:hidden:
 :caption: Reference
 
 reference/cli
 reference/installer
+reference/included-plugins
 configuration
 ```
 

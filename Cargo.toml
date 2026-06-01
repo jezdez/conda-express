@@ -2,7 +2,7 @@
 name = "conda-express"
 version = "0.6.0"
 edition = "2024"
-description = "Cargo installer for the conda-express cx binary built with conda-pronto"
+description = "Cargo installer for the conda-express cx binary built with conda-ship"
 license = "BSD-3-Clause"
 repository = "https://github.com/jezdez/conda-express"
 homepage = "https://jezdez.github.io/conda-express/"

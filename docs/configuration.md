@@ -3,7 +3,7 @@
 ## Build-time configuration
 
 The conda-express release and release-prep workflows pass this distribution
-package set to conda-pronto when building `cx` and `cxz` artifacts:
+package set to conda-ship when building `cx` and `cxz` artifacts:
 
 ```toml
 channels = ["conda-forge"]
@@ -32,13 +32,13 @@ strings defining the packages to install in the base prefix.
 
 ### `exclude`
 
-List of package names to exclude from the installation. conda-pronto also removes any
+List of package names to exclude from the installation. conda-ship also removes any
 dependencies that are *exclusively* required by the excluded packages.
 
 ### Where this configuration lives
 
 There is no public `conda-express` build manifest and no `[tool.cx]` section in
-`pyproject.toml`. The official distribution defaults are maintained in the
+`pyproject.toml`. The distribution defaults for this repository are maintained in the
 release workflows and mirrored in the docs.
 
 `pyproject.toml` is used for Python packaging metadata and Pixi maintenance
@@ -46,7 +46,7 @@ tasks for this repository. Its `cx-env` environment is a development aid that
 tracks the intended conda-express package set; it is not a runtime
 configuration file consumed by `cx`.
 
-Custom package sets and new binary distributions should be built with conda-pronto
+Custom package sets and new binary distributions should be built with conda-ship
 directly.
 
 ## Runtime configuration
@@ -93,9 +93,9 @@ accidental modification of the base prefix:
 
 ## Customizing the build
 
-To change the official conda-express package set, update the distribution
+To change this repository's conda-express package set, update the distribution
 defaults in the release and release-prep workflows. For custom package sets or
-new distributions, use conda-pronto directly instead of treating this repository as a
+new distributions, use conda-ship directly instead of treating this repository as a
 generic builder.
 
 ### Runtime environment variables

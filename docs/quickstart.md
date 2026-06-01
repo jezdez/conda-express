@@ -83,7 +83,7 @@ gh attestation verify ./cx-x86_64-unknown-linux-gnu \
 ```
 
 `cxz` is the self-contained variant with all packages embedded — see
-{doc}`features` for details.
+{doc}`guides/offline-and-airgapped` for details.
 
 After downloading, make it executable and move it to your `PATH`:
 
@@ -125,7 +125,7 @@ pip install conda-express
 cargo install conda-express
 ```
 
-Both packages install the `cx` release binary built with conda-pronto for your platform.
+Both packages install the `cx` release binary built with conda-ship for your platform.
 ::::
 
 :::::

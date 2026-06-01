@@ -42,7 +42,7 @@ jobs:
 
       - name: Build release binary
         id: build
-        uses: jezdez/conda-pronto@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
+        uses: jezdez/conda-ship@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
         with:
           name: cx
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
@@ -51,6 +51,17 @@ jobs:
           ref: 0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
           embed-bundle: "false"
           docs-url: "https://jezdez.github.io/conda-express/"
+
+      - name: Smoke test release binary
+        shell: bash
+        env:
+          BINARY_PATH: ${{ steps.build.outputs.binary-path }}
+          SMOKE_PREFIX: ${{ runner.temp }}/cx-smoke
+        run: |
+          "$BINARY_PATH" --version
+          "$BINARY_PATH" bootstrap --prefix "$SMOKE_PREFIX"
+          "$BINARY_PATH" status --prefix "$SMOKE_PREFIX"
+          "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
 
       - name: Attest release binary
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
@@ -104,7 +115,7 @@ jobs:
 
       - name: Build cxz
         id: build
-        uses: jezdez/conda-pronto@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
+        uses: jezdez/conda-ship@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
         with:
           name: cx
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
@@ -113,6 +124,17 @@ jobs:
           ref: 0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
           embed-bundle: "true"
           docs-url: "https://jezdez.github.io/conda-express/"
+
+      - name: Smoke test cxz release binary
+        shell: bash
+        env:
+          BINARY_PATH: ${{ steps.build.outputs.binary-path }}
+          SMOKE_PREFIX: ${{ runner.temp }}/cxz-smoke
+        run: |
+          "$BINARY_PATH" --version
+          "$BINARY_PATH" bootstrap --prefix "$SMOKE_PREFIX"
+          "$BINARY_PATH" status --prefix "$SMOKE_PREFIX"
+          "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
 
       - name: Attest cxz release binary
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
@@ -187,7 +209,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build wheel from conda-pronto binary
+      - name: Build wheel from conda-ship-built binary
         shell: bash
         env:
           ASSET_NAME: ${{ matrix.asset }}
@@ -271,10 +293,14 @@ jobs:
 
           export CX_VERSION="$VERSION"
           export CX_FORMULA="$FORMULA"
-          export CX_SHA_MACOS_ARM="$(read_sha aarch64-apple-darwin)"
-          export CX_SHA_MACOS_INTEL="$(read_sha x86_64-apple-darwin)"
-          export CX_SHA_LINUX_ARM="$(read_sha aarch64-unknown-linux-gnu)"
-          export CX_SHA_LINUX_INTEL="$(read_sha x86_64-unknown-linux-gnu)"
+          CX_SHA_MACOS_ARM="$(read_sha aarch64-apple-darwin)"
+          CX_SHA_MACOS_INTEL="$(read_sha x86_64-apple-darwin)"
+          CX_SHA_LINUX_ARM="$(read_sha aarch64-unknown-linux-gnu)"
+          CX_SHA_LINUX_INTEL="$(read_sha x86_64-unknown-linux-gnu)"
+          export CX_SHA_MACOS_ARM
+          export CX_SHA_MACOS_INTEL
+          export CX_SHA_LINUX_ARM
+          export CX_SHA_LINUX_INTEL
 
           python3 << 'PYEOF'
           import os

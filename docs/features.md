@@ -11,7 +11,7 @@ you have a working conda installation.
 ## Build-time lockfile
 
 The conda-express release workflow solves the package set at build time.
-conda-pronto derives a
+conda-ship derives a
 [rattler-lock v6](https://github.com/conda/rattler/tree/main/crates/rattler_lock)
 runtime lock that is stamped into the staged binary. At runtime, bootstrap
 skips repodata fetching and solving entirely; it downloads and installs
@@ -66,6 +66,14 @@ cx shell myenv          # same as: conda spawn myenv
 
 cx includes `conda-completion` so the bootstrapped conda installation can offer
 shell completion support for conda commands and plugin subcommands.
+
+```bash
+cx completion status
+cx completion install --dry-run
+```
+
+The command is optional: cx works without shell completion, and the dry run lets
+you inspect the shell profile hook before enabling it.
 
 ## conda-workspaces
 
@@ -200,13 +208,14 @@ cx (7-11 MB)              cxz (50-95 MB)
 └──────────────┘          └──────────────────┘
 ```
 
-`cxz` is the official conda-express embedded-bundle variant built by conda-pronto. It
+`cxz` is this repository's conda-express embedded-bundle variant built by conda-ship. It
 detects its embedded bundle automatically and behaves as if `--bundle
 --offline` were passed. All other flags and subcommands work identically.
 
 It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
-Docker image. Non-conda-express embedded variants belong in
-{external+conda-pronto:doc}`conda-pronto <index>`.
+Docker image. See {doc}`guides/offline-and-airgapped` for deployment choices.
+Non-conda-express embedded variants belong in
+{external+conda-ship:doc}`conda-ship <index>`.
 
 ## Uninstall (`cx uninstall`)
 
@@ -226,8 +235,8 @@ This will:
 
 ## Release artifacts
 
-Official `cx` and `cxz` release artifacts are built in GitHub Actions with
-conda-pronto. The conda-express workflows are for CI, release, and release
+The `cx` and `cxz` release artifacts published from this repository are built
+in GitHub Actions with conda-ship. The conda-express workflows are for CI, release, and release
 preparation; they are not the public generic builder interface. Each release
 artifact includes the binary plus `.sha256`, `.info.json`, `.runtime.lock`, and
 `.packages.txt` metadata for auditing and downstream packaging.
@@ -243,7 +252,7 @@ pip install conda-express       # from PyPI
 cargo install conda-express     # from crates.io
 ```
 
-Both distributions consume the `cx` release artifacts built with conda-pronto instead of
+Both distributions consume the `cx` release artifacts built with conda-ship instead of
 building the runtime source in this repository.
 
 ## Multi-platform support

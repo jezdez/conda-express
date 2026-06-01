@@ -67,7 +67,8 @@ All options are set via environment variables and work on both platforms.
 :::{tip}
 For fully air-gapped deployments, consider using `cxz` instead of `cx` with
 `CX_BUNDLE` / `CX_OFFLINE`. The `cxz` binary embeds all packages directly
-and requires no separate bundle directory. See {doc}`../features` for details.
+and requires no separate bundle directory. See
+{doc}`../guides/offline-and-airgapped` for details.
 :::
 
 ### Examples

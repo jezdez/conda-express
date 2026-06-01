@@ -5,7 +5,7 @@
 
 The reusable builder and browser-specific projects now live elsewhere:
 
-- `pronto`: generic build system for ready-to-run conda bootstrap binaries
+- `conda-ship`: generic build system for ready-to-run conda bootstrap binaries
 - `conda-wasm`: browser, WebAssembly, Emscripten, and JupyterLite pipeline
 
 This repository keeps the distribution policy for `cx`: the package set,
@@ -14,7 +14,7 @@ documentation.
 
 ## Runtime Model
 
-`cx` is a single native Rust binary built by conda-pronto. It embeds:
+`cx` is a single native Rust binary built by conda-ship. It embeds:
 
 - a lockfile generated from the configured conda package set
 - build-time metadata from the conda-express distribution defaults
@@ -26,7 +26,7 @@ base prefix. Later invocations delegate to the installed `conda` executable.
 
 ## Distribution Policy
 
-`conda-express` intentionally keeps opinions that do not belong in `pronto`:
+`conda-express` intentionally keeps opinions that do not belong in `conda-ship`:
 
 - binary names: `cx` and `cxz`
 - default prefix: `~/.cx`
@@ -38,22 +38,22 @@ base prefix. Later invocations delegate to the installed `conda` executable.
 - user-facing install methods such as Homebrew, shell scripts, Docker, PyPI,
   crates.io, and GitHub Releases
 
-PyPI wheels and the crates.io package consume release artifacts built with conda-pronto;
+PyPI wheels and the crates.io package consume release artifacts built with conda-ship;
 they do not rebuild or vendor the runtime source in this repository.
 
 ## Build Flow
 
-The distribution flow backed by conda-pronto is:
+The distribution flow backed by conda-ship is:
 
 1. `conda-express` supplies distribution defaults: package specs, channels,
    exclusions, artifact names, release policy, and downstream packaging.
-2. CI, release, and release-prep workflows invoke the pinned conda-pronto action.
-3. conda-pronto owns the lock, bundle, build, inspect, and artifact metadata steps.
-4. CI and release jobs build `cx` and `cxz` by invoking conda-pronto rather than the
+2. CI, release, and release-prep workflows invoke the pinned conda-ship action.
+3. conda-ship owns the lock, bundle, build, inspect, and artifact metadata steps.
+4. CI and release jobs build `cx` and `cxz` by invoking conda-ship rather than the
    legacy in-repo builder path.
 
 This repository does not carry the generic runtime or builder source. Changes
-to that implementation belong in conda-pronto.
+to that implementation belong in conda-ship.
 
 ## Bootstrap Flow
 
@@ -94,4 +94,4 @@ This repo should not contain:
 - generic builder product naming
 - Constructor-style `.sh`, `.pkg`, or `.msi` output generation
 
-Those belong in `conda-wasm`, `pronto`, or downstream distribution channels.
+Those belong in `conda-wasm`, `conda-ship`, or downstream distribution channels.

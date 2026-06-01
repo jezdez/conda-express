@@ -80,7 +80,7 @@ jobs:
 
       - name: Build cx
         id: build
-        uses: jezdez/conda-pronto@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
+        uses: jezdez/conda-ship@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
         with:
           name: cx
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
@@ -97,6 +97,7 @@ jobs:
         run: |
           "$BINARY_PATH" bootstrap --prefix "$RUNNER_TEMP/cx-smoke"
           "$BINARY_PATH" status --prefix "$RUNNER_TEMP/cx-smoke"
+          "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
 
       - name: Upload canary binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -135,7 +136,7 @@ jobs:
 
       - name: Build cxz
         id: build
-        uses: jezdez/conda-pronto@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
+        uses: jezdez/conda-ship@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
         with:
           name: cx
           packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
@@ -152,6 +153,7 @@ jobs:
         run: |
           "$BINARY_PATH" bootstrap --prefix "$RUNNER_TEMP/cxz-smoke"
           "$BINARY_PATH" status --prefix "$RUNNER_TEMP/cxz-smoke"
+          "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
 
       - name: Upload canary binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

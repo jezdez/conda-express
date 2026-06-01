@@ -3,15 +3,15 @@
 ## Project structure
 
 - `conda-express` is the opinionated `cx` / `cxz` distribution repo.
-  It builds release artifacts through `pronto`; the generic Rust runtime
-  and builder implementation live in the separate `pronto` repository.
+  It builds release artifacts through `conda-ship`; the generic Rust runtime
+  and builder implementation live in the separate `conda-ship` repository.
 
 - Keep this repo focused on distribution defaults, GitHub Actions,
   Homebrew/Docker/release packaging, docs, and installer entry points.
   Do not reintroduce a local Cargo workspace for the runtime or builder.
 
 - The root Cargo package is only the crates.io installer package. It embeds
-  a release binary built with conda-pronto; it must not grow a local runtime
+  a release binary built with conda-ship; it must not grow a local runtime
   or builder implementation.
 
 - Browser, WebAssembly, Emscripten, and JupyterLite work belongs in the
