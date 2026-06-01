@@ -5,7 +5,7 @@
 :::::{tab-set}
 
 ::::{tab-item} Homebrew
-The easiest way to install on macOS and Linux:
+Homebrew is the recommended install path on macOS and Linux:
 
 ```bash
 brew tap jezdez/conda-express https://github.com/jezdez/conda-express
@@ -17,8 +17,7 @@ Update later with `brew upgrade cx`.
 
 ::::{tab-item} Shell script
 The shell script downloads the right binary for your platform, verifies its
-checksum, updates your shell profile / PATH, and runs `cx bootstrap` — all
-in one step.
+checksum, updates your shell profile / PATH, and runs `cx bootstrap`.
 
 **macOS / Linux:**
 
@@ -43,13 +42,14 @@ All options work as environment variables on both platforms:
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip running `cx bootstrap` |
-| `CX_BUNDLE` | *(unset)* | Directory of package archives for offline bootstrap |
-| `CX_OFFLINE` | *(unset)* | Set to disable network during bootstrap |
+| `CX_SKIP_VERIFY` | *(unset)* | Set to skip checksum verification |
+| `CX_BUNDLE` | *(unset)* | Bundle directory used by `cx bootstrap` |
+| `CX_OFFLINE` | *(unset)* | Set to force offline bootstrap |
 
 Unix example:
 
 ```bash
-CX_VERSION=0.6.0 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION=0.6.0 sh
 ```
 
 PowerShell example:
@@ -73,8 +73,9 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` | `cxz-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` | `cxz-x86_64-pc-windows-msvc.exe` |
 
-Each file has a matching `.sha256` checksum and GitHub Artifact Attestation.
-Verify a downloaded binary with:
+Each runtime has matching `.sha256`, `.info.json`, `.packages.txt`, and
+`.runtime.lock` metadata. Direct downloads are also covered by GitHub Artifact
+Attestations from the release workflow. For a quick attestation check:
 
 ```bash
 gh attestation verify ./cx-x86_64-unknown-linux-gnu \
@@ -82,7 +83,10 @@ gh attestation verify ./cx-x86_64-unknown-linux-gnu \
   --signer-workflow jezdez/conda-express/.github/workflows/release.yml
 ```
 
-`cxz` is the self-contained variant with all packages embedded — see
+See {doc}`guides/verify-release-artifacts` for checksum, metadata, lockfile,
+and air-gapped transfer checks.
+
+`cxz` is the self-contained variant with the locked package archives embedded. See
 {doc}`guides/offline-and-airgapped` for details.
 
 After downloading, make it executable and move it to your `PATH`:
@@ -94,18 +98,25 @@ sudo mv cx-x86_64-unknown-linux-gnu /usr/local/bin/cx
 ::::
 
 ::::{tab-item} Docker
-A minimal, hardened multi-arch image (~37 MB) is published to GHCR:
+A multi-arch image is published to GHCR:
 
 ```bash
-docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootstrap
+docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express bootstrap
 ```
 
 Works on Linux, macOS, and Windows via Docker Desktop. The image runs as
-non-root (uid 65532), supports `--read-only`, and includes provenance
-attestations and SBOMs.
+non-root (uid 65532), includes provenance attestations and SBOMs, and can run
+with a read-only root filesystem when the managed prefix is mounted as a
+writable volume.
 
 ```bash
-docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express create -n myenv python=3.12
+docker run --rm --read-only --tmpfs /tmp \
+  -v cx-data:/home/nonroot/.conda/express \
+  ghcr.io/jezdez/conda-express status
+```
+
+```bash
+docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express create -n myenv python=3.12
 ```
 
 A pre-bootstrapped `cxz` image is also available — conda is already installed,
@@ -116,16 +127,13 @@ docker run --rm ghcr.io/jezdez/conda-express:latest-cxz create -n myenv python=3
 ```
 ::::
 
-::::{tab-item} PyPI / crates.io
+::::{tab-item} PyPI
 ```bash
 pip install conda-express
 ```
 
-```bash
-cargo install conda-express
-```
-
-Both packages install the `cx` release binary built with conda-ship for your platform.
+The PyPI package installs the `cx` release binary built with conda-ship for
+your platform.
 ::::
 
 :::::
@@ -141,16 +149,18 @@ Otherwise, run it manually:
 cx bootstrap
 ```
 
-This takes ~3–5 seconds using the built-in runtime lock. The prefix is protected
-with a [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker to
-prevent accidental modification.
+Bootstrap uses the built-in runtime lock, so it does not solve an environment
+at runtime. The prefix is protected with a
+[CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker to prevent
+accidental modification.
 
 ## Set up your PATH
 
-Add `condabin` to your shell profile so `conda` and `cx` commands are available:
+This step is optional. Add the managed `condabin` directory to your shell
+profile only if you want to run the bootstrapped `conda` executable directly:
 
 ```bash
-export PATH="$HOME/.cx/condabin:$PATH"
+export PATH="$HOME/.conda/express/condabin:$PATH"
 ```
 
 ## Create an environment
@@ -175,11 +185,11 @@ To leave the environment, exit the subshell:
 exit    # or Ctrl+D
 ```
 
-## Use conda normally
+## Use conda commands
 
-![cx delegates conda commands transparently](../demos/passthrough.gif)
+![cx delegates conda commands after bootstrap](../demos/passthrough.gif)
 
-All conda commands work transparently through cx:
+Ordinary conda commands can be run through cx:
 
 ```bash
 cx install -n myenv scipy matplotlib
@@ -190,15 +200,19 @@ cx env list
 
 ## Auto-bootstrap
 
-If you skip `cx bootstrap` and run any conda command directly, cx will
-automatically bootstrap on first use:
+If you skip `cx bootstrap` and run a conda command directly, cx bootstraps on
+first use:
 
 ```bash
-# This bootstraps ~/.cx automatically, then runs `conda create`
+# This bootstraps ~/.conda/express automatically, then runs `conda create`
 cx create -n myenv python=3.12
 ```
 
 ## Updating
+
+If you used an early `cx` release that bootstrapped into `~/.cx`, read
+{doc}`guides/upgrade-from-early-cx` before removing old files. Current releases
+bootstrap into `~/.conda/express`.
 
 To update the base conda installation, re-bootstrap:
 
@@ -207,8 +221,9 @@ cx bootstrap --force
 ```
 
 :::{note}
-In the future, `conda self update` (via conda-self) will be the canonical
-update command. See the [design document](design.md) for details.
+The included `conda-self` plugin is intended to make base updates available as
+a conda command once that workflow has settled. Until then, use
+`cx bootstrap --force`.
 :::
 
 ## Uninstalling
@@ -219,7 +234,7 @@ To remove the conda prefix and all environments managed by cx:
 cx uninstall
 ```
 
-This shows what will be removed and asks for confirmation. It also cleans up
+This shows the paths it plans to remove and asks for confirmation. It also cleans up
 PATH entries from shell profiles and prints a hint for removing the `cx` binary
 through your original install method. See the
 {ref}`CLI reference <cli-cx-uninstall>` for all options.

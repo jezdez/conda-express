@@ -23,8 +23,12 @@ creates two companion repositories:
   runtime and builder implementation.
 - Removed legacy `payload`, `cx.lock`, and `cx.lock.hash` runtime/build
   surfaces from this repo; remaining references are historical notes.
-- Rebuilt PyPI and crates.io distribution around release binaries built with conda-ship
+- Rebuilt PyPI distribution around release binaries built with conda-ship
   instead of local runtime source builds.
+- Removed the crates.io release wrapper and publish job; conda-express release
+  channels are Homebrew, shell scripts, Docker, GitHub Releases, and PyPI.
+- Switched releases to a tag-driven workflow that builds and attests artifacts
+  before creating an immutable GitHub release.
 - Removed the `conda-express` composite GitHub Action; this repo's
   `.github/workflows/build.yml` is release preparation for this repository's `cx` /
   `cxz` binaries, not a downstream builder interface.
@@ -36,15 +40,15 @@ creates two companion repositories:
 
 - Run the release-prep workflow on GitHub runners once to verify the direct
   conda-ship action path for all `cx` and `cxz` platforms.
-- Exercise the full release workflow before the next public release.
+- Exercise the full tag-driven release workflow before the next public release.
 
 ### Distribution Policy
 
 - Keep the default package set synchronized across release workflows,
-  `pyproject.toml`'s `cx-env`, and docs.
+  `pyproject.toml`'s `runtime` source environment, and docs.
 - Add `conda-exec` to the default package set once the intended new release is
   available on conda-forge.
-- Keep Homebrew, shell script, Docker, GitHub Releases, PyPI, and crates.io as
+- Keep Homebrew, shell script, Docker, GitHub Releases, and PyPI as
   distribution channels backed by conda-ship artifacts.
 
 ## Tracking Issues

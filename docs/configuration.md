@@ -1,124 +1,119 @@
 # Configuration
 
-## Build-time configuration
+## Build-Time Configuration
 
-The conda-express release and release-prep workflows pass this distribution
-package set to conda-ship when building `cx` and `cxz` artifacts:
+conda-express is a downstream distribution built by
+{external+conda-ship:doc}`conda-ship <index>`. The package set is maintained in
+the `runtime` source environment in [pyproject.toml](../pyproject.toml), and
+`[tool.conda-ship]` tells conda-ship which solved environment becomes the
+runtime:
 
 ```toml
-channels = ["conda-forge"]
-packages = [
-    "python >=3.12",
-    "conda >=25.1",
-    "conda-rattler-solver",
-    "conda-spawn >=0.1.0",
-    "conda-completion >=0.2.0",
-    "conda-pypi",
-    "conda-self",
-    "conda-global",
-    "conda-workspaces >=0.4.0",
-]
+[tool.conda-ship]
+runtime = "cx"
+delegate = "conda"
+layout = "online"
+source-environment = "runtime"
 exclude = ["conda-libmamba-solver"]
+docs-url = "https://jezdez.github.io/conda-express/"
+install-scheme = "conda-home"
+install-name = "express"
 ```
 
-### `channels`
+The release workflows override only `layout`:
 
-List of conda channels to solve against. Defaults to `conda-forge`.
+- `layout = "online"` builds `cx`
+- `layout = "embedded"` builds `cxz`
 
-### `packages`
+The source environment is solved and locked by Pixi. conda-ship derives the
+runtime lock from that committed source lock rather than accepting ad hoc
+package and channel lists in the workflow. See
+{external+conda-ship:doc}`source locks and runtime locks <explanation/source-locks-and-runtime-locks>`
+for the generic distinction between project input and runtime output.
 
-List of [MatchSpec](https://conda.io/projects/conda/en/latest/user-guide/concepts/pkg-specs.html)
-strings defining the packages to install in the base prefix.
+:::{note}
+This page documents conda-express's distribution configuration. To build a
+different runtime, use
+{external+conda-ship:doc}`conda-ship's configuration reference <reference/configuration>`
+instead of copying conda-express's defaults.
+:::
 
-### `exclude`
+## Runtime Package Set
 
-List of package names to exclude from the installation. conda-ship also removes any
-dependencies that are *exclusively* required by the excluded packages.
+The `runtime` source environment installs:
 
-### Where this configuration lives
+| Package | Role |
+|---|---|
+| `python >=3.12` | Python runtime for conda |
+| `conda >=25.1` | Package manager |
+| `conda-rattler-solver` | Default solver |
+| `conda-spawn >=0.1.0` | Subshell activation |
+| `conda-completion >=0.2.0` | Shell completion |
+| `conda-pypi` | PyPI interoperability |
+| `conda-self` | Base environment self-management |
+| `conda-global` | Global tool environments |
+| `conda-workspaces >=0.4.0` | Workspace manifests and tasks |
 
-There is no public `conda-express` build manifest and no `[tool.cx]` section in
-`pyproject.toml`. The distribution defaults for this repository are maintained in the
-release workflows and mirrored in the docs.
+`conda-libmamba-solver` is excluded from the derived runtime lock because
+conda-express uses `conda-rattler-solver`.
 
-`pyproject.toml` is used for Python packaging metadata and Pixi maintenance
-tasks for this repository. Its `cx-env` environment is a development aid that
-tracks the intended conda-express package set; it is not a runtime
-configuration file consumed by `cx`.
+## Install Location
 
-Custom package sets and new binary distributions should be built with conda-ship
-directly.
+The stamped install scheme is `conda-home` and the install name is `express`.
+That makes the default install path:
 
-## Runtime configuration
-
-### `.condarc`
-
-cx writes a `.condarc` into the prefix with these settings:
-
-```yaml
-solver: rattler
-auto_activate_base: false
-notify_outdated_conda: false
-show_channel_urls: true
-default_channels:
-  - conda-forge
+```text
+~/.conda/express
 ```
 
-### `.cx.json`
+Users can override the install path for a command with the runtime-level
+`--path` option:
 
-cx writes metadata about the installation into `.cx.json` at the prefix root:
-
-```json
-{
-  "version": "0.6.0",
-  "channels": ["conda-forge"],
-  "packages": ["python >=3.12", "conda >=25.1", "conda-rattler-solver"],
-  "excludes": ["conda-libmamba-solver"]
-}
+```bash
+cx --path /opt/cx bootstrap
+cx --path /opt/cx status
 ```
 
-This is used by `cx status` and by distribution tooling to detect cx-managed
-prefixes.
+`--path` is intentionally a runtime option, not build configuration. The
+published `cx` binary stays cross-platform while advanced users, CI jobs, and
+installer smoke tests can choose a local path at runtime.
 
-### `conda-meta/frozen`
+conda-ship owns the generic install scheme behavior and runtime ownership
+metadata. See
+{external+conda-ship:doc}`install locations and ownership <explanation/install-locations-and-ownership>`
+for the builder-level rules behind `conda-home`, `user-data`, install names,
+and prefix ownership checks.
 
-A [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker file prevents
-accidental modification of the base prefix:
+## Runtime Metadata
 
-```json
-{
-  "message": "This base environment is managed by cx.\nCreate a new environment instead: conda create -n myenv\nTo re-bootstrap: cx bootstrap --force\nTo override: pass --override-frozen-env"
-}
+Generated conda-ship runtimes write ownership metadata into each managed
+install path. `cx status`, `cx bootstrap --force`, and `cx uninstall` use that
+metadata to avoid taking over or deleting unrelated conda installations.
+
+The managed base environment is also protected with a
+[CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker after bootstrap.
+Day-to-day work should happen in named environments:
+
+```bash
+cx create -n analysis python=3.12 numpy pandas
+cx shell analysis
 ```
 
-## Customizing the build
-
-To change this repository's conda-express package set, update the distribution
-defaults in the release and release-prep workflows. For custom package sets or
-new distributions, use conda-ship directly instead of treating this repository as a
-generic builder.
-
-### Runtime environment variables
+## Runtime Environment Variables
 
 These environment variables control bootstrap behavior at runtime. They are
-particularly useful in native installer post-install scripts and CI pipelines.
+useful in native installer post-install scripts, container builds, and CI
+pipelines.
 
 | Variable | Effect |
 |---|---|
-| `CX_BUNDLE` | Directory of `.conda` / `.tar.bz2` archives to pre-populate the package cache from (equivalent to `--bundle`) |
-| `CX_OFFLINE` | Disable network access during bootstrap when set to any truthy value (equivalent to `--offline`). Values `0` and `false` are treated as unset |
+| `CX_BUNDLE` | Bundle directory containing `.conda` / `.tar.bz2` archives to pre-populate the package cache from, equivalent to `--bundle` |
+| `CX_OFFLINE` | Disable network access during bootstrap when set to any truthy value, equivalent to `--offline`. Values `0` and `false` are treated as unset |
 
 ```bash
-# Native installer post-install script example
 CX_BUNDLE=/Library/Application\ Support/cx/packages CX_OFFLINE=1 cx bootstrap
 ```
 
-## Default prefix
-
-The default installation prefix is `~/.cx`. Override it per-command with the
-`--prefix` flag:
-
-```bash
-cx bootstrap --prefix /opt/cx
-cx status --prefix /opt/cx
-```
+For custom package sets or new binary distributions, use
+{external+conda-ship:doc}`conda-ship <index>` directly instead of treating this
+repository as a generic builder.

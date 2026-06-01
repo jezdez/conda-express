@@ -7,22 +7,21 @@ distribution.
 ## Why cx?
 
 conda is traditionally installed via Anaconda Distribution, Miniconda, or
-Miniforge: trusted, widely used installer distributions. That path works well,
+Miniforge: widely used installer distributions. That path is well-established,
 but it also makes installation depend on a platform-specific installer and can
 leave users with a heavier base environment. `cx` also excludes
 `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv,
 libarchive, libcurl, spdlog, etc.) because it configures
 `conda-rattler-solver` instead.
 
-cx evolves that bootstrap path: a single Rust binary (7-11 MB) that bootstraps
-a minimal conda installation in seconds using a built-in runtime lock. No
-Python required to start; no installer framework; no shell profile
-modifications.
+cx evolves that bootstrap path: a single native Rust binary (7-11 MB) that
+bootstraps a managed conda base environment using a built-in runtime lock. No
+local Python installation or installer framework is required before bootstrap.
 
-For air-gapped or restricted-network environments, `cxz` goes further: it
-embeds all locked package archives directly into the binary (50-95 MB depending
-on platform). One file, zero network access; `cxz bootstrap` installs conda
-entirely from the embedded bundle. See {doc}`features` for details.
+For air-gapped or restricted-network environments, `cxz` embeds the locked
+package archives directly into the binary (50-95 MB depending on platform).
+One file, no separate package directory; `cxz bootstrap --offline` installs
+conda from the embedded bundle. See {doc}`features` for details.
 
 ## conda-rattler-solver
 
@@ -30,69 +29,31 @@ The [conda-rattler-solver](https://github.com/jaimergp/conda-rattler-solver)
 project is the key enabler for cx's solver strategy:
 
 - Dependencies: only `conda >=25.5.0` + `py-rattler >=0.21.0`
-- [py-rattler](https://pypi.org/project/py-rattler/) is on PyPI with wheels
-  for all major platforms (13-33 MB depending on platform, statically-compiled Rust bindings)
-- Uses [resolvo](https://github.com/mamba-org/resolvo), the fastest SAT solver
-  in the conda ecosystem
-- Same solver used by [pixi](https://pixi.sh), under active development in the
-  conda organization
+- [py-rattler](https://pypi.org/project/py-rattler/) is on PyPI with platform
+  wheels (13-33 MB depending on platform, statically-compiled Rust bindings)
+- Uses [resolvo](https://github.com/mamba-org/resolvo), the Rust solver also
+  used by [pixi](https://pixi.sh)
 
-**Advantages over conda-libmamba-solver:**
+**Why it fits cx:**
 
-- Pure wheel distribution — no libarchive, libsolv, CMake build issues
-- Single dependency (py-rattler) vs. complex C++ dependency chain
-- resolvo outperforms libsolv in benchmarks
+- avoids the libmamba/libsolv native dependency chain in the bootstrapped base
+- keeps the solver choice aligned with the rattler-based bootstrap path
+- still uses conda's plugin mechanism instead of replacing conda's CLI
 
 Because conda on conda-forge hard-depends on `conda-libmamba-solver`, cx
 uses a post-solve transitive dependency pruning algorithm to remove libmamba
-and its exclusive dependencies, reducing the install from ~125 to ~95
-packages (varies by platform).
+and its exclusive dependencies, reducing the install from roughly 125 packages
+to about 95-105 packages, depending on platform.
 
 ## What blocks conda itself on PyPI
 
-The conda community has explored publishing conda directly to PyPI. The
-[old conda 4.3.16 package](https://pypi.org/project/conda/) is yanked — the
-name is available. The main blockers:
+The conda community has explored publishing conda directly to PyPI. That work
+has separate constraints from cx: conda's own dependency set, solver plugin
+availability, and how conda should behave when installed by `pip`.
 
-1. **No solver on PyPI**: conda-libmamba-solver depends on libmambapy (C++
-   bindings). Solved by conda-rattler-solver.
-2. **pycosat still a hard dependency**: Needs to move to optional dependencies.
-3. **menuinst still a hard dependency**: Already runtime-optional but still
-   listed as required.
-
-conda already has a pip-specific entry point at `conda.cli.main_pip:main` and
-has commented out the libmamba dependency in its PyPI config.
-
-### conda's dependencies (all on PyPI)
-
-| Dependency | Type | PyPI Status |
-|---|---|---|
-| archspec | Pure Python | Available |
-| boltons | Pure Python | Available |
-| charset-normalizer | Pure Python | Available |
-| conda-package-handling | Pure Python | Available |
-| distro | Pure Python | Available |
-| frozendict | Pure Python | Available |
-| packaging | Pure Python | Available |
-| platformdirs | Pure Python | Available |
-| pluggy | Pure Python | Available |
-| **pycosat** | **C extension** | **Should be optional** |
-| requests | Pure Python | Available |
-| ruamel.yaml | C extension optional | Available with wheels |
-| setuptools | Pure Python | Available |
-| tqdm | Pure Python | Available |
-| truststore | Pure Python | Available |
-| zstandard | C extension | Available with platform wheels |
-
-### Plugin ecosystem on PyPI
-
-| Plugin | PyPI status |
-|---|---|
-| conda-pypi | 0.5.0 on PyPI and conda-forge |
-| conda-completion | conda-forge only |
-| conda-rattler-solver | Not yet (pure Python + py-rattler) |
-| conda-spawn | conda-forge only (pure Python) |
-| conda-self | conda-forge only (pure Python) |
+cx does not try to solve that upstream packaging question. It uses conda-forge
+packages to create a conda-managed base prefix, then delegates to the installed
+conda executable.
 
 ## Removing the classic solver (upstream)
 
@@ -107,18 +68,17 @@ Three PRs attempted to extract the classic (pycosat-based) solver:
 2. [PR #14167](https://github.com/conda/conda/pull/14167) (Aug 2024) —
    full extraction in favor of `conda-classic-solver` repo
 3. [PR #14170](https://github.com/conda/conda/pull/14170) (Aug 2024) —
-   most complete attempt (14 files modified). Marked stale Jan 2026.
+   broad extraction attempt touching the classic solver path.
 
 **Key blocker** (jaimergp, Jan 2025): *"We'll need to publish
 `conda-classic-solver` in both `defaults` and `conda-forge` before we can
 undo this."*
 
-### What needs to happen
+### Likely upstream work
 
-1. Revive PR #14170 or create a new PR based on it
-2. Publish conda-classic-solver to both `defaults` and `conda-forge`
-3. Move pycosat from conda's core deps to conda-classic-solver only
-4. Make solver a required plugin (remove fallback to pycosat)
+The exact plan belongs upstream in conda. At a high level, classic-solver
+extraction would likely require a packaged `conda-classic-solver`, dependency
+changes around `pycosat`, and a clear plugin requirement for solver behavior.
 
 ## Prior art: uniconda
 
@@ -138,9 +98,10 @@ binary embedding Python and conda together.
 ### Why cx doesn't need these patches
 
 The rattler approach installs conda as a real conda package into a real
-prefix — `__file__`, `sys.prefix`, all filesystem paths work normally.
+prefix, so conda sees standard filesystem paths such as `__file__` and
+`sys.prefix`.
 cx doesn't embed Python or conda into the binary; it bootstraps them into
 a standard prefix on first run. The `cxz` variant embeds the compressed
 package *archives* (not an unpacked Python), so the installed prefix is
-still a normal conda environment — just sourced from the binary instead
+still a standard conda environment — just sourced from the binary instead
 of the network.

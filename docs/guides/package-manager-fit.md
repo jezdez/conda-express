@@ -11,7 +11,7 @@ manager when that project manager owns the environment and lockfile.
 ## For conda users
 
 Use `cx` when you want the conda CLI, conda channels, conda packages, and conda
-plugins with a faster bootstrap path:
+plugins with a locked bootstrap path:
 
 ```bash
 cx create -n data python=3.12 numpy pandas
@@ -19,7 +19,7 @@ cx shell data
 ```
 
 The main differences from a traditional base installation are the frozen
-`~/.cx` base prefix and the `cx shell` activation model.
+`~/.conda/express` base prefix and the `cx shell` activation model.
 
 ## For Pixi users
 
@@ -50,7 +50,7 @@ packages, or mixed-language scientific environments.
 Using both is fine when the boundary is clear:
 
 - `uv` owns Python project environments such as `.venv`.
-- `cx` owns conda environments created under the `~/.cx` prefix.
+- `cx` owns conda environments created under the `~/.conda/express` prefix.
 
 ## For pip, Poetry, Hatch, PDM, and pipx users
 

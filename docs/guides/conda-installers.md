@@ -1,10 +1,10 @@
 # Alternative to Conda Installers
 
 [Anaconda Distribution](https://docs.conda.io/projects/conda/en/stable/user-guide/install/),
-Miniconda, and Miniforge are the familiar, trusted ways many users get conda.
-`cx` is not a demand to move away from them. It is an alternative bootstrap
-path for users who want a smaller native executable, a locked first install,
-and an opinionated base prefix.
+Miniconda, and Miniforge are the familiar ways many users get conda. `cx` is
+not a demand to move away from them. It is an alternative bootstrap path for
+users who want a native executable, a locked first install, and an opinionated
+base prefix.
 
 ## What stays familiar
 
@@ -19,20 +19,18 @@ cx env list
 ```
 
 The packages still come from conda channels. The default channel is
-`conda-forge`, and the installed prefix is a normal conda prefix on disk.
+`conda-forge`, and the installed prefix is a standard conda prefix on disk.
 
 ## What changes
 
 The base prefix is managed more strictly than a typical Anaconda Distribution,
 Miniconda, or Miniforge base:
 
-- `cx` bootstraps into `~/.cx` by default.
+- `cx` bootstraps into `~/.conda/express` by default.
 - The base prefix is frozen after bootstrap, so day-to-day work should happen
   in named environments.
-- Activation uses `cx shell ENV`, powered by conda-spawn, instead of
-  `conda activate`.
-- `conda init`, `conda activate`, and `conda deactivate` are intercepted with
-  guidance because they do not match the `cx` activation model.
+- Activation can use `cx shell ENV`, powered by conda-spawn, without requiring
+  `conda init`.
 
 ## Try cx side by side
 
@@ -68,7 +66,7 @@ cx shell analysis
 
 ## When to keep using an installer distribution
 
-Keep using a traditional installer when that is the trusted path for your
+Keep using a traditional installer when that is the approved path for your
 organization, classroom, cluster image, or vendor workflow. `cx` is most useful
-when you want the conda CLI with a smaller bootstrap artifact, fast first-run
-setup, a frozen base prefix, or an offline `cxz` binary.
+when you want the conda CLI with a smaller bootstrap artifact, a locked
+first-run setup, a frozen base prefix, or an offline `cxz` binary.

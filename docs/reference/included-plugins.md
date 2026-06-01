@@ -1,6 +1,6 @@
 # Included Plugins
 
-`cx` bootstraps conda with a small set of default plugins. These are part of
+`cx` bootstraps conda with a selected set of default plugins. These are part of
 the conda-express distribution policy, not conda-ship's generic builder
 behavior.
 
@@ -12,7 +12,7 @@ behavior.
 | `conda-spawn` | Subprocess-based activation | `cx shell ENV`, `conda spawn ENV` |
 | `conda-completion` | Shell completion support | `cx completion status`, `cx completion install --dry-run` |
 | `conda-pypi` | PyPI interoperability inside conda workflows | PyPI dependency handling through the conda plugin stack |
-| `conda-self` | Base environment self-management | `cx self update`, `conda self update` |
+| `conda-self` | Base environment self-management workflow | `cx self ...`, `conda self ...` |
 | `conda-global` | Isolated global tool environments | `cx global install ruff`, `cx global list` |
 | `conda-workspaces` | Project workspaces, tasks, and lockfiles | `cx workspace ...`, `cx task ...` |
 
@@ -24,10 +24,11 @@ behavior.
 The default set is meant to make a fresh conda installation useful without
 turning the base prefix into a project environment:
 
-- `conda-rattler-solver` keeps the base small by avoiding libmamba's native
-  dependency chain.
+- `conda-rattler-solver` avoids libmamba's native dependency chain in the
+  managed base.
 - `conda-spawn` gives users an activation workflow without `conda init`.
-- `conda-self` gives the managed base prefix an intended update path.
+- `conda-self` provides the plugin surface for managed base-prefix updates as
+  that workflow settles.
 - `conda-global` covers isolated command-line tools.
 - `conda-workspaces` covers project-level environments and tasks for users who
   want a conda-native workspace workflow.
@@ -48,7 +49,7 @@ that enables command completion for conda commands and installed conda plugin
 subcommands. Use `--dry-run` first to inspect the profile changes before
 writing them.
 
-## Activation policy
+## Activation Workflow
 
 Because `cx` includes `conda-spawn`, the conda-express activation model is:
 
@@ -57,8 +58,8 @@ cx shell myenv
 exit
 ```
 
-`cx activate`, `cx deactivate`, and `cx init` are disabled with guidance. See
-{doc}`cli` for the exact command behavior.
+`cx shell` is a runtime shortcut for `conda spawn`. Other conda commands are
+passed through to the installed conda executable after bootstrap.
 
 ## Workspace and tool commands
 

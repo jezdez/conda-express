@@ -14,11 +14,27 @@ Try `cx` side by side with existing conda installations and understand what
 changes.
 :::
 
+:::{grid-item-card} Upgrade from early cx
+:link: upgrade-from-early-cx
+:link-type: doc
+
+Move from early `~/.cx` installs to the current `~/.conda/express` managed
+prefix.
+:::
+
 :::{grid-item-card} Offline and air-gapped installs
 :link: offline-and-airgapped
 :link-type: doc
 
-Choose between `cxz`, external package bundles, and installer-script options.
+Choose between `cxz`, bundle directories, and installer-script options.
+:::
+
+:::{grid-item-card} Verify release artifacts
+:link: verify-release-artifacts
+:link-type: doc
+
+Check downloaded binaries, checksums, attestations, runtime locks, and
+metadata before use or transfer.
 :::
 
 :::{grid-item-card} Pixi, uv, and Python package managers
@@ -42,6 +58,8 @@ See which plugin commands and workflows are available after bootstrap.
 :hidden:
 
 conda-installers
+upgrade-from-early-cx
 offline-and-airgapped
+verify-release-artifacts
 package-manager-fit
 ```

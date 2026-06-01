@@ -21,7 +21,7 @@ This repository keeps the pieces that make `cx` a specific conda distribution:
 - conda-spawn activation policy
 - frozen base-prefix policy
 - install scripts and user-facing installation docs
-- Docker, Homebrew, PyPI, crates.io, and GitHub Release packaging
+- Docker, Homebrew, PyPI, and GitHub Release packaging
 - release and release-prep workflows for this repository's `cx` / `cxz` artifacts
 
 The generic build implementation is deliberately outside this repository.
@@ -44,9 +44,15 @@ metadata, and the public builder interface. See
 for the builder/runtime side of the split. The conda-express release workflows
 call conda-ship with the `cx` distribution defaults.
 
+For concrete builder workflows, start with
+{external+conda-ship:doc}`conda-ship's GitHub Actions guide <how-to/build-in-github-actions>`
+or
+{external+conda-ship:doc}`local build guide <how-to/build-locally>`.
+
 ## What this means for users
 
-If you want a fast conda distribution, install `cx` or `cxz` from this project.
+If you want a managed conda distribution with a small bootstrap artifact,
+install `cx` or `cxz` from this project.
 
 If you want to build your own `cx`-like binary, use
 {external+conda-ship:doc}`conda-ship <index>` directly. The result should have its own
@@ -60,3 +66,6 @@ packaging, or `cx` distribution policy belong here.
 
 Changes to generic runtime behavior, bundle layouts, lockfile derivation,
 artifact metadata, or builder interfaces belong in conda-ship.
+
+Changes to conda-express release policy, artifact verification wording,
+Homebrew/PyPI/Docker packaging, or the included plugin set belong here.
