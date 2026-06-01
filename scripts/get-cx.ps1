@@ -57,7 +57,7 @@ function Get-TargetTriple {
         $p = $t.GetProperty("OSArchitecture")
         switch ($p.GetValue($null).ToString()) {
             "X64"   { return "x86_64-pc-windows-msvc" }
-            "Arm64" { return "aarch64-pc-windows-msvc" }
+            "Arm64" { throw "cx does not publish a Windows ARM64 binary yet." }
         }
     } catch {
         Write-Verbose "Falling back to Is64BitOperatingSystem"
@@ -95,17 +95,46 @@ function Update-UserPath {
     param ([string] $Dir)
 
     $RegKey = (Get-Item -Path 'HKCU:').OpenSubKey('Environment', $true)
+    if (-not $RegKey) {
+        throw "Could not open the current user's Environment registry key."
+    }
+
+    function Normalize-PathEntry {
+        param ([string] $PathEntry)
+
+        if (-not $PathEntry) {
+            return ""
+        }
+
+        $ExpandedPath = [System.Environment]::ExpandEnvironmentVariables($PathEntry)
+        try {
+            $ExpandedPath = [System.IO.Path]::GetFullPath($ExpandedPath)
+        } catch {
+            # Keep the original expanded value if .NET cannot normalize it.
+        }
+
+        return $ExpandedPath.TrimEnd(
+            [System.IO.Path]::DirectorySeparatorChar,
+            [System.IO.Path]::AltDirectorySeparatorChar
+        )
+    }
+
     $CurrentPath = $RegKey.GetValue(
         'PATH', '',
         [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames
     )
 
-    if ($CurrentPath -like "*$Dir*") {
+    $NormalizedDir = Normalize-PathEntry $Dir
+    $CurrentEntries = $CurrentPath -split ';' |
+        ForEach-Object { Normalize-PathEntry $_ } |
+        Where-Object { $_ }
+
+    if ($CurrentEntries -contains $NormalizedDir) {
         Write-Host "  $Dir is already in PATH"
         return
     }
 
-    $NewPath = "$Dir;$CurrentPath"
+    $NewPath = if ($CurrentPath) { "$Dir;$CurrentPath" } else { $Dir }
     $Kind = if ($NewPath.Contains('%')) {
         [Microsoft.Win32.RegistryValueKind]::ExpandString
     } else {
@@ -127,7 +156,7 @@ if ($Version -eq "latest") {
     $DownloadUrl = "https://github.com/$Repo/releases/latest/download/$AssetName"
 } else {
     $V = $Version -replace '^v', ''
-    $DownloadUrl = "https://github.com/$Repo/releases/download/v$V/$AssetName"
+    $DownloadUrl = "https://github.com/$Repo/releases/download/$V/$AssetName"
 }
 
 Write-Host ""
@@ -179,6 +208,14 @@ Write-Host "  Installed cx to $DestPath"
 # Update PATH
 if (-not $NoPathUpdate) {
     Update-UserPath $InstallDir
+}
+
+$LegacyPrefix = Join-Path $HOME ".cx"
+if (Test-Path $LegacyPrefix) {
+    Write-Warning "Found legacy cx prefix at $LegacyPrefix"
+    Write-Warning "Current cx bootstraps into $HOME\.conda\express."
+    Write-Warning "Keep $LegacyPrefix until you have moved any environments you still need."
+    Write-Warning "Upgrade guide: https://jezdez.github.io/conda-express/guides/upgrade-from-early-cx/"
 }
 
 # Bootstrap
