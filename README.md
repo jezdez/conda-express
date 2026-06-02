@@ -7,8 +7,8 @@
 
 A single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
-conda-express is Jannis Leidel's distribution project for the `cx` and `cxz`
-binaries. It is not an official conda distribution.
+conda-express is the distribution project for the `cx` and `cxz` binaries. It
+is not an official conda distribution.
 
 cx offers an alternative to the Anaconda Distribution, Miniconda, and Miniforge constructor-style installer pattern: a 7-11 MB native binary that bootstraps a managed conda base environment from a locked package set.
 
@@ -39,7 +39,7 @@ cx installs a managed conda stack from conda-forge:
 | Package | Role |
 |---|---|
 | python >= 3.12 | Runtime |
-| conda == 26.5.0 | Package manager |
+| conda == 26.5.2 | Package manager |
 | conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-completion >= 0.2.0 | Shell completion support |
@@ -63,9 +63,9 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 ## Versioning
 
 conda-express versions follow the conda version in the runtime lock. For
-example, `conda-express 26.5.0` bootstraps conda `26.5.0`. If conda-express
+example, `conda-express 26.5.2` bootstraps conda `26.5.2`. If conda-express
 needs a packaging-only rebuild without changing the bundled conda version, it
-uses a post-release version such as `26.5.0.post1`.
+uses a post-release version such as `26.5.2.post1`.
 
 ## Installation
 

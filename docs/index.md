@@ -8,12 +8,12 @@ installed `conda` executable.
 `cxz` is the offline variant. It carries the locked package archives in the
 binary so it can bootstrap without network access.
 
-`conda-express` is Jannis Leidel's distribution project for the `cx` and `cxz`
-binaries, not an official conda distribution. Custom bootstrap binaries are built with
+`conda-express` is the distribution project for the `cx` and `cxz` binaries,
+not an official conda distribution. Custom bootstrap binaries are built with
 {external+conda-ship:doc}`conda-ship <index>`.
 
 Release versions follow the conda runtime version in the built-in lock. For
-example, `cx 26.5.0` bootstraps conda `26.5.0`.
+example, `cx 26.5.2` bootstraps conda `26.5.2`.
 
 ## Install `cx`
 

@@ -1,6 +1,6 @@
 # Project scope
 
-`conda-express` is Jannis Leidel's distribution repo for `cx` and `cxz`.
+`conda-express` is the distribution repo for `cx` and `cxz`.
 
 It is not an official conda distribution and it is not the generic builder.
 The generic builder responsibility lives in
@@ -8,7 +8,7 @@ The generic builder responsibility lives in
 
 | Project | Role |
 |---|---|
-| `conda-express` | Jannis Leidel's opinionated native conda distribution that publishes `cx` and `cxz` |
+| `conda-express` | Opinionated native conda distribution that publishes `cx` and `cxz` |
 | {external+conda-ship:doc}`conda-ship <index>` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
 
 ## What conda-express owns
