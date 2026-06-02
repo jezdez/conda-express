@@ -262,6 +262,25 @@ For custom package sets or new distributions, use
 workflow is release preparation for this repository's `cx` and `cxz`
 binaries, not a generic downstream builder interface.
 
+## Recording demos
+
+The checked-in GIF and MP4 demos are generated from `demos/*.tape` with
+[VHS](https://github.com/charmbracelet/vhs). Record them against current
+conda-express binaries, not an older `cx` installed on `PATH`:
+
+```bash
+CX_BIN=/path/to/cx CXZ_BIN=/path/to/cxz pixi run demos
+```
+
+To refresh one demo:
+
+```bash
+CX_BIN=/path/to/cx pixi run demos quickstart
+```
+
+The tapes run in a temporary `HOME` and use the current default install path,
+`~/.conda/express`.
+
 ## Uninstalling
 
 To remove the conda prefix and all environments managed by cx:

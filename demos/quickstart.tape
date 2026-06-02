@@ -3,14 +3,8 @@ Source demos/_settings.tape
 Output demos/quickstart.gif
 Output demos/quickstart.mp4
 
-Hide
-Type `export PS1="$DEMO_PS1" && mkdir -p /tmp/.demo-home && echo 'PS1="$ "' > /tmp/.demo-home/.bash_profile && export HOME=/tmp/.demo-home`
-Enter
-Wait /\$/
-Type `export PATH="$PWD/target/release:$HOME/.cx/condabin:$PATH"`
-Enter
-Wait /\$/
-Type `cx bootstrap --force 2>/dev/null && cx create -n demo python=3.12 numpy -y -q 2>/dev/null && cx remove -n demo --all -y -q 2>/dev/null && rm -rf "$HOME/.cx"`
+Source demos/_cx_setup.tape
+Type `cx bootstrap --force 2>/dev/null && cx create -n demo python=3.12 numpy -y -q 2>/dev/null && cx remove -n demo --all -y -q 2>/dev/null && rm -rf "$CX_HOME"`
 Enter
 Wait /\$/
 Type "clear"
