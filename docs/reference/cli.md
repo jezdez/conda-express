@@ -103,7 +103,7 @@ cx status
 :class: dropdown
 
 ```text
-cx 26.5.0
+cx 26.5.2
   path:      /Users/you/.conda/express
   channels:  https://conda.anaconda.org/conda-forge/
   packages:  python, conda, conda-rattler-solver, ...

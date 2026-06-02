@@ -1,18 +1,43 @@
 # Changelog
 
-## 26.5.0 (unreleased)
+## 26.5.2 (unreleased)
 
 ### Versioning
 
-- conda-express now follows the conda runtime version. The `26.5.0` release
-  bootstraps conda `26.5.0`; conda-express-only rebuilds should use
-  post-release versions such as `26.5.0.post1`.
+- conda-express now follows the conda runtime version. The `26.5.2` release
+  bootstraps conda `26.5.2`.
+- conda-express-only rebuilds should use post-release versions such as
+  `26.5.2.post1`.
 
 ### Runtime
 
-- Pin the runtime conda package exactly to `26.5.0` and refresh the runtime
-  lockfile across all supported platforms.
-- Require `conda-workspaces >=0.5.0` in the default runtime package set.
+- Pin the runtime conda package exactly to `26.5.2` across linux-64,
+  linux-aarch64, osx-64, osx-arm64, and win-64.
+- Keep the managed runtime prefix at `~/.conda/express` and keep the base
+  prefix protected with the CEP 22 frozen marker after bootstrap.
+- Include `conda-completion >=0.2.0` and `conda-workspaces >=0.5.0` in the
+  default runtime package set, alongside `conda-rattler-solver`,
+  `conda-spawn`, `conda-pypi`, `conda-self`, and `conda-global`.
+
+### Distribution
+
+- Build the published `cx` and `cxz` runtime binaries with conda-ship instead
+  of the old repository-local Rust builder.
+- Keep conda-express focused on Jannis Leidel's `cx` / `cxz` distribution.
+  Custom runtime builds now belong in conda-ship.
+- Continue publishing GitHub Release artifacts, installer scripts, Docker
+  images, the Homebrew tap formula, and PyPI wheels.
+- Stop publishing new crates.io releases.
+- Attest release artifacts before publishing the immutable GitHub Release.
+
+### Upgrade Notes
+
+- Early `cx` releases used `~/.cx`; current releases use `~/.conda/express`.
+  Upgrading the binary does not migrate that old prefix. Keep `~/.cx` until
+  you have recreated or archived any environments you still need, then remove
+  it manually.
+- If an old Cargo-installed `cx` is still earlier on `PATH`, remove it and
+  install `cx` through one of the current distribution channels.
 
 ### Installer Scripts
 
@@ -20,25 +45,29 @@
   bootstrapping, so scripted offline installs use the documented bundle and
   network settings.
 
+### Documentation
+
+- Rework the docs around conda-express as a distribution built with
+  conda-ship, with conda-ship linked as the tool for custom runtimes.
+- Add focused guides for installer-style conda distributions, offline and
+  air-gapped use, release artifact verification, and upgrading from early `cx`
+  releases.
+
 ## 0.6.0 (2026-05-06)
-
-Generic builder changes from this release now live in
-[`conda-ship`](https://github.com/jezdez/conda-ship). See the `conda-ship` changelog for
-the moved `cx-build`, lock derivation, bundle, and build pipeline history.
-
-### Upgrade Notes
-
-- Current `cx` releases bootstrap into `~/.conda/express`. Early releases used
-  `~/.cx`; upgrading the binary does not migrate that old prefix. Keep `~/.cx`
-  until you have recreated or archived any environments you still need, then
-  remove it manually.
-- conda-express no longer publishes new releases to crates.io. Use Homebrew,
-  the installer scripts, GitHub Releases, Docker, or PyPI instead.
 
 ### Features
 
+- **Slim `build.rs`** — Replace the 440-line `build.rs` with a small script
+  that copies pre-generated `cx.lock` and `payload.tar.zst` to `$OUT_DIR`,
+  reducing duplicate build-dependency compilation.
+- **`cx-build` crate** — Add an internal build tool with `prepare`, `payload`,
+  and `configure` subcommands for deriving `cx.lock`, downloading package
+  archives, and configuring custom builds.
+- **`cx-env` Pixi feature** — Define the bootstrap package set as a Pixi
+  environment so `pixi lock` solves dependencies instead of `build.rs`.
 - **`conda-global`** — Added to the default package set alongside existing conda plugins.
 - **`conda-workspaces >=0.4.0`** — Added to the default package set with version pin.
+- **sccache** — Local and CI build caching via `RUSTC_WRAPPER=sccache`.
 
 ### Fixes
 
@@ -47,10 +76,21 @@ the moved `cx-build`, lock derivation, bundle, and build pipeline history.
 - Precompile Python bytecode after bootstrap to avoid first-run `.pyc` compilation delays.
 - Remove unused `default_channels` from generated `.condarc`.
 - Pin `reqwest-middleware` and `sha2` versions to match rattler's transitive requirements.
+- Fix `getrandom` 0.3 usage in cx-wasm to match ahash's transitive dependency.
+- Fix JupyterLite `yarn.lock` TypeScript compatibility patch hash.
+
+### Build
+
+- Move exclude filtering from runtime to build time; the `cx` binary trusts its
+  pre-filtered `cx.lock`.
+- Remove `--exclude` and `--no-exclude` from `cx bootstrap`.
+- Update `action.yml` to use the `cx-build configure`, `pixi lock`,
+  `cx-build prepare`, and `cargo build` pipeline.
+- Rename the `xtask` crate to `cx-build`.
 
 ### Docs
 
-- Updated `DESIGN.md`, `README.md`, `docs/configuration.md`, and `docs/index.md` to reflect `conda-global` addition and updated version pins.
+- Updated `DESIGN.md`, `README.md`, `docs/configuration.md`, and `docs/index.md` to reflect `cx-build` rename, `conda-global` addition, and updated version pins.
 - Updated stale size and package count figures across all docs: lockfile 39 KB → ~130 KB, package counts 86/113 → ~95/~125, py-rattler wheel sizes ~28-31 MB → 13-33 MB.
 - Embedded remaining demo GIFs in docs and README.
 - Added VHS demos for conda-workspaces, quickstart, status, and passthrough.
@@ -58,18 +98,19 @@ the moved `cx-build`, lock derivation, bundle, and build pipeline history.
 
 ### CI
 
-- Build releases from tags by creating the GitHub release only after the
-  conda-ship-built binaries and PyPI wheels have completed. Runtime artifacts
-  are attested before upload, and immutable releases are published once instead
-  of being modified after publication.
 - Allow Codecov upload to fail on PRs.
 - Add `CHANGELOG.md` and `PLAN.md` to docs CI paths filter; drop release trigger from docs workflow.
 - Only deploy GitHub Pages from `main` branch.
-- Add Dependabot configuration for GitHub Actions and pip.
+- Add Dependabot configuration for GitHub Actions, Cargo, npm, and pip.
+- Fix `CX_EMBED_PAYLOAD` env var for Windows PowerShell compatibility.
+- Scope `cargo publish` to the `conda-express` crate only.
+- Make Trivy CVE scan non-blocking for upstream base image vulnerabilities.
+- Enable sccache GitHub Actions cache backend for persistent build caching.
 
 ### Dependencies
 
 - Bump rattler ecosystem and other Rust dependencies.
+- Bump npm dependencies in cx-jupyterlite.
 - Bump GitHub Actions to latest versions.
 
 ## 0.5.3 (2026-03-31)

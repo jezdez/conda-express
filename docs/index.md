@@ -13,7 +13,7 @@ binaries, not an official conda distribution. Custom bootstrap binaries are buil
 {external+conda-ship:doc}`conda-ship <index>`.
 
 Release versions follow the conda runtime version in the built-in lock. For
-example, `cx 26.5.0` bootstraps conda `26.5.0`.
+example, `cx 26.5.2` bootstraps conda `26.5.2`.
 
 ## Install `cx`
 

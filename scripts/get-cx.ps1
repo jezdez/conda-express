@@ -28,7 +28,7 @@
 .EXAMPLE
     irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 .EXAMPLE
-    & { $Version = "26.5.0"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex }
+    & { $Version = "26.5.2"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex }
 .LINK
     https://github.com/jezdez/conda-express
 #>
