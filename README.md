@@ -7,8 +7,8 @@
 
 A single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
-conda-express is Jannis Leidel's distribution project for the `cx` and `cxz`
-binaries. It is not an official conda distribution.
+conda-express is the distribution project for the `cx` and `cxz` binaries. It
+is not an official conda distribution.
 
 cx offers an alternative to the Anaconda Distribution, Miniconda, and Miniforge constructor-style installer pattern: a 7-11 MB native binary that bootstraps a managed conda base environment from a locked package set.
 

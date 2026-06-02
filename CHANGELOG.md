@@ -23,7 +23,7 @@
 
 - Build the published `cx` and `cxz` runtime binaries with conda-ship instead
   of the old repository-local Rust builder.
-- Keep conda-express focused on Jannis Leidel's `cx` / `cxz` distribution.
+- Keep conda-express focused on the `cx` / `cxz` distribution.
   Custom runtime builds now belong in conda-ship.
 - Continue publishing GitHub Release artifacts, installer scripts, Docker
   images, the Homebrew tap formula, and PyPI wheels.
