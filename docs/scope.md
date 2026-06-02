@@ -71,3 +71,24 @@ artifact metadata, or builder interfaces belong in conda-ship.
 
 Changes to conda-express release policy, artifact verification wording,
 Homebrew/PyPI/Docker packaging, or the included plugin set belong here.
+
+## Developer Workflows
+
+### Recording demos
+
+The checked-in GIF and MP4 demos are generated from `demos/*.tape` with
+[VHS](https://github.com/charmbracelet/vhs). Record them against current
+conda-express binaries, not an older `cx` installed on `PATH`:
+
+```bash
+CX_BIN=/path/to/cx CXZ_BIN=/path/to/cxz pixi run demos
+```
+
+To refresh one demo:
+
+```bash
+CX_BIN=/path/to/cx pixi run demos quickstart
+```
+
+The tapes run in a temporary `HOME` and use the current default install path,
+`~/.conda/express`.
