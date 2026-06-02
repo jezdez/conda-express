@@ -11,18 +11,6 @@ updates:
         patterns:
           - "*"
 
-  - package-ecosystem: cargo
-    directory: /
-    schedule:
-      interval: weekly
-    cooldown:
-      default-days: 7
-      semver-major-days: 21
-    groups:
-      rust:
-        patterns:
-          - "*"
-
   - package-ecosystem: pip
     directory: /
     schedule:
@@ -32,5 +20,16 @@ updates:
       semver-major-days: 21
     groups:
       python:
+        patterns:
+          - "*"
+
+  - package-ecosystem: docker
+    directory: /docker
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+    groups:
+      docker:
         patterns:
           - "*"

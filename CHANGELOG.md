@@ -3,8 +3,17 @@
 ## 0.6.0 (2026-05-06)
 
 Generic builder changes from this release now live in
-[`pronto`](https://github.com/jezdez/conda-pronto). See the `pronto` changelog for
+[`conda-ship`](https://github.com/jezdez/conda-ship). See the `conda-ship` changelog for
 the moved `cx-build`, lock derivation, bundle, and build pipeline history.
+
+### Upgrade Notes
+
+- Current `cx` releases bootstrap into `~/.conda/express`. Early releases used
+  `~/.cx`; upgrading the binary does not migrate that old prefix. Keep `~/.cx`
+  until you have recreated or archived any environments you still need, then
+  remove it manually.
+- conda-express no longer publishes new releases to crates.io. Use Homebrew,
+  the installer scripts, GitHub Releases, Docker, or PyPI instead.
 
 ### Features
 
@@ -29,10 +38,14 @@ the moved `cx-build`, lock derivation, bundle, and build pipeline history.
 
 ### CI
 
+- Build releases from tags by creating the GitHub release only after the
+  conda-ship-built binaries and PyPI wheels have completed. Runtime artifacts
+  are attested before upload, and immutable releases are published once instead
+  of being modified after publication.
 - Allow Codecov upload to fail on PRs.
 - Add `CHANGELOG.md` and `PLAN.md` to docs CI paths filter; drop release trigger from docs workflow.
 - Only deploy GitHub Pages from `main` branch.
-- Add Dependabot configuration for GitHub Actions, Cargo, npm, and pip.
+- Add Dependabot configuration for GitHub Actions and pip.
 
 ### Dependencies
 

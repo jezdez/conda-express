@@ -6,7 +6,7 @@ platforms:
 - name: osx-arm64
 - name: win-64
 environments:
-  cx-env:
+  runtime:
     channels:
     - url: https://conda.anaconda.org/conda-forge/
     packages:

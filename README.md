@@ -4,41 +4,40 @@
 [![Docs](https://github.com/jezdez/conda-express/actions/workflows/docs.yml/badge.svg)](https://jezdez.github.io/conda-express/)
 [![License](https://img.shields.io/github/license/jezdez/conda-express)](https://github.com/jezdez/conda-express/blob/main/LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/conda-express)](https://pypi.org/project/conda-express/)
-[![Crates.io](https://img.shields.io/crates/v/conda-express)](https://crates.io/crates/conda-express)
 
-A lightweight, single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
+A single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
-cx replaces the miniconda/constructor installation pattern with a 7-11 MB static binary that bootstraps a fully functional conda environment in seconds.
+cx offers an alternative to the Anaconda Distribution, Miniconda, and Miniforge constructor-style installer pattern: a 7-11 MB native binary that bootstraps a managed conda base environment from a locked package set.
 
 ## Quick start
 
 ![Bootstrap conda, create an environment, and activate it](demos/quickstart.gif)
 
 ```bash
-# Bootstrap a conda installation (first run only, ~3–5 s)
+# Bootstrap a conda installation (first run only)
 cx bootstrap
 
-# Use conda normally — cx delegates transparently
+# Run conda commands through cx
 cx install -n myenv numpy pandas
 cx create -n science python=3.12 scipy
 
-# Activate environments using conda-spawn (no shell init needed)
+# Activate environments using conda-spawn, without conda init
 cx shell myenv
 ```
 
-On first use, cx automatically installs conda and its plugins into `~/.cx` from
-the built-in runtime lock. Subsequent invocations hand off directly to the
-installed `conda` binary with no overhead.
+On first use, cx automatically installs conda and its plugins into `~/.conda/express` from
+the built-in runtime lock. Subsequent invocations hand off to the installed
+`conda` binary.
 
 ## What gets installed
 
-cx installs a minimal conda stack from conda-forge:
+cx installs a managed conda stack from conda-forge:
 
 | Package | Role |
 |---|---|
 | python >= 3.12 | Runtime |
 | conda >= 25.1 | Package manager |
-| conda-rattler-solver | Rust-based solver (replaces libmamba) |
+| conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-completion >= 0.2.0 | Shell completion support |
 | conda-pypi | PyPI interoperability |
@@ -46,13 +45,23 @@ cx installs a minimal conda stack from conda-forge:
 | conda-global | Global tool installation and PATH management |
 | [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.4.0 | Multi-environment workspace and task management |
 
-The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default, reducing the install size significantly.
+See the [included plugins reference](https://jezdez.github.io/conda-express/reference/included-plugins/)
+for the commands and workflows these packages add.
+
+Shell completion is available through the included `conda-completion` plugin:
+
+```bash
+cx completion status
+cx completion install --dry-run
+```
+
+The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default because cx configures `conda-rattler-solver`.
 
 ## Installation
 
 ### Homebrew (recommended)
 
-The easiest way to install on macOS and Linux:
+Homebrew is the recommended install path on macOS and Linux:
 
 ```bash
 brew tap jezdez/conda-express https://github.com/jezdez/conda-express
@@ -78,9 +87,12 @@ powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-expres
 The script detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx bootstrap`. Customize with environment variables:
 
 - `CX_INSTALL_DIR` — where to place the binary (default: `~/.local/bin` or `%USERPROFILE%\.local\bin`)
-- `CX_VERSION` — specific version to install (default: `latest`)
+- `CX_VERSION` — specific version to install without a `v` prefix (default: `latest`)
 - `CX_NO_PATH_UPDATE` — set to skip shell profile / PATH modification
 - `CX_NO_BOOTSTRAP` — set to skip running `cx bootstrap`
+- `CX_SKIP_VERIFY` — set to skip checksum verification
+- `CX_BUNDLE` — bundle directory used by `cx bootstrap`
+- `CX_OFFLINE` — set to force offline bootstrap
 
 ### From GitHub Releases
 
@@ -95,7 +107,9 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
 
-Each file has a matching `.sha256` checksum and GitHub Artifact Attestation:
+Each file has matching `.sha256`, `.info.json`, `.packages.txt`, and
+`.runtime.lock` files. Release artifacts are also covered by GitHub Artifact
+Attestations:
 
 ```bash
 gh attestation verify ./cx-x86_64-unknown-linux-gnu \
@@ -103,19 +117,32 @@ gh attestation verify ./cx-x86_64-unknown-linux-gnu \
   --signer-workflow jezdez/conda-express/.github/workflows/release.yml
 ```
 
+See the [artifact verification guide](https://jezdez.github.io/conda-express/guides/verify-release-artifacts/)
+for checksum, metadata, runtime lock, and air-gapped transfer checks.
+
 ### Docker
 
-A minimal, hardened multi-arch image (~37 MB) is published to GHCR on every release:
+A multi-arch image is published to GHCR on every release:
 
 ```bash
-docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express bootstrap
+docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express bootstrap
 ```
 
-The image runs as non-root (uid 65532), works with `--read-only`, and includes provenance attestations and SBOMs. Docker Desktop on macOS and Windows automatically selects the right architecture (linux/amd64 or linux/arm64).
+The image runs as non-root (uid 65532), can run with a read-only root
+filesystem when the managed prefix is mounted as a writable volume, and
+includes provenance attestations and SBOMs. Docker Desktop on macOS and
+Windows automatically selects the right architecture (linux/amd64 or
+linux/arm64).
 
 ```bash
-# Run conda commands through cx
-docker run --rm -v cx-data:/home/nonroot/.cx ghcr.io/jezdez/conda-express create -n myenv python=3.12
+docker run --rm --read-only --tmpfs /tmp \
+  -v cx-data:/home/nonroot/.conda/express \
+  ghcr.io/jezdez/conda-express status
+```
+
+```bash
+# Run a conda command through cx
+docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express create -n myenv python=3.12
 ```
 
 Use as a container in CI (GitHub Actions):
@@ -134,100 +161,95 @@ Use as a base for multi-stage application builds:
 FROM ghcr.io/jezdez/conda-express:latest AS conda-builder
 RUN cx bootstrap && cx create -n app python numpy pandas
 FROM gcr.io/distroless/cc-debian12:nonroot
-COPY --from=conda-builder /home/nonroot/.cx/envs/app /opt/conda
+COPY --from=conda-builder /home/nonroot/.conda/express/envs/app /opt/conda
 ```
 
-### PyPI and crates.io
+### PyPI
 
 ```bash
 pip install conda-express
 ```
 
-```bash
-cargo install conda-express
-```
+The PyPI package installs the `cx` release binary built with conda-ship for
+your platform.
 
-Both packages install the `cx` release binary built with conda-pronto for your platform.
+## Upgrading from early releases
+
+Current `cx` releases bootstrap into `~/.conda/express`. Early releases used
+`~/.cx`; upgrading the binary does not migrate that prefix automatically. Keep
+`~/.cx` until you have recreated or archived any environments you still need.
+If an old Cargo-installed `cx` is still on your `PATH`, remove it because
+conda-express no longer publishes new crates.io releases.
+
+See the [upgrade guide](https://jezdez.github.io/conda-express/guides/upgrade-from-early-cx/)
+for commands to export old environments, bootstrap the new prefix, and remove
+the old directory safely.
 
 ## Reproducing distribution artifacts
 
-Official `cx` and `cxz` artifacts are built with
-[conda-pronto](https://github.com/jezdez/conda-pronto). This repository keeps the
+The `cx` and `cxz` artifacts published from this repository are built with
+[conda-ship](https://github.com/jezdez/conda-ship). This repository keeps the
 conda-express distribution defaults and delegates the generic runtime and
-builder implementation to conda-pronto.
+builder implementation to conda-ship.
 
-Use this repository's release workflow to reproduce official conda-express
+Use this repository's release workflow to reproduce these conda-express
 artifacts. For custom package sets, binary names, or release channels, use
-[conda-pronto](https://github.com/jezdez/conda-pronto) directly.
+[conda-ship](https://github.com/jezdez/conda-ship) directly.
 
 ## Configuration
 
-The conda-express distribution package set is:
+The conda-express runtime is defined in `pyproject.toml`. Pixi solves the
+`runtime` source environment, and conda-ship derives the runtime lock from that
+committed lockfile:
 
 ```toml
-channels = ["conda-forge"]
-packages = [
-    "python >=3.12",
-    "conda >=25.1",
-    "conda-rattler-solver",
-    "conda-spawn >=0.1.0",
-    "conda-completion >=0.2.0",
-    "conda-pypi",
-    "conda-self",
-    "conda-global",
-    "conda-workspaces >=0.4.0",
-]
+[tool.conda-ship]
+runtime = "cx"
+delegate = "conda"
+layout = "online"
+source-environment = "runtime"
 exclude = ["conda-libmamba-solver"]
+docs-url = "https://jezdez.github.io/conda-express/"
+install-scheme = "conda-home"
+install-name = "express"
 ```
 
 ## CLI reference
 
 ```
 cx bootstrap [OPTIONS]           Bootstrap a fresh conda installation
-  --force                        Re-bootstrap even if prefix exists
-  --prefix DIR                   Target directory (default: ~/.cx)
-  --channel CH                   Channels (default: conda-forge)
-  --package PKG                  Additional packages to install
-  --exclude PKG                  Packages to exclude (default: conda-libmamba-solver)
-  --no-exclude                   Disable default exclusions
-  --no-lock                      Ignore built-in runtime lock, do a live solve
-  --lockfile PATH                Use an external lockfile instead
+  --force                        Re-bootstrap the managed install path
+  --bundle DIR                   Use a bundle directory
+  --offline                      Disable network access during bootstrap
 
-cx status [--prefix DIR]         Show cx installation status
+cx --path DIR <command>           Use a custom install path
+cx status                         Show cx installation status
 cx shell [ENV]                   Alias for conda spawn (activate via subshell)
-cx uninstall [OPTIONS]           Remove cx, conda prefix, and all environments
-  --prefix DIR                   Target directory (default: ~/.cx)
+cx uninstall [OPTIONS]           Remove the managed install path and environments
   -y, --yes                      Skip confirmation prompt
 
 cx help                          Getting-started guide
 cx <conda-args>                  Passed through to conda
 ```
 
-### Disabled commands
-
-cx uses conda-spawn instead of traditional shell-based activation. The following commands are intentionally disabled:
-
-| Command | Instead |
-|---|---|
-| `conda activate` / `deactivate` | `cx shell myenv` |
-| `conda init` | Add `condabin` to your PATH (see below) |
-
 ### Frozen base prefix
 
-The `~/.cx` prefix is protected with a [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker after bootstrap. This prevents accidental modification of the base environment (e.g., `conda install numpy` into base). Users should create named environments for their work:
+The `~/.conda/express` prefix is protected with a [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker after bootstrap. This prevents accidental modification of the base environment (e.g., `conda install numpy` into base). Users should create named environments for their work:
 
 ```bash
 cx create -n myenv numpy pandas
 cx shell myenv
 ```
 
-Updating the base installation is handled by `conda self update` (via conda-self).
+For now, update the base installation by re-bootstrapping with
+`cx bootstrap --force`. The included `conda-self` plugin is intended to make
+base updates available as a conda command once that workflow has settled.
 
 ## Building custom binaries
 
 For custom package sets or new distributions, use
-[conda-pronto](https://github.com/jezdez/conda-pronto) directly. This repository's build
-workflow is release preparation for official conda-express `cx` and `cxz`
+[conda-ship](https://github.com/jezdez/conda-ship) directly. This repository's build
+workflow is release preparation for this repository's `cx` and `cxz`
 binaries, not a generic downstream builder interface.
 
 ## Uninstalling
@@ -238,16 +260,17 @@ To remove the conda prefix and all environments managed by cx:
 cx uninstall
 ```
 
-This will show what will be removed and ask for confirmation. Use `--yes` to
+This shows the paths it plans to remove and asks for confirmation. Use `--yes` to
 skip the prompt. The command also cleans up PATH entries from shell profiles
 that were added by the installer and prints a hint for removing the `cx` binary
 through your original install method.
 
 ## How it works
 
-1. **Build time**: the conda-express release workflow solves the package set,
-   then conda-pronto filters excluded packages and stamps the runtime lock into the
-   staged binary.
+1. **Build time**: Pixi solves the `runtime` source environment into
+   `pixi.lock`; the conda-express release workflow asks conda-ship to derive a
+   runtime lock, filter excluded packages, and stamp that lock into the staged
+   binary.
 
 2. **First run**: cx reads the stamped runtime lock, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.
 
@@ -255,13 +278,13 @@ through your original install method.
 
 ## Activation model
 
-![cx delegates conda commands transparently](demos/passthrough.gif)
+![cx delegates conda commands after bootstrap](demos/passthrough.gif)
 
 cx ships with conda-spawn instead of traditional `conda activate`. There is no need to run `conda init` or modify shell profiles.
 
 ```bash
-# Add cx to PATH (one-time setup)
-export PATH="$HOME/.cx/condabin:$PATH"
+# Optional: expose the managed conda executable directly
+export PATH="$HOME/.conda/express/condabin:$PATH"
 
 # Activate an environment (spawns a subshell)
 cx shell myenv

@@ -48,8 +48,19 @@ irm https://jezdez.github.io/conda-express/get-cx.ps1 | more
 2. **Downloads the binary** from [GitHub Releases](https://github.com/jezdez/conda-express/releases)
 3. **Verifies the SHA256 checksum** against the published `.sha256` file
 4. **Installs the binary** to the install directory
-5. **Updates your shell profile / PATH** so `cx` is available in new shells
-6. **Runs `cx bootstrap`** to set up the conda environment
+5. **Updates your shell profile / PATH** so the installed `cx` binary is found
+   in new shells
+6. **Warns about early-release state** if `~/.cx` still exists
+7. **Runs `cx bootstrap`** to set up the conda environment
+
+If the installer finds `~/.cx`, it leaves that directory alone. Current
+releases bootstrap into `~/.conda/express`; see
+{doc}`../guides/upgrade-from-early-cx` before removing old early-release
+environments.
+
+For manual downloads or mirrored installer inputs, see
+{doc}`../guides/verify-release-artifacts` for checksum, attestation, and
+metadata checks.
 
 ## Options
 
@@ -61,13 +72,15 @@ All options are set via environment variables and work on both platforms.
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `0.6.0`) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to any value to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip running `cx bootstrap` after install |
-| `CX_BUNDLE` | *(unset)* | Directory of `.conda`/`.tar.bz2` archives for offline bootstrap (passed to `cx bootstrap --bundle`) |
-| `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap (passed to `cx bootstrap --offline`) |
+| `CX_SKIP_VERIFY` | *(unset)* | Set to any value to skip checksum verification |
+| `CX_BUNDLE` | *(unset)* | Bundle directory containing `.conda`/`.tar.bz2` archives used by `cx bootstrap` |
+| `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap |
 
 :::{tip}
-For fully air-gapped deployments, consider using `cxz` instead of `cx` with
-`CX_BUNDLE` / `CX_OFFLINE`. The `cxz` binary embeds all packages directly
-and requires no separate bundle directory. See {doc}`../features` for details.
+For disconnected deployments, consider using `cxz` instead of `cx` with
+`CX_BUNDLE` / `CX_OFFLINE`. The `cxz` binary embeds the locked package
+archives and requires no separate bundle directory. See
+{doc}`../guides/offline-and-airgapped` for details.
 :::
 
 ### Examples
@@ -75,13 +88,13 @@ and requires no separate bundle directory. See {doc}`../features` for details.
 Install a specific version:
 
 ```bash
-CX_VERSION=0.6.0 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION=0.6.0 sh
 ```
 
 Install to a custom directory without bootstrap:
 
 ```bash
-CX_INSTALL_DIR=/opt/bin CX_NO_BOOTSTRAP=1 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_INSTALL_DIR=/opt/bin CX_NO_BOOTSTRAP=1 sh
 ```
 
 PowerShell with options:
@@ -109,6 +122,9 @@ The PowerShell script uses .NET's `RuntimeInformation.OSArchitecture`.
 | macOS ARM64 | `aarch64-apple-darwin` | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `x86_64-pc-windows-msvc` | `cx-x86_64-pc-windows-msvc.exe` |
 
+Windows ARM64 is not published yet; the PowerShell installer reports that
+architecture as unsupported instead of downloading an incompatible binary.
+
 ## Shell profile updates
 
 The shell script appends a `PATH` export to your shell configuration file:
@@ -128,18 +144,18 @@ PATH manually.
 
 ## Uninstalling
 
-The easiest way to uninstall is the built-in command:
+Use the built-in command to remove the managed prefix:
 
 ```bash
 cx uninstall
 ```
 
 This removes the conda prefix (including all named environments) and any
-PATH entries added by the installer. It will show what will be removed and
-ask for confirmation (use `--yes` to skip).
+PATH entries added by the installer. It shows the paths it plans to remove and
+asks for confirmation (use `--yes` to skip).
 
-After completion, cx prints a hint for removing the binary itself (e.g.
-`brew uninstall conda-express` for Homebrew installs).
+After completion, cx prints a hint for removing the binary itself through the
+install method it detects, such as Homebrew or PyPI.
 
 See {ref}`cx uninstall <cli-cx-uninstall>` for full details.
 
@@ -156,7 +172,7 @@ If the `cx` command is unavailable, you can remove everything manually:
 2. Remove the conda prefix:
 
    ```bash
-   rm -rf ~/.cx
+   rm -rf ~/.conda/express
    ```
 
 3. Remove the PATH line from your shell profile if the installer added one.

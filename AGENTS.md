@@ -3,16 +3,12 @@
 ## Project structure
 
 - `conda-express` is the opinionated `cx` / `cxz` distribution repo.
-  It builds release artifacts through `pronto`; the generic Rust runtime
-  and builder implementation live in the separate `pronto` repository.
+  It builds release artifacts through `conda-ship`; the generic Rust runtime
+  and builder implementation live in the separate `conda-ship` repository.
 
 - Keep this repo focused on distribution defaults, GitHub Actions,
   Homebrew/Docker/release packaging, docs, and installer entry points.
   Do not reintroduce a local Cargo workspace for the runtime or builder.
-
-- The root Cargo package is only the crates.io installer package. It embeds
-  a release binary built with conda-pronto; it must not grow a local runtime
-  or builder implementation.
 
 - Browser, WebAssembly, Emscripten, and JupyterLite work belongs in the
   separate `conda-wasm` repository, not here.
@@ -24,16 +20,21 @@
   `pixi lock` and commit the updated `pixi.lock` alongside the
   change. CI will fail if the lockfile is out of date.
 
-- After changes to `Cargo.toml`, run `cargo generate-lockfile` and commit
-  the updated `Cargo.lock`.
-
 ## Dependencies
 
 - Minimize the dependency graph. Prefer existing Pixi dependencies and
   GitHub Actions over adding new tooling.
 
-- Use exact SHAs for GitHub Actions in CI workflows.
+- Use exact SHAs for GitHub Actions in CI workflows. The conda-ship action is
+  the exception: use its immutable release tag so the action and downloaded
+  release assets share the same version.
 
 ## Typing and linting
 
 - Validate docs with `pixi run -e docs docs`.
+
+- Run `pixi run security` for the local security/audit sweep. It validates
+  workflow YAML, runs actionlint, zizmor, ShellCheck, Bandit, Python compile
+  checks, `git diff --check`, and `conda-ship inspect` when `cs` is available.
+  The individual checks are also available as `security-workflows`,
+  `security-installers`, `security-python`, and `security-conda-ship`.

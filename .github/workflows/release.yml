@@ -1,20 +1,71 @@
 name: Release
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "*.*.*"
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event.release.tag_name }}
+  group: release-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
+  validate-release:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.release.outputs.tag }}
+      version: ${{ steps.release.outputs.version }}
+      major-minor: ${{ steps.release.outputs.major-minor }}
+    steps:
+      - name: Validate release tag
+        id: release
+        shell: bash
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^[0-9]+[.][0-9]+[.][0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: ${RELEASE_TAG}" >&2
+            echo "Use a version tag such as 0.6.0." >&2
+            exit 1
+          fi
+
+          version="${RELEASE_TAG}"
+          major_minor="$(printf '%s\n' "$version" | awk -F. '{ print $1 "." $2 }')"
+          if [ -z "$major_minor" ] || [ "$major_minor" = "." ]; then
+            echo "Could not derive major.minor from ${RELEASE_TAG}" >&2
+            exit 1
+          fi
+
+          {
+            echo "tag=${RELEASE_TAG}"
+            echo "version=${version}"
+            echo "major-minor=${major_minor}"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: refs/tags/${{ steps.release.outputs.tag }}
+          persist-credentials: false
+
+      - name: Verify package version
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          PYPROJECT_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          if [ "$PYPROJECT_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "pyproject.toml version $PYPROJECT_VERSION does not match release tag $RELEASE_VERSION" >&2
+            exit 1
+          fi
+
   build-binaries:
-    name: Build (${{ matrix.target }})
+    name: Build ${{ matrix.variant }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    needs: [validate-release]
     permissions:
       contents: read
       id-token: write # mint the OIDC token required for artifact attestations
@@ -26,120 +77,114 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            variant: cx
+            layout: online
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
+            variant: cx
+            layout: online
           - target: x86_64-apple-darwin
-            os: macos-15
+            os: macos-15-intel
+            variant: cx
+            layout: online
           - target: aarch64-apple-darwin
-            os: macos-latest
+            os: macos-15
+            variant: cx
+            layout: online
           - target: x86_64-pc-windows-msvc
             os: windows-latest
-
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Build release binary
-        id: build
-        uses: jezdez/conda-pronto@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
-        with:
-          name: cx
-          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
-          channels: "conda-forge"
-          exclude: "conda-libmamba-solver"
-          ref: 0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
-          embed-bundle: "false"
-          docs-url: "https://jezdez.github.io/conda-express/"
-
-      - name: Attest release binary
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
-        with:
-          subject-path: |
-            ${{ steps.build.outputs.binary-path }}
-            ${{ steps.build.outputs.info-path }}
-            ${{ steps.build.outputs.lock-path }}
-            ${{ steps.build.outputs.package-list-path }}
-            ${{ steps.build.outputs.checksums-path }}
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: ${{ steps.build.outputs.asset-name }}
-          path: |
-            ${{ steps.build.outputs.binary-path }}
-            ${{ steps.build.outputs.info-path }}
-            ${{ steps.build.outputs.lock-path }}
-            ${{ steps.build.outputs.package-list-path }}
-            ${{ steps.build.outputs.checksums-path }}
-          retention-days: 1
-
-  build-cxz-binaries:
-    name: Build cxz (${{ matrix.target }})
-    runs-on: ${{ matrix.os }}
-    permissions:
-      contents: read
-      id-token: write # mint the OIDC token required for artifact attestations
-      attestations: write # publish provenance attestations for release assets
-      artifact-metadata: write # create artifact storage records for attestations
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
+            variant: cx
+            layout: online
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
+            variant: cxz
+            layout: embedded
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
+            variant: cxz
+            layout: embedded
           - target: x86_64-apple-darwin
-            os: macos-15
+            os: macos-15-intel
+            variant: cxz
+            layout: embedded
           - target: aarch64-apple-darwin
-            os: macos-latest
+            os: macos-15
+            variant: cxz
+            layout: embedded
           - target: x86_64-pc-windows-msvc
             os: windows-latest
+            variant: cxz
+            layout: embedded
 
     steps:
+      - name: Verify matrix target
+        shell: bash
+        env:
+          RUNNER_ARCH_NAME: ${{ runner.arch }}
+          RUNNER_OS_NAME: ${{ runner.os }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          set -euo pipefail
+          case "${RUNNER_OS_NAME}/${RUNNER_ARCH_NAME}" in
+            Linux/X64) host="x86_64-unknown-linux-gnu" ;;
+            Linux/ARM64) host="aarch64-unknown-linux-gnu" ;;
+            macOS/X64) host="x86_64-apple-darwin" ;;
+            macOS/ARM64) host="aarch64-apple-darwin" ;;
+            Windows/X64) host="x86_64-pc-windows-msvc" ;;
+            *)
+              echo "Unsupported runner platform: ${RUNNER_OS_NAME}/${RUNNER_ARCH_NAME}" >&2
+              exit 1
+              ;;
+          esac
+          if [ "$host" != "$TARGET" ]; then
+            echo "Expected matrix target ${TARGET}, got ${host}" >&2
+            exit 1
+          fi
+
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
 
-      - name: Build cxz
+      - name: Build ${{ matrix.variant }}
         id: build
-        uses: jezdez/conda-pronto@0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
+        uses: jezdez/conda-ship@0.1.0 # zizmor: ignore[unpinned-uses] conda-ship immutable releases keep the action and assets aligned.
         with:
-          name: cx
-          packages: "python >=3.12, conda >=25.1, conda-rattler-solver, conda-spawn >=0.1.0, conda-completion >=0.2.0, conda-pypi, conda-self, conda-global, conda-workspaces >=0.4.0"
-          channels: "conda-forge"
-          exclude: "conda-libmamba-solver"
-          ref: 0aa1341649c1b1fddea3ac9b30c6dc0c39dc7b06
-          embed-bundle: "true"
-          docs-url: "https://jezdez.github.io/conda-express/"
+          layout: ${{ matrix.layout }}
 
-      - name: Attest cxz release binary
+      - name: Smoke test ${{ matrix.variant }} release binary
+        shell: bash
+        env:
+          BINARY_PATH: ${{ steps.build.outputs.binary-path }}
+          EXPECTED_RUNTIME: ${{ matrix.variant }}
+          SMOKE_PREFIX: ${{ runner.temp }}/${{ matrix.variant }}-smoke
+        run: |
+          EXPECTED_VERSION="$(sed -n 's/^version = "\([^"]*\)"/\1/p' pyproject.toml | head -n1)"
+          ACTUAL_VERSION="$("$BINARY_PATH" --version)"
+          if [ "$ACTUAL_VERSION" != "$EXPECTED_RUNTIME $EXPECTED_VERSION" ]; then
+            echo "expected $EXPECTED_RUNTIME $EXPECTED_VERSION, got $ACTUAL_VERSION" >&2
+            exit 1
+          fi
+          "$BINARY_PATH" --path "$SMOKE_PREFIX" bootstrap
+          "$BINARY_PATH" --path "$SMOKE_PREFIX" status
+          "$BINARY_PATH" --path "$SMOKE_PREFIX" completion --help | grep -q "Generate and install shell tab completions"
+
+      - name: Attest ${{ matrix.variant }} release binary
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
         with:
-          subject-path: |
-            ${{ steps.build.outputs.binary-path }}
-            ${{ steps.build.outputs.info-path }}
-            ${{ steps.build.outputs.lock-path }}
-            ${{ steps.build.outputs.package-list-path }}
-            ${{ steps.build.outputs.checksums-path }}
+          subject-path: ${{ steps.build.outputs.dist-path }}/*
 
       - name: Upload build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ${{ steps.build.outputs.asset-name }}
-          path: |
-            ${{ steps.build.outputs.binary-path }}
-            ${{ steps.build.outputs.info-path }}
-            ${{ steps.build.outputs.lock-path }}
-            ${{ steps.build.outputs.package-list-path }}
-            ${{ steps.build.outputs.checksums-path }}
+          path: ${{ steps.build.outputs.dist-path }}/*
           retention-days: 1
 
   build-wheels:
     name: Wheel (${{ matrix.target }})
     runs-on: ubuntu-latest
-    needs: [build-binaries]
+    needs: [validate-release, build-binaries]
     permissions:
       contents: read
       id-token: write # mint the OIDC token required for artifact attestations
@@ -168,6 +213,7 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
@@ -178,16 +224,15 @@ jobs:
       - name: Verify package version
         shell: bash
         env:
-          TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_VERSION: ${{ needs.validate-release.outputs.version }}
         run: |
-          VERSION="${TAG_NAME#v}"
           PYPROJECT_VERSION="$(python3 -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
-          if [ "$PYPROJECT_VERSION" != "$VERSION" ]; then
-            echo "pyproject.toml version $PYPROJECT_VERSION does not match release tag $VERSION" >&2
+          if [ "$PYPROJECT_VERSION" != "$RELEASE_VERSION" ]; then
+            echo "pyproject.toml version $PYPROJECT_VERSION does not match release tag $RELEASE_VERSION" >&2
             exit 1
           fi
 
-      - name: Build wheel from conda-pronto binary
+      - name: Build wheel from conda-ship-built binary
         shell: bash
         env:
           ASSET_NAME: ${{ matrix.asset }}
@@ -215,30 +260,68 @@ jobs:
           path: dist/*.whl
           if-no-files-found: error
 
-  upload-release-assets:
-    name: Upload release assets
+  github-release:
+    name: Publish GitHub release assets
     runs-on: ubuntu-latest
-    needs: [build-binaries, build-cxz-binaries]
+    needs: [validate-release, build-binaries, build-wheels]
     permissions:
-      contents: write # upload binaries, checksums, locks, and package manifests
+      contents: write # create the immutable GitHub release for this tag
     steps:
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+      - name: Download cx artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: artifacts
-          pattern: "{cx-*,cxz-*}"
+          pattern: "cx-*"
           merge-multiple: true
 
-      - name: Upload assets to release
+      - name: Download cxz artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: artifacts
+          pattern: "cxz-*"
+          merge-multiple: true
+
+      - name: Publish assets
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          TAG_NAME: ${{ github.event.release.tag_name }}
-        run: gh release upload "$TAG_NAME" artifacts/* --clobber
+          RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
+        run: |
+          set -euo pipefail
+
+          shopt -s nullglob
+          files=(artifacts/*)
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release ${RELEASE_TAG} already exists." >&2
+            echo "Release immutability is enabled; create a new tag instead of replacing assets." >&2
+            exit 1
+          fi
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release assets found." >&2
+            exit 1
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --draft \
+            --verify-tag \
+            --title "$RELEASE_TAG" \
+            --notes "conda-express ${RELEASE_TAG}"
+
+          cleanup_draft() {
+            gh release delete "$RELEASE_TAG" --yes >/dev/null 2>&1 || true
+          }
+          trap cleanup_draft ERR
+
+          gh release upload "$RELEASE_TAG" "${files[@]}"
+          gh release edit "$RELEASE_TAG" --draft=false
+
+          trap - ERR
 
   update-homebrew:
     name: Update Homebrew formula
     runs-on: ubuntu-latest
-    needs: [upload-release-assets]
+    needs: [validate-release, github-release]
     permissions:
       contents: write # commit the generated Homebrew formula update back to main
     steps:
@@ -250,18 +333,19 @@ jobs:
       - name: Download checksums from release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ github.event.release.tag_name }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
         run: |
           for target in aarch64-apple-darwin x86_64-apple-darwin aarch64-unknown-linux-gnu x86_64-unknown-linux-gnu; do
-            gh release download "$TAG_NAME" --pattern "cx-${target}.sha256" --dir checksums
+            gh release download "$RELEASE_TAG" --pattern "cx-${target}.sha256" --dir checksums
           done
 
       - name: Update formula
         env:
-          TAG_NAME: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
         shell: bash
         run: |
-          VERSION="${TAG_NAME#v}"
+          VERSION="${RELEASE_TAG}"
           FORMULA="Formula/cx.rb"
 
           # Tags omit the "v" prefix; GitHub asset URLs are .../releases/download/<tag>/...
@@ -271,10 +355,14 @@ jobs:
 
           export CX_VERSION="$VERSION"
           export CX_FORMULA="$FORMULA"
-          export CX_SHA_MACOS_ARM="$(read_sha aarch64-apple-darwin)"
-          export CX_SHA_MACOS_INTEL="$(read_sha x86_64-apple-darwin)"
-          export CX_SHA_LINUX_ARM="$(read_sha aarch64-unknown-linux-gnu)"
-          export CX_SHA_LINUX_INTEL="$(read_sha x86_64-unknown-linux-gnu)"
+          CX_SHA_MACOS_ARM="$(read_sha aarch64-apple-darwin)"
+          CX_SHA_MACOS_INTEL="$(read_sha x86_64-apple-darwin)"
+          CX_SHA_LINUX_ARM="$(read_sha aarch64-unknown-linux-gnu)"
+          CX_SHA_LINUX_INTEL="$(read_sha x86_64-unknown-linux-gnu)"
+          export CX_SHA_MACOS_ARM
+          export CX_SHA_MACOS_INTEL
+          export CX_SHA_LINUX_ARM
+          export CX_SHA_LINUX_INTEL
 
           python3 << 'PYEOF'
           import os
@@ -318,18 +406,19 @@ jobs:
       - name: Commit and push
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.validate-release.outputs.tag }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add Formula/cx.rb
           git diff --cached --quiet && echo "No changes" && exit 0
-          git commit -m "Update Homebrew formula to ${GITHUB_REF_NAME}"
+          git commit -m "Update Homebrew formula to ${RELEASE_TAG}"
           git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:main
 
   publish-pypi:
     name: Publish to PyPI
     runs-on: ubuntu-latest
-    needs: [build-wheels]
+    needs: [github-release, build-wheels]
     environment: pypi
     permissions:
       contents: read
@@ -344,84 +433,71 @@ jobs:
       - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           packages-dir: dist/
-          skip-existing: true
-
-  publish-crates:
-    name: Publish to crates.io
-    runs-on: ubuntu-latest
-    needs: [upload-release-assets]
-    environment: crates-io
-    permissions:
-      contents: read
-      id-token: write # required for crates.io trusted publishing
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Verify crate release metadata
-        shell: bash
-        env:
-          TAG_NAME: ${{ github.event.release.tag_name }}
-        run: |
-          VERSION="${TAG_NAME#v}"
-          CRATE_VERSION="$(cargo metadata --no-deps --format-version=1 | python3 -c 'import json, sys; print(json.load(sys.stdin)["packages"][0]["version"])')"
-          if [ "$CRATE_VERSION" != "$VERSION" ]; then
-            echo "Cargo.toml version $CRATE_VERSION does not match release tag $VERSION" >&2
-            exit 1
-          fi
-          if ! grep -q "^${VERSION} " binary-sha256.txt; then
-            echo "binary-sha256.txt has no checksums for $VERSION" >&2
-            exit 1
-          fi
-
-      - name: Authenticate with crates.io
-        uses: rust-lang/crates-io-auth-action@bbd81622f20ce9e2dd9622e3218b975523e45bbe # v1.0.4
-        id: crates-auth
-
-      - name: Publish crate
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ steps.crates-auth.outputs.token }}
-        run: cargo publish --locked
 
   docker-images:
-    name: Docker images
+    name: Docker ${{ matrix.variant }} images
     runs-on: ubuntu-latest
-    needs: [build-binaries]
+    needs: [validate-release, github-release, build-binaries]
     permissions:
       contents: read
       packages: write # push versioned container images to GHCR
       id-token: write # required for artifact attestation
       attestations: write # publish provenance for the pushed image
       artifact-metadata: write # create artifact storage records for attestations
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: cx
+            dockerfile: docker/Dockerfile
+            tag-suffix: ""
+            latest-tag: latest
+          - variant: cxz
+            dockerfile: docker/Dockerfile.cxz
+            tag-suffix: "-cxz"
+            latest-tag: latest-cxz
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
+          ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
 
       - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           path: docker/binaries
-          pattern: cx-*-unknown-linux-*
+          pattern: ${{ matrix.variant }}-*-unknown-linux-*
           merge-multiple: true
 
       - name: Prepare binaries for buildx
+        env:
+          VARIANT: ${{ matrix.variant }}
         run: |
-          cp docker/binaries/cx-x86_64-unknown-linux-gnu docker/cx-linux-amd64
-          cp docker/binaries/cx-aarch64-unknown-linux-gnu docker/cx-linux-arm64
-          chmod +x docker/cx-linux-*
+          cp "docker/binaries/${VARIANT}-x86_64-unknown-linux-gnu" "docker/${VARIANT}-linux-amd64"
+          cp "docker/binaries/${VARIANT}-aarch64-unknown-linux-gnu" "docker/${VARIANT}-linux-arm64"
+          chmod +x "docker/${VARIANT}-linux-amd64" "docker/${VARIANT}-linux-arm64"
+
+      - uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
 
       - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
       - name: Smoke test
+        env:
+          DOCKERFILE: ${{ matrix.dockerfile }}
+          SMOKE_TAG: ${{ matrix.variant }}-smoke-test
+          VARIANT: ${{ matrix.variant }}
         run: |
           docker buildx build \
             --platform linux/amd64 \
             --load \
-            -t cx-smoke-test \
+            -f "$DOCKERFILE" \
+            -t "$SMOKE_TAG" \
             docker/
-          docker run --rm cx-smoke-test --help
-          docker run --rm cx-smoke-test --version
+          if [ "$VARIANT" = "cxz" ]; then
+            docker run --rm "$SMOKE_TAG" status
+          else
+            docker run --rm "$SMOKE_TAG" --help
+            docker run --rm "$SMOKE_TAG" --version
+          fi
 
       - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
         with:
@@ -434,14 +510,15 @@ jobs:
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest
+            type=raw,value=${{ needs.validate-release.outputs.version }}${{ matrix.tag-suffix }}
+            type=raw,value=${{ needs.validate-release.outputs.major-minor }}${{ matrix.tag-suffix }}
+            type=raw,value=${{ matrix.latest-tag }}
 
       - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
         id: build
         with:
           context: docker
+          file: ${{ matrix.dockerfile }}
           platforms: linux/amd64,linux/arm64
           push: true
           pull: true
@@ -457,82 +534,8 @@ jobs:
           push-to-registry: true
 
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # 0.36.0
-        continue-on-error: true
         with:
           image-ref: ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}
           format: table
           exit-code: 1
           severity: CRITICAL
-
-  docker-cxz-images:
-    name: Docker cxz images
-    runs-on: ubuntu-latest
-    needs: [build-cxz-binaries]
-    permissions:
-      contents: read
-      packages: write # push versioned container images to GHCR
-      id-token: write # required for artifact attestation
-      attestations: write # publish provenance for the pushed image
-      artifact-metadata: write # create artifact storage records for attestations
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          path: docker/binaries
-          pattern: cxz-*-unknown-linux-*
-          merge-multiple: true
-
-      - name: Prepare binaries for buildx
-        run: |
-          cp docker/binaries/cxz-x86_64-unknown-linux-gnu docker/cxz-linux-amd64
-          cp docker/binaries/cxz-aarch64-unknown-linux-gnu docker/cxz-linux-arm64
-          chmod +x docker/cxz-linux-*
-
-      - uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
-
-      - name: Smoke test
-        run: |
-          docker buildx build \
-            --platform linux/amd64 \
-            --load \
-            -f docker/Dockerfile.cxz \
-            -t cxz-smoke-test \
-            docker/
-          docker run --rm cxz-smoke-test status
-
-      - uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/metadata-action@030e881283bb7a6894de51c315a6bfe6a94e05cf # v6.0.0
-        id: meta
-        with:
-          images: ghcr.io/${{ github.repository }}
-          tags: |
-            type=semver,pattern={{version}}-cxz
-            type=semver,pattern={{major}}.{{minor}}-cxz
-            type=raw,value=latest-cxz
-
-      - uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
-        id: build
-        with:
-          context: docker
-          file: docker/Dockerfile.cxz
-          platforms: linux/amd64,linux/arm64
-          push: true
-          pull: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          provenance: mode=max
-          sbom: true
-
-      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
-        with:
-          subject-name: ghcr.io/${{ github.repository }}
-          subject-digest: ${{ steps.build.outputs.digest }}
-          push-to-registry: true

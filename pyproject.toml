@@ -38,12 +38,33 @@ include-package-data = true
 [tool.setuptools.package-data]
 conda_express = ["py.typed", "bin/cx", "bin/cx.exe"]
 
+[tool.conda-ship]
+runtime = "cx"
+delegate = "conda"
+layout = "online"
+source-environment = "runtime"
+exclude = ["conda-libmamba-solver"]
+docs-url = "https://jezdez.github.io/conda-express/"
+install-scheme = "conda-home"
+install-name = "express"
+
 [tool.pixi.workspace]
 channels = ["conda-forge"]
 platforms = ["linux-64", "linux-aarch64", "osx-64", "osx-arm64", "win-64"]
 
 [tool.pixi.feature.dev.tasks]
 validate-workflows = "ruby -e 'require \"yaml\"; Dir[\".github/workflows/*.yml\"].each { |path| YAML.load_file(path); puts \"ok #{path}\" }'"
+security = { cmd = "git diff --check", depends-on = [
+    "validate-workflows",
+    "security-workflows",
+    "security-installers",
+    "security-python",
+    "security-conda-ship",
+] }
+security-workflows = "pixi exec --spec actionlint actionlint && pixi exec --spec zizmor zizmor --persona auditor .github/workflows"
+security-installers = """bash -c 'set -euo pipefail; sh -n scripts/get-cx.sh; pixi exec --spec shellcheck shellcheck scripts/get-cx.sh; if command -v pwsh >/dev/null 2>&1; then pwsh -NoLogo -NoProfile -Command '"'"'$tokens = $null; $errors = $null; $null = [System.Management.Automation.Language.Parser]::ParseFile("scripts/get-cx.ps1", [ref] $tokens, [ref] $errors); if ($errors.Count) { $errors | Format-List *; exit 1 }; "PowerShell parser OK"'"'"'; else echo "Skipping PowerShell parser check: pwsh not found" >&2; fi'"""
+security-python = "PYTHONPATH=python python3 -m compileall -q python/conda_express && pixi exec --spec bandit bandit -q -r python"
+security-conda-ship = """bash -c 'set -euo pipefail; if command -v cs >/dev/null 2>&1; then cs inspect --root .; elif [ -x ../conda-ship/target/release/cs ]; then ../conda-ship/target/release/cs inspect --root .; else echo "Skipping conda-ship inspect: cs not found" >&2; fi'"""
 demos = { cmd = """bash -c 'if [ -n "$1" ]; then vhs "demos/$1.tape"; else for tape in demos/*.tape; do [[ "$(basename "$tape")" == _* ]] && continue; vhs "$tape"; done; fi' -- {{ name }}""", args = [{ arg = "name", default = "" }], description = "Record demo GIFs" }
 
 [tool.pixi.feature.docs.dependencies]
@@ -60,7 +81,7 @@ docs = { cmd = "sphinx-build -b dirhtml . _build/dirhtml", cwd = "docs" }
 docs-serve = { cmd = "python -m http.server", cwd = "docs/_build/dirhtml" }
 docs-clean = { cmd = "rm -rf _build", cwd = "docs" }
 
-[tool.pixi.feature.cx-env.dependencies]
+[tool.pixi.feature.runtime.dependencies]
 python = ">=3.12"
 conda = ">=25.1"
 conda-rattler-solver = "*"
@@ -74,4 +95,4 @@ conda-workspaces = ">=0.4.0"
 [tool.pixi.environments]
 default = { features = ["dev"], no-default-feature = true }
 docs = { features = ["docs", "dev"], no-default-feature = true }
-cx-env = { features = ["cx-env"], no-default-feature = true }
+runtime = { features = ["runtime"], no-default-feature = true }

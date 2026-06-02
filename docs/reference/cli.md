@@ -1,129 +1,124 @@
-# CLI reference
+# CLI Reference
+
+`cx` is a conda runtime produced by conda-ship. It installs the conda-express
+base environment from the stamped runtime lock, then delegates ordinary commands
+to the installed `conda` executable.
+
+This page covers the `cx` and `cxz` runtime interface. For the generic
+conda-ship runtime interface shared by other generated runtimes, see
+{external+conda-ship:doc}`conda-ship's runtime CLI reference <reference/runtime-cli>`.
+
+## Global Options
+
+`--path PATH`
+: Use a custom install path instead of the default stamped into the binary.
+  For conda-express, the default is `~/.conda/express`. The generic
+  install-scheme rules are documented in
+  {external+conda-ship:doc}`conda-ship's install location notes <explanation/install-locations-and-ownership>`.
+
+`-v, --verbose`
+: Show more runtime progress output.
+
+`-q, --quiet`
+: Suppress non-essential runtime output.
+
+`-h, --help`
+: Show help.
+
+`-V, --version`
+: Show the runtime version.
+
+:::{note}
+`--path` is a runtime override. Put it before the command:
+
+```bash
+cx --path /opt/cx bootstrap
+cx --path /opt/cx status
+```
+:::
 
 ## `cx bootstrap`
 
-Bootstrap a fresh conda installation into the prefix.
+Bootstrap conda into the runtime install path.
 
-```
+```bash
 cx bootstrap [OPTIONS]
 ```
 
 ### Options
 
 `--force`
-: Re-bootstrap even if the prefix already exists. Removes the existing prefix first.
-
-`--prefix DIR`
-: Target prefix directory. Default: `~/.cx`
-
-`-c, --channel CH`
-: Channels to use. Can be specified multiple times. Default: `conda-forge`
-
-`-p, --package PKG`
-: Additional packages to install beyond the built-in list. Can be specified multiple times.
-
-`-e, --exclude PKG`
-: Packages to exclude from installation (along with their exclusive dependencies). Can be specified multiple times. Default: `conda-libmamba-solver`
-
-`--no-exclude`
-: Disable all default exclusions. Installs everything including `conda-libmamba-solver`.
-
-`--no-lock`
-: Ignore the stamped runtime lock and perform a live solve instead. Requires network access for repodata fetching.
-
-`--lockfile PATH`
-: Use an external lockfile instead of the stamped runtime lock. The file must be in rattler-lock v6 format.
+: Re-bootstrap even if the install path already exists. Existing non-empty
+  install paths are removed only when they contain conda-express runtime
+  ownership metadata.
 
 `--bundle DIR`
-: Directory containing pre-downloaded `.conda` and/or `.tar.bz2` package archives.
-  When set, cx pre-populates the package cache from this directory before installing.
-  Paired with `--offline`, this enables fully air-gapped bootstrap from a bundled
-  package bundle. Can also be set via the `CX_BUNDLE` environment variable.
+: Bundle directory containing pre-downloaded `.conda` and/or `.tar.bz2`
+  package archives. The runtime pre-populates the package cache from this
+  directory before installing. Can also be set via `CX_BUNDLE`.
 
 `--offline`
-: Disable all network access during bootstrap. Packages must already be available in
-  the local package cache (from a previous bootstrap) or supplied via `--bundle`.
-  Incompatible with `--no-lock` (offline mode requires a lockfile). Can also be set
-  via the `CX_OFFLINE` environment variable.
+: Disable network access during bootstrap. Packages must already be available
+  from the local package cache, `--bundle`, or an embedded `cxz` bundle. Can
+  also be set via `CX_OFFLINE`.
 
 :::{note}
-When using `cxz`, the embedded package bundle is detected automatically.
-`--bundle` and `--offline` are implied; no flags or environment variables are
-needed.
+`cxz` is the embedded-bundle variant. It detects its embedded package bundle
+automatically, so `--bundle` is not needed. Use `--offline` when you want the
+runtime to refuse any network access.
 :::
 
 ### Examples
 
 ```bash
-# Standard bootstrap
+# Standard bootstrap into ~/.conda/express
 cx bootstrap
 
-# Force re-bootstrap with latest packages (live solve)
-cx bootstrap --force --no-lock
-
-# Bootstrap with additional packages
-cx bootstrap --package conda-build --package rattler-build
+# Re-bootstrap the managed install path
+cx bootstrap --force
 
 # Bootstrap into a custom location
-cx bootstrap --prefix /opt/conda
-
-# Offline bootstrap from cache (after a previous online bootstrap)
-cx bootstrap --prefix /opt/conda --offline
+cx --path /opt/cx bootstrap
 
 # Offline bootstrap from a bundle directory
-cx bootstrap --bundle ./packages/ --offline
+cx bootstrap --bundle ./packages --offline
 
-# Bootstrap with cxz (embedded bundle, auto-detected)
-cxz bootstrap
+# Bootstrap with cxz, using its embedded bundle and no network access
+cxz bootstrap --offline
 ```
-
----
 
 ## `cx status`
 
-![cx status, cx info, and cx env list](../../demos/status.gif)
+Print conda-express runtime status, including the install path, configured
+channels, package metadata, installed package count, and delegate executable.
+For conda's own environment information, use `cx info`, which is passed through
+to `conda info`.
 
-Print cx installation status (prefix, channels, packages, excludes).
-For conda's own info, use `cx info` which passes through to `conda info`.
-
+```bash
+cx status
 ```
-cx status [OPTIONS]
-```
-
-### Options
-
-`--prefix DIR`
-: Target prefix directory. Default: `~/.cx`
 
 :::{admonition} Example output
 :class: dropdown
 
-```
+```text
 cx 0.6.0
-  prefix:   /Users/you/.cx
-  channels: conda-forge
-  packages: python >=3.12, conda >=25.1, ...
-  excludes: conda-libmamba-solver
-  installed: 95 packages
-  conda:    /Users/you/.cx/bin/conda
+  path:      /Users/you/.conda/express
+  channels:  https://conda.anaconda.org/conda-forge/
+  packages:  python, conda, conda-rattler-solver, ...
+  installed: 97 packages
+  delegate:  conda (/Users/you/.conda/express/bin/conda)
 ```
 :::
-
----
 
 ## `cx shell`
 
 Activate an environment by spawning a new subshell. This is an alias for
 `conda spawn`.
 
+```bash
+cx shell [ENV] [-- CONDA-SPAWN-ARGS...]
 ```
-cx shell [ENV] [OPTIONS]
-```
-
-### Arguments
-
-`ENV`
-: Name of the environment to activate.
 
 ### Examples
 
@@ -132,131 +127,59 @@ cx shell [ENV] [OPTIONS]
 cx shell myenv
 
 # Leave the environment
-exit    # or Ctrl+D
+exit
 ```
-
----
 
 (cli-cx-uninstall)=
 ## `cx uninstall`
 
-Remove the conda prefix managed by cx, including all named environments, and
-clean PATH entries from shell profiles. The command prints a hint for removing
-the `cx` binary through the package manager or install method you used.
+Remove the conda-express install path and named environments managed by that
+install path. The command prints a hint for removing the `cx` binary through
+the package manager or install method you used.
 
-```
+```bash
 cx uninstall [OPTIONS]
 ```
 
 ### Options
 
-`--prefix DIR`
-: Target prefix directory. Default: `~/.cx`
-
 `-y, --yes`
 : Skip the interactive confirmation prompt.
 
-### What gets removed
+### What Gets Removed
 
-1. The conda prefix directory (e.g. `~/.cx`) including all named environments
-2. PATH entries added by the installer from `~/.bashrc`, `~/.zshrc`, and
-   `~/.config/fish/config.fish`
+1. The managed conda install path, for example `~/.conda/express`
+2. Named environments stored under that install path
+3. PATH entries added by the standalone installer, when present
 
 ### Examples
 
 ```bash
-# Interactive uninstall (shows what will be removed, asks for confirmation)
+# Interactive uninstall
 cx uninstall
 
 # Non-interactive uninstall
 cx uninstall --yes
 
-# Uninstall a non-default prefix
-cx uninstall --prefix /opt/conda
+# Uninstall a custom install path
+cx --path /opt/cx uninstall --yes
 ```
-
-:::{admonition} Example output
-:class: dropdown
-
-```
-! This will permanently remove:
-   Conda prefix: /home/user/.cx
-   Named environments (2): myenv, data-science
-
-   Continue? [y/N] y
-
->> Removing conda prefix at /home/user/.cx
->> Cleaned PATH entry from /home/user/.zshrc
-
-✔ cx has been uninstalled.
-Remove the cx binary with your original install method, for example:
-  brew uninstall cx
-```
-:::
-
----
-
-## Disabled commands
-
-The following conda commands are intentionally disabled in cx because they
-conflict with the conda-spawn activation model:
-
-:::{admonition} `cx activate` / `cx deactivate`
-:class: dropdown
-
-Prints a message directing users to `cx shell` instead:
-
-```
-! `conda activate` is not available in cx.
-
-  cx uses conda-spawn for environment activation.
-  Instead of `conda activate myenv`, run:
-
-    cx shell myenv
-
-  To leave the environment, exit the subshell (Ctrl+D or `exit`).
-```
-:::
-
-:::{admonition} `cx init`
-:class: dropdown
-
-Prints a message explaining that shell profile modifications are unnecessary:
-
-```
-! `conda init` is not needed with cx.
-
-  cx uses conda-spawn, which does not require shell
-  profile modifications. Just add condabin to your PATH:
-
-    export PATH="$HOME/.cx/condabin:$PATH"
-
-  Then activate environments with:
-
-    cx shell myenv
-```
-:::
-
----
 
 ## `cx help`
 
-Show a getting-started guide with cx-specific commands, common workflows,
-and links to documentation.
+Show a getting-started guide with conda-express commands, common workflows, and
+links to documentation.
 
-```
+```bash
 cx help
 ```
 
----
+## Pass-Through Commands
 
-## Pass-through commands
-
-![cx delegates conda commands transparently](../../demos/passthrough.gif)
+![cx delegates conda commands after bootstrap](../../demos/passthrough.gif)
 
 Any command not listed above is passed through to the installed `conda` binary.
-cx replaces its own process with `conda` using `execvp` (Unix) or
-`CreateProcess` (Windows), so there is no overhead:
+If the install path does not exist yet, `cx` bootstraps it first.
 
 ```bash
 cx create -n myenv python=3.12
@@ -264,5 +187,11 @@ cx install -n myenv numpy
 cx list -n myenv
 cx env list
 cx config --show
-cx self update          # handled by conda-self
+cx self update
+```
+
+Use global runtime options before the pass-through command:
+
+```bash
+cx --path /tmp/cx-smoke create -n test python=3.12
 ```
