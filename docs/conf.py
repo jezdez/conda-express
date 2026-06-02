@@ -1,8 +1,8 @@
 """Sphinx configuration for conda-express documentation."""
 
 project = html_title = "conda-express"
-copyright = "2026, conda community"
-author = "conda community"
+copyright = "2026, Jannis Leidel"
+author = "Jannis Leidel"
 
 extensions = [
     "myst_parser",

@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "conda-express"
-version = "0.6.0"
+version = "26.5.0"
 description = "A lightweight, single-binary conda bootstrapper"
 readme = "README.md"
 requires-python = ">=3.8"
 license = "BSD-3-Clause"
 license-files = ["LICENSE"]
-authors = [{ name = "conda community" }]
+authors = [{ name = "Jannis Leidel" }]
 keywords = ["conda", "bootstrapper", "rattler", "package-manager"]
 classifiers = [
     "Development Status :: 3 - Alpha",
@@ -83,14 +83,14 @@ docs-clean = { cmd = "rm -rf _build", cwd = "docs" }
 
 [tool.pixi.feature.runtime.dependencies]
 python = ">=3.12"
-conda = ">=25.1"
+conda = "==26.5.0"
 conda-rattler-solver = "*"
 conda-spawn = ">=0.1.0"
 conda-completion = ">=0.2.0"
 conda-pypi = "*"
 conda-self = "*"
 conda-global = "*"
-conda-workspaces = ">=0.4.0"
+conda-workspaces = ">=0.5.0"
 
 [tool.pixi.environments]
 default = { features = ["dev"], no-default-feature = true }

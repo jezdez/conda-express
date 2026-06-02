@@ -11,6 +11,8 @@
 #   CX_NO_PATH_UPDATE    — set to non-empty to skip shell profile modification
 #   CX_NO_BOOTSTRAP      — set to non-empty to skip running `cx bootstrap`
 #   CX_SKIP_VERIFY       — set to non-empty to skip checksum verification
+#   CX_BUNDLE            — bundle directory used by `cx bootstrap`
+#   CX_OFFLINE           — set to a truthy value to force offline bootstrap
 
 # shellcheck disable=SC2218
 set -eu
@@ -173,6 +175,17 @@ warn_legacy_prefix() {
     fi
 }
 
+is_truthy() {
+    case "${1:-}" in
+        ""|0|[Ff][Aa][Ll][Ss][Ee])
+            return 1
+            ;;
+        *)
+            return 0
+            ;;
+    esac
+}
+
 check_cmd() {
     command -v "$1" >/dev/null 2>&1
 }
@@ -251,7 +264,15 @@ main() {
     if [ -z "${CX_NO_BOOTSTRAP:-}" ]; then
         printf "\n"
         info "Running cx bootstrap..."
-        "${_install_dir}/${BINARY_NAME}" bootstrap
+        if [ -n "${CX_BUNDLE:-}" ] && is_truthy "${CX_OFFLINE:-}"; then
+            "${_install_dir}/${BINARY_NAME}" bootstrap --bundle "$CX_BUNDLE" --offline
+        elif [ -n "${CX_BUNDLE:-}" ]; then
+            "${_install_dir}/${BINARY_NAME}" bootstrap --bundle "$CX_BUNDLE"
+        elif is_truthy "${CX_OFFLINE:-}"; then
+            "${_install_dir}/${BINARY_NAME}" bootstrap --offline
+        else
+            "${_install_dir}/${BINARY_NAME}" bootstrap
+        fi
     fi
 
     printf "\n"

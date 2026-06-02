@@ -19,10 +19,16 @@
 .PARAMETER SkipVerify
     If specified, skip checksum verification.
     Can also be set via the CX_SKIP_VERIFY environment variable.
+.PARAMETER Bundle
+    Bundle directory containing package archives for bootstrap.
+    Can also be set via the CX_BUNDLE environment variable.
+.PARAMETER Offline
+    If specified, disable network access during bootstrap.
+    Can also be set via a truthy CX_OFFLINE environment variable.
 .EXAMPLE
     irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 .EXAMPLE
-    & { $Version = "0.1.3"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex }
+    & { $Version = "26.5.0"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex }
 .LINK
     https://github.com/jezdez/conda-express
 #>
@@ -31,7 +37,9 @@ param (
     [string] $InstallDir = "",
     [switch] $NoPathUpdate,
     [switch] $NoBootstrap,
-    [switch] $SkipVerify
+    [switch] $SkipVerify,
+    [string] $Bundle = "",
+    [switch] $Offline
 )
 
 Set-StrictMode -Version Latest
@@ -45,6 +53,10 @@ if ($Env:CX_INSTALL_DIR) { $InstallDir = $Env:CX_INSTALL_DIR }
 if ($Env:CX_NO_PATH_UPDATE) { $NoPathUpdate = $true }
 if ($Env:CX_NO_BOOTSTRAP) { $NoBootstrap = $true }
 if ($Env:CX_SKIP_VERIFY) { $SkipVerify = $true }
+if ($Env:CX_BUNDLE) { $Bundle = $Env:CX_BUNDLE }
+if ($Env:CX_OFFLINE -and $Env:CX_OFFLINE.ToLowerInvariant() -notin @("0", "false")) {
+    $Offline = $true
+}
 
 if (-not $InstallDir) {
     $InstallDir = Join-Path $Env:USERPROFILE ".local\bin"
@@ -222,7 +234,14 @@ if (Test-Path $LegacyPrefix) {
 if (-not $NoBootstrap) {
     Write-Host ""
     Write-Host "  Running cx bootstrap..."
-    & $DestPath bootstrap
+    $BootstrapArgs = @("bootstrap")
+    if ($Bundle) {
+        $BootstrapArgs += @("--bundle", $Bundle)
+    }
+    if ($Offline) {
+        $BootstrapArgs += "--offline"
+    }
+    & $DestPath @BootstrapArgs
 }
 
 Write-Host ""

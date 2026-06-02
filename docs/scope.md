@@ -1,18 +1,20 @@
 # Project scope
 
-`conda-express` is the distribution repo for `cx` and `cxz`.
+`conda-express` is Jannis Leidel's distribution repo for `cx` and `cxz`.
 
-It is not the generic builder. That responsibility lives in
+It is not an official conda distribution and it is not the generic builder.
+The generic builder responsibility lives in
 {external+conda-ship:doc}`conda-ship <index>`.
 
 | Project | Role |
 |---|---|
-| `conda-express` | Opinionated native conda distribution that publishes `cx` and `cxz` |
+| `conda-express` | Jannis Leidel's opinionated native conda distribution that publishes `cx` and `cxz` |
 | {external+conda-ship:doc}`conda-ship <index>` | Generic builder/runtime for ready-to-run conda bootstrap binaries |
 
 ## What conda-express owns
 
-This repository keeps the pieces that make `cx` a specific conda distribution:
+This repository keeps the pieces that make `cx` this specific conda
+distribution:
 
 - binary names: `cx` and `cxz`
 - default package set
@@ -51,7 +53,7 @@ or
 
 ## What this means for users
 
-If you want a managed conda distribution with a small bootstrap artifact,
+If you want this managed conda distribution with a small bootstrap artifact,
 install `cx` or `cxz` from this project.
 
 If you want to build your own `cx`-like binary, use
