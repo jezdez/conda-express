@@ -11,7 +11,7 @@ COPY cxz-linux-${TARGETARCH} /usr/local/bin/cxz
 RUN HOME=/home/nonroot /usr/local/bin/cxz bootstrap --offline
 
 # Stage 2: copy the bootstrapped prefix into distroless
-FROM gcr.io/distroless/cc-debian12:nonroot@sha256:7e5b8df2f4d36f5599ef4ab856d7d444922531709becb03f3368c6d797d0a5eb
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:bd2899c12b335c827750ccf2359879eab09c09b206023dcebea408947d54127c
 COPY --from=bootstrap --chown=nonroot:nonroot /home/nonroot/.conda/express /home/nonroot/.conda/express
 COPY --from=bootstrap /usr/local/bin/cxz /usr/local/bin/cxz
 ENV HOME=/home/nonroot
