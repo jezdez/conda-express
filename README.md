@@ -7,6 +7,9 @@
 
 A single-binary bootstrapper for [conda](https://github.com/conda/conda), powered by [rattler](https://github.com/conda/rattler). The `cx` binary is short for **c**onda e**x**press.
 
+conda-express is Jannis Leidel's distribution project for the `cx` and `cxz`
+binaries. It is not an official conda distribution.
+
 cx offers an alternative to the Anaconda Distribution, Miniconda, and Miniforge constructor-style installer pattern: a 7-11 MB native binary that bootstraps a managed conda base environment from a locked package set.
 
 ## Quick start
@@ -36,14 +39,14 @@ cx installs a managed conda stack from conda-forge:
 | Package | Role |
 |---|---|
 | python >= 3.12 | Runtime |
-| conda >= 25.1 | Package manager |
+| conda == 26.5.0 | Package manager |
 | conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-completion >= 0.2.0 | Shell completion support |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
 | conda-global | Global tool installation and PATH management |
-| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.4.0 | Multi-environment workspace and task management |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.5.0 | Multi-environment workspace and task management |
 
 See the [included plugins reference](https://jezdez.github.io/conda-express/reference/included-plugins/)
 for the commands and workflows these packages add.
@@ -56,6 +59,13 @@ cx completion install --dry-run
 ```
 
 The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default because cx configures `conda-rattler-solver`.
+
+## Versioning
+
+conda-express versions follow the conda version in the runtime lock. For
+example, `conda-express 26.5.0` bootstraps conda `26.5.0`. If conda-express
+needs a packaging-only rebuild without changing the bundled conda version, it
+uses a post-release version such as `26.5.0.post1`.
 
 ## Installation
 
@@ -92,7 +102,7 @@ The script detects your platform, downloads the right binary, verifies the check
 - `CX_NO_BOOTSTRAP` — set to skip running `cx bootstrap`
 - `CX_SKIP_VERIFY` — set to skip checksum verification
 - `CX_BUNDLE` — bundle directory used by `cx bootstrap`
-- `CX_OFFLINE` — set to force offline bootstrap
+- `CX_OFFLINE` — set to a truthy value to force offline bootstrap
 
 ### From GitHub Releases
 

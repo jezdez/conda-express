@@ -3,13 +3,7 @@ Source demos/_settings.tape
 Output demos/workspaces.gif
 Output demos/workspaces.mp4
 
-Hide
-Type `export PS1="$DEMO_PS1" && mkdir -p /tmp/.demo-home && echo 'PS1="$ "' > /tmp/.demo-home/.bash_profile && export HOME=/tmp/.demo-home`
-Enter
-Wait /\$/
-Type `export PATH="$PWD/target/release:$HOME/.cx/condabin:$PATH"`
-Enter
-Wait /\$/
+Source demos/_cx_setup.tape
 Type `cx bootstrap --force 2>/dev/null`
 Enter
 Wait /\$/

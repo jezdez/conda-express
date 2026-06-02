@@ -69,12 +69,17 @@ All options are set via environment variables and work on both platforms.
 | Variable | Default | Description |
 |---|---|---|
 | `CX_INSTALL_DIR` | `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) | Directory to place the `cx` binary |
-| `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `0.6.0`) |
+| `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `26.5.0`) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to any value to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip running `cx bootstrap` after install |
 | `CX_SKIP_VERIFY` | *(unset)* | Set to any value to skip checksum verification |
 | `CX_BUNDLE` | *(unset)* | Bundle directory containing `.conda`/`.tar.bz2` archives used by `cx bootstrap` |
 | `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap |
+
+`CX_VERSION` selects a conda-express release. Release versions follow the conda
+runtime version in the lock; `26.5.0` bootstraps conda `26.5.0`, while
+`26.5.0.post1` would be a conda-express-only rebuild with the same conda
+runtime package.
 
 :::{tip}
 For disconnected deployments, consider using `cxz` instead of `cx` with
@@ -88,7 +93,7 @@ archives and requires no separate bundle directory. See
 Install a specific version:
 
 ```bash
-curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION=0.6.0 sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION=26.5.0 sh
 ```
 
 Install to a custom directory without bootstrap:
@@ -100,13 +105,19 @@ curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_INSTALL_DIR
 PowerShell with options:
 
 ```powershell
-$Env:CX_VERSION = "0.6.0"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
+$Env:CX_VERSION = "26.5.0"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 ```
 
 The PowerShell script also accepts named parameters when invoked directly:
 
 ```powershell
-.\get-cx.ps1 -Version 0.6.0 -InstallDir C:\tools -NoBootstrap
+.\get-cx.ps1 -Version 26.5.0 -InstallDir C:\tools -NoBootstrap
+```
+
+For an offline `cx` bootstrap with a bundle directory:
+
+```powershell
+.\get-cx.ps1 -Bundle C:\mirror\cx-packages -Offline
 ```
 
 ## Platform detection

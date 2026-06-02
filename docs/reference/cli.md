@@ -26,7 +26,8 @@ conda-ship runtime interface shared by other generated runtimes, see
 : Show help.
 
 `-V, --version`
-: Show the runtime version.
+: Show the runtime version. conda-express runtime versions follow the conda
+  package version in the runtime lock.
 
 :::{note}
 `--path` is a runtime override. Put it before the command:
@@ -102,7 +103,7 @@ cx status
 :class: dropdown
 
 ```text
-cx 0.6.0
+cx 26.5.0
   path:      /Users/you/.conda/express
   channels:  https://conda.anaconda.org/conda-forge/
   packages:  python, conda, conda-rattler-solver, ...

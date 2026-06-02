@@ -12,4 +12,5 @@ Set WaitTimeout 120s
 
 Env BAT_OPTS "--color=always --paging=never --plain"
 Env BAT_THEME "Visual Studio Dark+"
+Env CONDA_PLUGINS_USE_SHARDED_REPODATA "1"
 Env DEMO_PS1 "\[\e[1;38;2;67;176;42m\]$\[\e[0m\] "
