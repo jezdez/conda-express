@@ -52,8 +52,8 @@ CX_BUNDLE=/path/to/packages CX_OFFLINE=1 cx --path /opt/cx bootstrap
 
 ## Use the installer script
 
-The shell and PowerShell installers leave `CX_BUNDLE` and `CX_OFFLINE` in the
-environment for `cx bootstrap`:
+The shell and PowerShell installers pass `CX_BUNDLE` and `CX_OFFLINE` through
+as `cx bootstrap` options:
 
 ```bash
 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh \

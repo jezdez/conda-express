@@ -45,17 +45,29 @@ The `runtime` source environment installs:
 | Package | Role |
 |---|---|
 | `python >=3.12` | Python runtime for conda |
-| `conda >=25.1` | Package manager |
+| `conda ==26.5.0` | Package manager |
 | `conda-rattler-solver` | Default solver |
 | `conda-spawn >=0.1.0` | Subshell activation |
 | `conda-completion >=0.2.0` | Shell completion |
 | `conda-pypi` | PyPI interoperability |
 | `conda-self` | Base environment self-management |
 | `conda-global` | Global tool environments |
-| `conda-workspaces >=0.4.0` | Workspace manifests and tasks |
+| `conda-workspaces >=0.5.0` | Workspace manifests and tasks |
 
 `conda-libmamba-solver` is excluded from the derived runtime lock because
 conda-express uses `conda-rattler-solver`.
+
+## Versioning Policy
+
+conda-express release versions follow the exact conda package version in the
+runtime lock. A `26.5.0` conda-express release bootstraps conda `26.5.0` on
+every supported platform.
+
+Use `.postN` releases for conda-express-only rebuilds that keep the same conda
+runtime package, for example `26.5.0.post1`.
+
+See {doc}`features` for why the distribution version follows the conda runtime
+version.
 
 ## Install Location
 

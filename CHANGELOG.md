@@ -1,5 +1,25 @@
 # Changelog
 
+## 26.5.0 (unreleased)
+
+### Versioning
+
+- conda-express now follows the conda runtime version. The `26.5.0` release
+  bootstraps conda `26.5.0`; conda-express-only rebuilds should use
+  post-release versions such as `26.5.0.post1`.
+
+### Runtime
+
+- Pin the runtime conda package exactly to `26.5.0` and refresh the runtime
+  lockfile across all supported platforms.
+- Require `conda-workspaces >=0.5.0` in the default runtime package set.
+
+### Installer Scripts
+
+- Pass `CX_BUNDLE` and `CX_OFFLINE` through to `cx bootstrap` during installer
+  bootstrapping, so scripted offline installs use the documented bundle and
+  network settings.
+
 ## 0.6.0 (2026-05-06)
 
 Generic builder changes from this release now live in

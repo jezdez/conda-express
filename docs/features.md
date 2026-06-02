@@ -23,6 +23,17 @@ solve. See
 {external+conda-ship:doc}`conda-ship's source lock and runtime lock explanation <explanation/source-locks-and-runtime-locks>`
 for the generic build model.
 
+## Versioning follows conda
+
+conda-express is a conda distribution, so its release version follows the
+exact conda package version in the runtime lock. A `26.5.0` conda-express
+release bootstraps conda `26.5.0` on every supported platform.
+
+This makes direct downloads, PyPI wheels, Homebrew formula updates, Docker
+tags, and installer-script `CX_VERSION` values point at the same conda runtime
+version. If conda-express needs a packaging-only rebuild without changing the
+conda package, it uses a post-release version such as `26.5.0.post1`.
+
 ## Package exclusion
 
 conda on conda-forge hard-depends on `conda-libmamba-solver`, which pulls in
