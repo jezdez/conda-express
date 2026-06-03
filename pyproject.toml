@@ -44,7 +44,7 @@ local_scheme = "no-local-version"
 
 [tool.conda-ship]
 runtime = "cx"
-runtime-version = "26.5.2"
+runtime-version = { from = "project-metadata" }
 delegate = "conda"
 layout = "online"
 source-environment = "runtime"

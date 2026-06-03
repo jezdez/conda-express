@@ -23,6 +23,9 @@
 
 - Build the published `cx` and `cxz` runtime binaries with conda-ship instead
   of the old repository-local Rust builder.
+- Build with conda-ship `0.2.1` and derive the generated runtime version from
+  project metadata, so release tags drive both the Python package version and
+  the stamped binary version.
 - Keep conda-express focused on the `cx` / `cxz` distribution.
   Custom runtime builds now belong in conda-ship.
 - Continue publishing GitHub Release artifacts, installer scripts, Docker

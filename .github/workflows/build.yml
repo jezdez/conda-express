@@ -96,7 +96,7 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: jezdez/conda-ship@0.1.0 # zizmor: ignore[unpinned-uses] conda-ship immutable releases keep the action and assets aligned.
+        uses: jezdez/conda-ship@0.2.1 # zizmor: ignore[unpinned-uses] conda-ship immutable releases keep the action and assets aligned.
         with:
           layout: ${{ matrix.layout }}
 
