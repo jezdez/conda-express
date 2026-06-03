@@ -1,6 +1,6 @@
 # Changelog
 
-## 26.5.2 (unreleased)
+## 26.5.2 (2026-06-03)
 
 ### Versioning
 
