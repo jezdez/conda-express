@@ -338,7 +338,19 @@ jobs:
           # Tags omit the "v" prefix; GitHub asset URLs are .../releases/download/<tag>/...
           sed -i 's|releases/download/v#{version}|releases/download/#{version}|g' "$FORMULA"
 
-          read_sha() { awk '{print $1}' "checksums/cx-${1}.sha256"; }
+          read_sha() {
+            target="$1"
+            asset="cx-${target}"
+            sha="$(
+              awk -v asset="$asset" '$2 == asset { print $1; found = 1; exit } END { if (!found) exit 1 }' \
+                "checksums/${asset}.sha256"
+            )"
+            if [[ ! "$sha" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "Invalid SHA256 for ${asset}: ${sha:-<empty>}" >&2
+              exit 1
+            fi
+            printf '%s\n' "$sha"
+          }
 
           export CX_VERSION="$VERSION"
           export CX_FORMULA="$FORMULA"
@@ -388,6 +400,7 @@ jobs:
           PYEOF
 
           echo "Updated $FORMULA to version $VERSION"
+          ruby -c "$FORMULA"
           cat "$FORMULA"
 
       - name: Commit and push
