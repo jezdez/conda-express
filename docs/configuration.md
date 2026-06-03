@@ -11,6 +11,7 @@ runtime:
 ```toml
 [tool.conda-ship]
 runtime = "cx"
+runtime-version = { from = "project-metadata" }
 delegate = "conda"
 layout = "online"
 source-environment = "runtime"
