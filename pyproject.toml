@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=82.0.1", "wheel"]
+requires = ["setuptools>=82.0.1", "setuptools-scm[toml]>=8.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "conda-express"
-version = "26.5.2"
+dynamic = ["version"]
 description = "A lightweight, single-binary conda bootstrapper"
 readme = "README.md"
 requires-python = ">=3.8"
@@ -38,8 +38,13 @@ include-package-data = true
 [tool.setuptools.package-data]
 conda_express = ["py.typed", "bin/cx", "bin/cx.exe"]
 
+[tool.setuptools_scm]
+version_scheme = "no-guess-dev"
+local_scheme = "no-local-version"
+
 [tool.conda-ship]
 runtime = "cx"
+runtime-version = "26.5.2"
 delegate = "conda"
 layout = "online"
 source-environment = "runtime"
