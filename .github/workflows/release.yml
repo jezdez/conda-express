@@ -185,10 +185,10 @@ jobs:
         include:
           - target: x86_64-unknown-linux-gnu
             asset: cx-x86_64-unknown-linux-gnu
-            platform-tag: manylinux_2_17_x86_64.manylinux2014_x86_64
+            platform-tag: manylinux2014_x86_64
           - target: aarch64-unknown-linux-gnu
             asset: cx-aarch64-unknown-linux-gnu
-            platform-tag: manylinux_2_17_aarch64.manylinux2014_aarch64
+            platform-tag: manylinux2014_aarch64
           - target: x86_64-apple-darwin
             asset: cx-x86_64-apple-darwin
             platform-tag: macosx_10_12_x86_64

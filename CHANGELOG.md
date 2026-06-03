@@ -1,5 +1,12 @@
 # Changelog
 
+## 26.5.2.post1 (2026-06-03)
+
+### Distribution
+
+- Rebuild the PyPI wheels with single `manylinux2014` platform tags for Linux,
+  so PyPI accepts the linux-64 and linux-aarch64 wheel uploads.
+
 ## 26.5.2 (2026-06-03)
 
 ### Versioning
