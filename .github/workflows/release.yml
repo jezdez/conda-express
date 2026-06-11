@@ -46,7 +46,7 @@ jobs:
             echo "major-minor=${major_minor}"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: refs/tags/${{ steps.release.outputs.tag }}
           persist-credentials: false
@@ -130,7 +130,7 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
@@ -200,7 +200,7 @@ jobs:
             platform-tag: win_amd64
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           fetch-depth: 0
@@ -312,7 +312,7 @@ jobs:
     permissions:
       contents: write # commit the generated Homebrew formula update back to main
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: main
           persist-credentials: false
@@ -457,7 +457,7 @@ jobs:
             tag-suffix: "-cxz"
             latest-tag: latest-cxz
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
