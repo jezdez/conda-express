@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 26.5.2.post2 (2026-06-11)
 
 ### Distribution
 
