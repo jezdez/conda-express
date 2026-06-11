@@ -88,6 +88,10 @@ cx completion status
 cx completion install --dry-run
 ```
 
+conda-ship stamps the runtime command name into delegate environments, so the
+completion integration can register `cx` rather than the underlying `conda`
+executable.
+
 The command is optional: cx does not require shell completion, and the dry run
 lets you inspect the shell profile hook before enabling it.
 
@@ -152,6 +156,25 @@ for their work:
 cx create -n myenv numpy pandas
 cx shell myenv
 ```
+
+## Base prefix reset metadata
+
+cx also writes constructor-compatible conda prefix metadata during bootstrap:
+`conda-meta/history` and `conda-meta/initial-state.explicit.txt`. The history
+file lets conda recognize the managed prefix as an environment. The
+initial-state file records the exact package URLs and checksums from the
+stamped runtime lock.
+
+Because conda-express includes `conda-self`, that initial-state snapshot can be
+used to reset the managed base prefix to the package set shipped by the
+runtime:
+
+```bash
+cx self reset --snapshot installer-exact
+```
+
+Use `cx bootstrap --force` when you want to discard and rebuild the whole
+managed prefix from the stamped runtime lock.
 
 ## Auto-bootstrap
 
@@ -286,3 +309,8 @@ cx builds and tests on 5 platforms via GitHub Actions:
 | macos-x64 | `macos-15-intel` |
 | macos-arm64 | `macos-15` |
 | windows-x64 | `windows-latest` |
+
+conda-ship 0.3.0 publishes Windows ARM64 builder assets and maps
+`Windows`/`ARM64` action runners to `aarch64-pc-windows-msvc`. conda-express
+does not publish Windows ARM64 `cx` or `cxz` artifacts yet because full runtime
+bootstrap support still depends on the conda package ecosystem.

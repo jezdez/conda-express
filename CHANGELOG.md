@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Distribution
+
+- Build CI and release artifacts with conda-ship `0.3.0`.
+- Document conda-ship `0.3.0` runtime metadata, completion, and Windows ARM64
+  support boundaries.
+
 ## 26.5.2.post1 (2026-06-03)
 
 ### Distribution

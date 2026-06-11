@@ -77,6 +77,10 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` | `cxz-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` | `cxz-x86_64-pc-windows-msvc.exe` |
 
+Windows ARM64 is not published for conda-express yet. conda-ship has Windows
+ARM64 builder assets, but full runtime bootstrap support still depends on the
+conda package ecosystem.
+
 Each runtime has matching `.sha256`, `.info.json`, `.packages.txt`, and
 `.runtime.lock` metadata. Direct downloads are also covered by GitHub Artifact
 Attestations from the release workflow. For a quick attestation check:
@@ -156,7 +160,10 @@ cx bootstrap
 Bootstrap uses the built-in runtime lock, so it does not solve an environment
 at runtime. The prefix is protected with a
 [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker to prevent
-accidental modification.
+accidental modification. Bootstrap also writes `conda-meta/history` and
+`conda-meta/initial-state.explicit.txt`, so conda recognizes the managed
+prefix as an environment and `conda-self` can reset it to the shipped package
+set.
 
 ## Set up your PATH
 
@@ -224,11 +231,12 @@ To update the base conda installation, re-bootstrap:
 cx bootstrap --force
 ```
 
-:::{note}
-The included `conda-self` plugin is intended to make base updates available as
-a conda command once that workflow has settled. Until then, use
-`cx bootstrap --force`.
-:::
+To reset the existing managed base prefix to the package set shipped by the
+runtime, use the `conda-self` snapshot written during bootstrap:
+
+```bash
+cx self reset --snapshot installer-exact
+```
 
 ## Uninstalling
 

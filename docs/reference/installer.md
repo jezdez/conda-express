@@ -133,7 +133,9 @@ The PowerShell script uses .NET's `RuntimeInformation.OSArchitecture`.
 | macOS ARM64 | `aarch64-apple-darwin` | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `x86_64-pc-windows-msvc` | `cx-x86_64-pc-windows-msvc.exe` |
 
-Windows ARM64 is not published yet; the PowerShell installer reports that
+Windows ARM64 is not published for conda-express yet. conda-ship 0.3.0 has
+Windows ARM64 builder assets, but full runtime bootstrap support still depends
+on the conda package ecosystem. The PowerShell installer reports that
 architecture as unsupported instead of downloading an incompatible binary.
 
 ## Shell profile updates
