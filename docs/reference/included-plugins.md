@@ -12,7 +12,7 @@ behavior.
 | `conda-spawn` | Subprocess-based activation | `cx shell ENV`, `conda spawn ENV` |
 | `conda-completion` | Shell completion support | `cx completion status`, `cx completion install --dry-run` |
 | `conda-pypi` | PyPI interoperability inside conda workflows | PyPI dependency handling through the conda plugin stack |
-| `conda-self` | Base environment self-management workflow | `cx self ...`, `conda self ...` |
+| `conda-self` | Base environment self-management workflow | `cx self reset --snapshot installer-exact` |
 | `conda-global` | Isolated global tool environments | `cx global install ruff`, `cx global list` |
 | `conda-workspaces` | Project workspaces, tasks, and lockfiles | `cx workspace ...`, `cx task ...` |
 
@@ -27,8 +27,8 @@ turning the base prefix into a project environment:
 - `conda-rattler-solver` avoids libmamba's native dependency chain in the
   managed base.
 - `conda-spawn` gives users an activation workflow without `conda init`.
-- `conda-self` provides the plugin surface for managed base-prefix updates as
-  that workflow settles.
+- `conda-self` can reset the managed base prefix from the initial-state
+  snapshot written at bootstrap.
 - `conda-global` covers isolated command-line tools.
 - `conda-workspaces` covers project-level environments and tasks for users who
   want a conda-native workspace workflow.
@@ -48,6 +48,10 @@ cx completion install --dry-run
 that enables command completion for conda commands and installed conda plugin
 subcommands. Use `--dry-run` first to inspect the profile changes before
 writing them.
+
+conda-ship sets the runtime command name for delegate environments, so the
+completion hook can register `cx` rather than the underlying `conda`
+executable.
 
 ## Activation Workflow
 

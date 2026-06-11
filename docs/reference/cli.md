@@ -63,6 +63,13 @@ cx bootstrap [OPTIONS]
   from the local package cache, `--bundle`, or an embedded `cxz` bundle. Can
   also be set via `CX_OFFLINE`.
 
+After package installation, bootstrap writes conda-ship ownership metadata,
+`.condarc`, the CEP 22 frozen marker, and standard conda prefix metadata in
+`conda-meta/history` and `conda-meta/initial-state.explicit.txt`. The
+initial-state file records the package URLs and checksums from the stamped
+runtime lock so `conda-self` can reset the managed base prefix to the shipped
+package set.
+
 :::{note}
 `cxz` is the embedded-bundle variant. It detects its embedded package bundle
 automatically, so `--bundle` is not needed. Use `--offline` when you want the
@@ -189,6 +196,7 @@ cx list -n myenv
 cx env list
 cx config --show
 cx self update
+cx self reset --snapshot installer-exact
 ```
 
 Use global runtime options before the pass-through command:

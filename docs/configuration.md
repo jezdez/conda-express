@@ -49,9 +49,9 @@ The `runtime` source environment installs:
 | `conda ==26.5.2` | Package manager |
 | `conda-rattler-solver` | Default solver |
 | `conda-spawn >=0.1.0` | Subshell activation |
-| `conda-completion >=0.2.0` | Shell completion |
+| `conda-completion >=0.2.0` | Shell completion for `cx` and conda plugin commands |
 | `conda-pypi` | PyPI interoperability |
-| `conda-self` | Base environment self-management |
+| `conda-self` | Base environment self-management and reset |
 | `conda-global` | Global tool environments |
 | `conda-workspaces >=0.5.0` | Workspace manifests and tasks |
 
@@ -102,6 +102,21 @@ and prefix ownership checks.
 Generated conda-ship runtimes write ownership metadata into each managed
 install path. `cx status`, `cx bootstrap --force`, and `cx uninstall` use that
 metadata to avoid taking over or deleting unrelated conda installations.
+
+Bootstrap also writes standard conda prefix metadata:
+
+- `conda-meta/history`
+- `conda-meta/initial-state.explicit.txt`
+
+`history` lets conda recognize `~/.conda/express` as an environment. The
+initial-state file records the exact packages installed from the stamped
+runtime lock, including package URLs and checksums. The included `conda-self`
+plugin can use that snapshot to reset the managed base prefix to the shipped
+package set:
+
+```bash
+cx self reset --snapshot installer-exact
+```
 
 The managed base environment is also protected with a
 [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker after bootstrap.

@@ -58,6 +58,9 @@ cx completion status
 cx completion install --dry-run
 ```
 
+The generated runtime tells completion hooks to register the `cx` command name
+instead of the underlying `conda` delegate.
+
 The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default because cx configures `conda-rattler-solver`.
 
 ## Versioning
@@ -116,6 +119,10 @@ Download the binary for your platform from the
 | macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` |
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
+
+Windows ARM64 is not published for conda-express yet. conda-ship 0.3.0
+publishes Windows ARM64 builder assets, but full runtime bootstrap support is
+still gated by the conda package ecosystem.
 
 Each file has matching `.sha256`, `.info.json`, `.packages.txt`, and
 `.runtime.lock` files. Release artifacts are also covered by GitHub Artifact
@@ -252,9 +259,17 @@ cx create -n myenv numpy pandas
 cx shell myenv
 ```
 
-For now, update the base installation by re-bootstrapping with
-`cx bootstrap --force`. The included `conda-self` plugin is intended to make
-base updates available as a conda command once that workflow has settled.
+Bootstrap also writes constructor-compatible prefix metadata:
+`conda-meta/history` and `conda-meta/initial-state.explicit.txt`. Conda can
+recognize the managed prefix as an environment, and the included `conda-self`
+plugin can use the initial-state snapshot:
+
+```bash
+cx self reset --snapshot installer-exact
+```
+
+Use `cx bootstrap --force` when you want to discard and rebuild the managed
+base prefix from the stamped runtime lock.
 
 ## Building custom binaries
 
@@ -283,7 +298,9 @@ through your original install method.
    runtime lock, filter excluded packages, and stamp that lock into the staged
    binary.
 
-2. **First run**: cx reads the stamped runtime lock, downloads packages from conda-forge, and installs them into the prefix. No repodata fetch or solve needed at runtime.
+2. **First run**: cx reads the stamped runtime lock, downloads packages from
+   conda-forge, installs them into the prefix, and writes conda-compatible
+   prefix metadata. No repodata fetch or solve needed at runtime.
 
 3. **Subsequent runs**: cx detects the existing prefix and replaces its own process with the installed `conda` binary, passing all arguments through.
 
