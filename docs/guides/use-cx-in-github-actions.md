@@ -15,7 +15,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: jezdez/conda-express/.github/actions/setup-cx@26.5.2.post2
+      - uses: {{ setup_cx_action }}
       - run: cx status
 ```
 
@@ -30,7 +30,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: jezdez/conda-express/.github/actions/setup-cx@26.5.2.post2
+      - uses: {{ setup_cx_action }}
       - run: cx create -n test python=3.12 pytest
       - run: cx run -n test pytest
 ```
@@ -46,7 +46,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - id: setup-cx
-        uses: jezdez/conda-express/.github/actions/setup-cx@26.5.2.post2
+        uses: {{ setup_cx_action }}
         with:
           bootstrap: false
       - run: "${{ steps.setup-cx.outputs.cx-path }}" --version
@@ -58,9 +58,9 @@ Pass `version` when the action ref and binary version should differ:
 
 ```yaml
 steps:
-  - uses: jezdez/conda-express/.github/actions/setup-cx@26.5.2.post2
+  - uses: {{ setup_cx_action }}
     with:
-      version: 26.5.2.post2
+      version: {{ conda_express_release }}
 ```
 
 This is mainly useful for testing the action from a branch or local checkout.
@@ -81,7 +81,7 @@ jobs:
       contents: read
       attestations: read
     steps:
-      - uses: jezdez/conda-express/.github/actions/setup-cx@26.5.2.post2
+      - uses: {{ setup_cx_action }}
         with:
           verify-attestation: true
           github-token: ${{ github.token }}
@@ -99,7 +99,7 @@ By default the action installs `cx` into the runner temp directory. Use
 
 ```yaml
 steps:
-  - uses: jezdez/conda-express/.github/actions/setup-cx@26.5.2.post2
+  - uses: {{ setup_cx_action }}
     with:
       install-dir: ${{ runner.temp }}/tools
 ```

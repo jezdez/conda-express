@@ -47,19 +47,19 @@ All options work as environment variables on both platforms:
 | `CX_OFFLINE` | *(unset)* | Set to force offline bootstrap |
 
 `CX_VERSION` uses conda-express release versions, which follow the conda
-runtime version in the lock. For example, `26.5.2` installs a `cx` release
-that bootstraps conda `26.5.2`.
+runtime version in the lock. For example, `{{ conda_express_release }}`
+installs a `cx` release that bootstraps conda `{{ conda_runtime_version }}`.
 
 Unix example:
 
 ```bash
-curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION=26.5.2 sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION={{ conda_express_release }} sh
 ```
 
 PowerShell example:
 
 ```powershell
-$Env:CX_VERSION = "26.5.2"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
+$Env:CX_VERSION = "{{ conda_express_release }}"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 ```
 :::
 

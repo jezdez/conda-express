@@ -39,7 +39,7 @@ cx installs a managed conda stack from conda-forge:
 | Package | Role |
 |---|---|
 | python >= 3.12 | Runtime |
-| conda == 26.5.2 | Package manager |
+| conda | Package manager |
 | conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-completion >= 0.2.0 | Shell completion support |
@@ -65,10 +65,9 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 
 ## Versioning
 
-conda-express versions follow the conda version in the runtime lock. For
-example, `conda-express 26.5.2` bootstraps conda `26.5.2`. If conda-express
-needs a packaging-only rebuild without changing the bundled conda version, it
-uses a post-release version such as `26.5.2.post1`.
+conda-express versions follow the conda version in the runtime lock. If
+conda-express needs a packaging-only rebuild without changing the bundled
+conda version, it uses a post-release version.
 
 ## Installation
 

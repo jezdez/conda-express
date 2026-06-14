@@ -46,7 +46,7 @@ The `runtime` source environment installs:
 | Package | Role |
 |---|---|
 | `python >=3.12` | Python runtime for conda |
-| `conda ==26.5.2` | Package manager |
+| `conda =={{ conda_runtime_version }}` | Package manager |
 | `conda-rattler-solver` | Default solver |
 | `conda-spawn >=0.1.0` | Subshell activation |
 | `conda-completion >=0.2.0` | Shell completion for `cx` and conda plugin commands |
@@ -61,11 +61,11 @@ conda-express uses `conda-rattler-solver`.
 ## Versioning Policy
 
 conda-express release versions follow the exact conda package version in the
-runtime lock. A `26.5.2` conda-express release bootstraps conda `26.5.2` on
-every supported platform.
+runtime lock. A `{{ conda_express_release }}` conda-express release bootstraps
+conda `{{ conda_runtime_version }}` on every supported platform.
 
 Use `.postN` releases for conda-express-only rebuilds that keep the same conda
-runtime package, for example `26.5.2.post1`.
+runtime package, for example `{{ conda_express_post_release_example }}`.
 
 See {doc}`features` for why the distribution version follows the conda runtime
 version.
