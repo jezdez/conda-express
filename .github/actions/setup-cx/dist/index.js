@@ -34703,6 +34703,9 @@ const repository = "jezdez/conda-express";
 const releaseWorkflow = `${repository}/.github/workflows/release.yml`;
 const releaseTagPattern = /^[0-9]+[.][0-9]+[.][0-9]+([.]post[0-9]+)?$/;
 
+/**
+ * Install a verified cx binary for the current runner and optionally bootstrap it.
+ */
 async function main() {
   const options = readOptions();
   const asset = platformAsset();
@@ -34745,6 +34748,9 @@ async function main() {
   }
 }
 
+/**
+ * Read action inputs and mask the token when running inside GitHub Actions.
+ */
 function readOptions() {
   const githubToken = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4)("github-token");
   if (githubToken && process.env.GITHUB_ACTIONS === "true") {
@@ -34769,6 +34775,9 @@ function runnerTemp() {
   return process.env.RUNNER_TEMP || (0,node_os__WEBPACK_IMPORTED_MODULE_7__.tmpdir)();
 }
 
+/**
+ * Resolve the release asset name for the current runner platform.
+ */
 function platformAsset() {
   const os = (0,node_os__WEBPACK_IMPORTED_MODULE_7__.platform)();
   const cpu = (0,node_os__WEBPACK_IMPORTED_MODULE_7__.arch)();
@@ -34792,6 +34801,12 @@ function platformAsset() {
   throw new Error(`Unsupported runner platform: ${os}/${cpu}`);
 }
 
+/**
+ * Pick the cx release version to install.
+ *
+ * Explicit `version` wins. Otherwise, the action tries to infer the version
+ * from the action ref before falling back to GitHub's latest release API.
+ */
 async function resolveVersion(requestedVersion, githubToken) {
   if (requestedVersion) {
     return requestedVersion;
@@ -34818,6 +34833,13 @@ async function resolveVersion(requestedVersion, githubToken) {
   return tagName;
 }
 
+/**
+ * Infer the action ref from GitHub's checked-out action path.
+ *
+ * JavaScript actions do not receive `github.action_ref` as an automatic input,
+ * so this keeps the common `uses: ...@26.5.2` case aligned with the matching
+ * release asset without requiring callers to repeat `version`.
+ */
 function inferActionRefFromPath() {
   const actionPath = (0,node_url__WEBPACK_IMPORTED_MODULE_9__.fileURLToPath)(import.meta.url);
   const segments = actionPath.split(node_path__WEBPACK_IMPORTED_MODULE_8__.sep);
@@ -34838,6 +34860,9 @@ async function fetchJson(url, githubToken) {
   return response.json();
 }
 
+/**
+ * Download a release asset through the official Actions tool-cache helper.
+ */
 async function downloadFile(url, destination) {
   const downloadedPath = await (0,_actions_tool_cache__WEBPACK_IMPORTED_MODULE_3__/* .downloadTool */ .bq)(url);
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.copyFile)(downloadedPath, destination);
@@ -34855,6 +34880,9 @@ function requestHeaders(githubToken, extra = {}) {
   return headers;
 }
 
+/**
+ * Verify the downloaded binary against the release checksum file.
+ */
 async function verifyChecksum(assetPath, checksumPath, assetName) {
   const checksumText = await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.readFile)(checksumPath, "utf8");
   const checksum = checksumText
@@ -34879,6 +34907,12 @@ async function sha256(filePath) {
   return (0,node_crypto__WEBPACK_IMPORTED_MODULE_4__.createHash)("sha256").update(data).digest("hex");
 }
 
+/**
+ * Verify the binary's GitHub Artifact Attestation.
+ *
+ * The GitHub REST API can fetch attestation bundles, but the security-sensitive
+ * signature and policy verification is delegated to `gh attestation verify`.
+ */
 async function verifyAttestation(assetPath, version, githubToken) {
   if (!githubToken) {
     throw new Error("github-token is required when verify-attestation is true");
@@ -34904,6 +34938,9 @@ async function verifyAttestation(assetPath, version, githubToken) {
   (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${node_path__WEBPACK_IMPORTED_MODULE_8__.basename(assetPath)}: attestation verified`);
 }
 
+/**
+ * Run `cx bootstrap`, preserving a partial package cache from a failed prefix.
+ */
 async function bootstrap(cxPath) {
   const installPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join((0,node_os__WEBPACK_IMPORTED_MODULE_7__.homedir)(), ".conda", "express");
   const condaPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(installPath, "bin", "conda");
@@ -34949,6 +34986,9 @@ async function exists(filePath, mode = node_fs__WEBPACK_IMPORTED_MODULE_6__.cons
   }
 }
 
+/**
+ * Execute a command with arguments and surface captured output on failure.
+ */
 async function run(command, args, options = {}) {
   let stdout = "";
   let stderr = "";

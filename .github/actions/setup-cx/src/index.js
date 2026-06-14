@@ -21,6 +21,9 @@ const repository = "jezdez/conda-express";
 const releaseWorkflow = `${repository}/.github/workflows/release.yml`;
 const releaseTagPattern = /^[0-9]+[.][0-9]+[.][0-9]+([.]post[0-9]+)?$/;
 
+/**
+ * Install a verified cx binary for the current runner and optionally bootstrap it.
+ */
 async function main() {
   const options = readOptions();
   const asset = platformAsset();
@@ -63,6 +66,9 @@ async function main() {
   }
 }
 
+/**
+ * Read action inputs and mask the token when running inside GitHub Actions.
+ */
 function readOptions() {
   const githubToken = getInput("github-token");
   if (githubToken && process.env.GITHUB_ACTIONS === "true") {
@@ -87,6 +93,9 @@ function runnerTemp() {
   return process.env.RUNNER_TEMP || tmpdir();
 }
 
+/**
+ * Resolve the release asset name for the current runner platform.
+ */
 function platformAsset() {
   const os = platform();
   const cpu = arch();
@@ -110,6 +119,12 @@ function platformAsset() {
   throw new Error(`Unsupported runner platform: ${os}/${cpu}`);
 }
 
+/**
+ * Pick the cx release version to install.
+ *
+ * Explicit `version` wins. Otherwise, the action tries to infer the version
+ * from the action ref before falling back to GitHub's latest release API.
+ */
 async function resolveVersion(requestedVersion, githubToken) {
   if (requestedVersion) {
     return requestedVersion;
@@ -136,6 +151,13 @@ async function resolveVersion(requestedVersion, githubToken) {
   return tagName;
 }
 
+/**
+ * Infer the action ref from GitHub's checked-out action path.
+ *
+ * JavaScript actions do not receive `github.action_ref` as an automatic input,
+ * so this keeps the common `uses: ...@26.5.2` case aligned with the matching
+ * release asset without requiring callers to repeat `version`.
+ */
 function inferActionRefFromPath() {
   const actionPath = fileURLToPath(import.meta.url);
   const segments = actionPath.split(path.sep);
@@ -156,6 +178,9 @@ async function fetchJson(url, githubToken) {
   return response.json();
 }
 
+/**
+ * Download a release asset through the official Actions tool-cache helper.
+ */
 async function downloadFile(url, destination) {
   const downloadedPath = await downloadTool(url);
   await copyFile(downloadedPath, destination);
@@ -173,6 +198,9 @@ function requestHeaders(githubToken, extra = {}) {
   return headers;
 }
 
+/**
+ * Verify the downloaded binary against the release checksum file.
+ */
 async function verifyChecksum(assetPath, checksumPath, assetName) {
   const checksumText = await readFile(checksumPath, "utf8");
   const checksum = checksumText
@@ -197,6 +225,12 @@ async function sha256(filePath) {
   return createHash("sha256").update(data).digest("hex");
 }
 
+/**
+ * Verify the binary's GitHub Artifact Attestation.
+ *
+ * The GitHub REST API can fetch attestation bundles, but the security-sensitive
+ * signature and policy verification is delegated to `gh attestation verify`.
+ */
 async function verifyAttestation(assetPath, version, githubToken) {
   if (!githubToken) {
     throw new Error("github-token is required when verify-attestation is true");
@@ -222,6 +256,9 @@ async function verifyAttestation(assetPath, version, githubToken) {
   info(`${path.basename(assetPath)}: attestation verified`);
 }
 
+/**
+ * Run `cx bootstrap`, preserving a partial package cache from a failed prefix.
+ */
 async function bootstrap(cxPath) {
   const installPath = path.join(homedir(), ".conda", "express");
   const condaPath = path.join(installPath, "bin", "conda");
@@ -267,6 +304,9 @@ async function exists(filePath, mode = constants.F_OK) {
   }
 }
 
+/**
+ * Execute a command with arguments and surface captured output on failure.
+ */
 async function run(command, args, options = {}) {
   let stdout = "";
   let stderr = "";
