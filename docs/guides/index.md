@@ -29,6 +29,14 @@ prefix.
 Choose between `cxz`, bundle directories, and installer-script options.
 :::
 
+:::{grid-item-card} Use cx in GitHub Actions
+:link: use-cx-in-github-actions
+:link-type: doc
+
+Add `cx` to CI, choose whether to bootstrap, and opt into artifact
+attestation checks.
+:::
+
 :::{grid-item-card} Verify release artifacts
 :link: verify-release-artifacts
 :link-type: doc
@@ -60,6 +68,7 @@ See which plugin commands and workflows are available after bootstrap.
 conda-installers
 upgrade-from-early-cx
 offline-and-airgapped
+use-cx-in-github-actions
 verify-release-artifacts
 package-manager-fit
 ```

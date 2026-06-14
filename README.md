@@ -39,7 +39,7 @@ cx installs a managed conda stack from conda-forge:
 | Package | Role |
 |---|---|
 | python >= 3.12 | Runtime |
-| conda == 26.5.2 | Package manager |
+| conda | Package manager |
 | conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
 | conda-completion >= 0.2.0 | Shell completion support |
@@ -65,10 +65,9 @@ The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, l
 
 ## Versioning
 
-conda-express versions follow the conda version in the runtime lock. For
-example, `conda-express 26.5.2` bootstraps conda `26.5.2`. If conda-express
-needs a packaging-only rebuild without changing the bundled conda version, it
-uses a post-release version such as `26.5.2.post1`.
+conda-express versions follow the conda version in the runtime lock. If
+conda-express needs a packaging-only rebuild without changing the bundled
+conda version, it uses a post-release version.
 
 ## Installation
 
@@ -106,6 +105,23 @@ The script detects your platform, downloads the right binary, verifies the check
 - `CX_SKIP_VERIFY` — set to skip checksum verification
 - `CX_BUNDLE` — bundle directory used by `cx bootstrap`
 - `CX_OFFLINE` — set to a truthy value to force offline bootstrap
+
+### GitHub Actions
+
+Use the setup action from a pinned conda-express release tag:
+
+```yaml
+steps:
+  - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
+  - run: cx status
+```
+
+The action downloads the matching `cx` release asset, verifies its checksum,
+adds `cx` to `PATH`, and runs `cx bootstrap` by default. Artifact Attestation
+verification is available with `verify-attestation: true`.
+
+See the [GitHub Actions guide](https://jezdez.github.io/conda-express/guides/use-cx-in-github-actions/)
+for bootstrap, no-bootstrap, and attestation examples.
 
 ### From GitHub Releases
 

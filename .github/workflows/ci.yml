@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/actions/**"
       - ".github/workflows/**"
       - "docs/**"
       - "scripts/**"
@@ -17,6 +18,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - ".github/actions/**"
       - ".github/workflows/**"
       - "docs/**"
       - "scripts/**"
@@ -36,12 +38,65 @@ permissions:
   contents: read
 
 jobs:
+  setup-cx-action:
+    name: Setup cx action
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      attestations: read # Required for setup-cx to verify release binary attestations.
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up cx without attestation
+        id: setup-cx-default
+        uses: ./.github/actions/setup-cx
+        with:
+          version: 26.5.2.post2
+      - name: Smoke test default action path
+        shell: bash
+        env:
+          CX_PATH: ${{ steps.setup-cx-default.outputs.cx-path }}
+          EXPECTED_VERSION: ${{ steps.setup-cx-default.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
+            echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
+            exit 1
+          fi
+          "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
+          cx --version | grep -Fx "cx ${EXPECTED_VERSION}"
+          cx status
+
+      - name: Set up cx with attestation
+        id: setup-cx-attested
+        uses: ./.github/actions/setup-cx
+        with:
+          version: 26.5.2.post2
+          github-token: ${{ github.token }}
+          verify-attestation: true
+          add-to-path: false
+          bootstrap: false
+      - name: Smoke test attestation path
+        shell: bash
+        env:
+          CX_PATH: ${{ steps.setup-cx-attested.outputs.cx-path }}
+          EXPECTED_VERSION: ${{ steps.setup-cx-attested.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
+            echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
+            exit 1
+          fi
+          "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
+
   validate:
     name: Validate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
         with:
+          fetch-depth: 0
           persist-credentials: false
       - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
         with:

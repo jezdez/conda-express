@@ -62,6 +62,55 @@ For manual downloads or mirrored installer inputs, see
 {doc}`../guides/verify-release-artifacts` for checksum, attestation, and
 metadata checks.
 
+## GitHub Actions
+
+For task-oriented examples, see {doc}`../guides/use-cx-in-github-actions`.
+Use the setup action when a workflow needs `cx` on `PATH`:
+
+```yaml
+steps:
+  - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
+  - run: cx status
+```
+
+Pin the action to a conda-express release tag for reproducible CI. When
+`version` is omitted and the action ref is a release tag, the action installs
+that same version. If the action ref is not a release tag, it resolves and
+installs the latest release.
+
+The action downloads the platform-specific `cx` asset, checks the published
+`.sha256` file, optionally verifies GitHub Artifact Attestations from
+`.github/workflows/release.yml`, optionally bootstraps the managed conda
+prefix, and adds the install directory to `PATH`.
+
+Useful inputs:
+
+| Input | Default | Description |
+|---|---|---|
+| `version` | action ref when it is a release tag, otherwise `latest` | conda-express release version to install |
+| `github-token` | empty | GitHub token used for latest-release lookup and Artifact Attestation verification |
+| `install-dir` | runner temp directory | Directory to place the `cx` binary |
+| `bootstrap` | `true` | Run `cx bootstrap` after installation |
+| `add-to-path` | `true` | Add the install directory to `GITHUB_PATH` |
+| `verify-attestation` | `false` | Verify the downloaded binary with GitHub Artifact Attestations |
+
+Set `bootstrap: false` for workflows that only need to inspect the binary or
+defer bootstrap to a later step.
+
+Enable provenance verification for stricter CI:
+
+```yaml
+permissions:
+  contents: read
+  attestations: read
+
+steps:
+  - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
+    with:
+      verify-attestation: true
+      github-token: ${{ github.token }}
+```
+
 ## Options
 
 All options are set via environment variables and work on both platforms.
@@ -69,7 +118,7 @@ All options are set via environment variables and work on both platforms.
 | Variable | Default | Description |
 |---|---|---|
 | `CX_INSTALL_DIR` | `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) | Directory to place the `cx` binary |
-| `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `26.5.2`) |
+| `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `{{ conda_express_release }}`) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to any value to skip shell profile / PATH modification |
 | `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip running `cx bootstrap` after install |
 | `CX_SKIP_VERIFY` | *(unset)* | Set to any value to skip checksum verification |
@@ -77,9 +126,10 @@ All options are set via environment variables and work on both platforms.
 | `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap |
 
 `CX_VERSION` selects a conda-express release. Release versions follow the conda
-runtime version in the lock; `26.5.2` bootstraps conda `26.5.2`, while
-`26.5.2.post1` would be a conda-express-only rebuild with the same conda
-runtime package.
+runtime version in the lock; `{{ conda_express_release }}` bootstraps conda
+`{{ conda_runtime_version }}`, while
+`{{ conda_express_post_release_example }}` would be a conda-express-only
+rebuild with the same conda runtime package.
 
 :::{tip}
 For disconnected deployments, consider using `cxz` instead of `cx` with
@@ -93,7 +143,7 @@ archives and requires no separate bundle directory. See
 Install a specific version:
 
 ```bash
-curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION=26.5.2 sh
+curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION={{ conda_express_release }} sh
 ```
 
 Install to a custom directory without bootstrap:
@@ -105,13 +155,13 @@ curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_INSTALL_DIR
 PowerShell with options:
 
 ```powershell
-$Env:CX_VERSION = "26.5.2"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
+$Env:CX_VERSION = "{{ conda_express_release }}"; irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex
 ```
 
 The PowerShell script also accepts named parameters when invoked directly:
 
 ```powershell
-.\get-cx.ps1 -Version 26.5.2 -InstallDir C:\tools -NoBootstrap
+.\get-cx.ps1 -Version {{ conda_express_release }} -InstallDir C:\tools -NoBootstrap
 ```
 
 For an offline `cx` bootstrap with a bundle directory:
