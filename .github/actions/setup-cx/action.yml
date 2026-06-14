@@ -1,0 +1,47 @@
+name: "Set up cx"
+description: "Install a verified conda-express cx release and optionally bootstrap it."
+author: "Jannis Leidel"
+
+branding:
+  icon: "package"
+  color: "yellow"
+
+inputs:
+  version:
+    description: "conda-express release version to install. Empty uses the action ref when it is a release tag, otherwise latest."
+    required: false
+    default: ""
+  github-token:
+    description: "GitHub token used for release lookup and Artifact Attestation verification."
+    required: false
+    default: ""
+  install-dir:
+    description: "Directory where the cx binary is installed."
+    required: false
+    default: ""
+  bootstrap:
+    description: "Run cx bootstrap after installation."
+    required: false
+    default: "true"
+  add-to-path:
+    description: "Add the cx install directory to PATH for later workflow steps."
+    required: false
+    default: "true"
+  verify-attestation:
+    description: "Verify the downloaded cx binary with GitHub Artifact Attestations."
+    required: false
+    default: "true"
+
+outputs:
+  cx-path:
+    description: "Path to the installed cx binary."
+  install-dir:
+    description: "Directory containing the installed cx binary."
+  asset-name:
+    description: "Downloaded release asset name."
+  version:
+    description: "Resolved conda-express release version."
+
+runs:
+  using: "node24"
+  main: "dist/index.js"

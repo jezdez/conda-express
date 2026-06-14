@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - ".github/actions/**"
       - ".github/workflows/**"
       - "docs/**"
       - "scripts/**"
@@ -17,6 +18,7 @@ on:
   pull_request:
     branches: [main]
     paths:
+      - ".github/actions/**"
       - ".github/workflows/**"
       - "docs/**"
       - "scripts/**"
@@ -36,6 +38,37 @@ permissions:
   contents: read
 
 jobs:
+  setup-cx-action:
+    name: Setup cx action
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      attestations: read # Required for setup-cx to verify release binary attestations.
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+      - name: Set up cx
+        id: setup-cx
+        uses: ./.github/actions/setup-cx
+        with:
+          version: 26.5.2.post2
+          github-token: ${{ github.token }}
+          bootstrap: false
+      - name: Smoke test action output
+        shell: bash
+        env:
+          CX_PATH: ${{ steps.setup-cx.outputs.cx-path }}
+          EXPECTED_VERSION: ${{ steps.setup-cx.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
+            echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
+            exit 1
+          fi
+          "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
+          cx --version | grep -Fx "cx ${EXPECTED_VERSION}"
+
   validate:
     name: Validate
     runs-on: ubuntu-latest

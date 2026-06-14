@@ -107,6 +107,26 @@ The script detects your platform, downloads the right binary, verifies the check
 - `CX_BUNDLE` — bundle directory used by `cx bootstrap`
 - `CX_OFFLINE` — set to a truthy value to force offline bootstrap
 
+### GitHub Actions
+
+Use the setup action from a pinned conda-express release tag:
+
+```yaml
+permissions:
+  contents: read
+  attestations: read
+
+steps:
+  - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
+    with:
+      github-token: ${{ github.token }}
+  - run: cx status
+```
+
+The action downloads the matching `cx` release asset, verifies its checksum,
+verifies GitHub Artifact Attestations from the conda-express release workflow,
+adds `cx` to `PATH`, and runs `cx bootstrap` by default.
+
 ### From GitHub Releases
 
 Download the binary for your platform from the

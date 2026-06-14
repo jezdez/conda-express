@@ -1,0 +1,23 @@
+{
+  "name": "setup-cx-action",
+  "version": "0.0.0",
+  "private": true,
+  "description": "GitHub Action for installing a verified conda-express cx release.",
+  "type": "module",
+  "scripts": {
+    "build": "ncc build src/index.js -o dist --license licenses.txt",
+    "check": "node --check src/index.js && node --check dist/index.js"
+  },
+  "dependencies": {
+    "@actions/core": "^3.0.0",
+    "@actions/exec": "^3.0.0",
+    "@actions/io": "^3.0.0",
+    "@actions/tool-cache": "^4.0.0"
+  },
+  "devDependencies": {
+    "@vercel/ncc": "^0.38.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

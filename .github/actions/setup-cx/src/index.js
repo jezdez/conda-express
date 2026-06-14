@@ -1,0 +1,289 @@
+import * as core from "@actions/core";
+import * as exec from "@actions/exec";
+import * as io from "@actions/io";
+import * as tc from "@actions/tool-cache";
+import { createHash } from "node:crypto";
+import { access, chmod, copyFile, cp, mkdir, readFile, rename, rm } from "node:fs/promises";
+import { constants } from "node:fs";
+import { tmpdir, homedir, arch, platform } from "node:os";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
+const repository = "jezdez/conda-express";
+const releaseWorkflow = `${repository}/.github/workflows/release.yml`;
+const releaseTagPattern = /^[0-9]+[.][0-9]+[.][0-9]+([.]post[0-9]+)?$/;
+
+async function main() {
+  const options = readOptions();
+  const asset = platformAsset();
+  const resolvedVersion = await resolveVersion(options.version, options.githubToken);
+  const installDir = options.installDir || path.join(runnerTemp(), "cx", "bin");
+  const workDir = path.join(runnerTemp(), `cx-download-${resolvedVersion}`);
+
+  await rm(workDir, { recursive: true, force: true });
+  await mkdir(workDir, { recursive: true });
+  await mkdir(installDir, { recursive: true });
+
+  const baseUrl = `https://github.com/${repository}/releases/download/${resolvedVersion}`;
+  const assetPath = path.join(workDir, asset.name);
+  const checksumPath = path.join(workDir, `${asset.name}.sha256`);
+
+  core.info(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
+  await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
+  await downloadFile(`${baseUrl}/${asset.name}.sha256`, checksumPath);
+  await verifyChecksum(assetPath, checksumPath, asset.name);
+
+  if (options.verifyAttestation) {
+    await verifyAttestation(assetPath, resolvedVersion, options.githubToken);
+  }
+
+  const binaryPath = path.join(installDir, asset.binaryName);
+  await copyFile(assetPath, binaryPath);
+  await chmod(binaryPath, 0o755);
+
+  if (options.addToPath) {
+    core.addPath(installDir);
+  }
+
+  core.setOutput("asset-name", asset.name);
+  core.setOutput("cx-path", binaryPath);
+  core.setOutput("install-dir", installDir);
+  core.setOutput("version", resolvedVersion);
+
+  if (options.bootstrap) {
+    await bootstrap(binaryPath);
+  }
+}
+
+function readOptions() {
+  const githubToken = core.getInput("github-token");
+  if (githubToken && process.env.GITHUB_ACTIONS === "true") {
+    core.setSecret(githubToken);
+  }
+
+  return {
+    addToPath: core.getBooleanInput("add-to-path"),
+    bootstrap: core.getBooleanInput("bootstrap"),
+    githubToken,
+    installDir: core.getInput("install-dir"),
+    verifyAttestation: core.getBooleanInput("verify-attestation"),
+    version: stripLeadingV(core.getInput("version")),
+  };
+}
+
+function stripLeadingV(value) {
+  return value.trim().replace(/^v/, "");
+}
+
+function runnerTemp() {
+  return process.env.RUNNER_TEMP || tmpdir();
+}
+
+function platformAsset() {
+  const os = platform();
+  const cpu = arch();
+
+  if (os === "linux" && cpu === "x64") {
+    return { name: "cx-x86_64-unknown-linux-gnu", binaryName: "cx" };
+  }
+  if (os === "linux" && cpu === "arm64") {
+    return { name: "cx-aarch64-unknown-linux-gnu", binaryName: "cx" };
+  }
+  if (os === "darwin" && cpu === "x64") {
+    return { name: "cx-x86_64-apple-darwin", binaryName: "cx" };
+  }
+  if (os === "darwin" && cpu === "arm64") {
+    return { name: "cx-aarch64-apple-darwin", binaryName: "cx" };
+  }
+  if (os === "win32" && cpu === "x64") {
+    return { name: "cx-x86_64-pc-windows-msvc.exe", binaryName: "cx.exe" };
+  }
+
+  throw new Error(`Unsupported runner platform: ${os}/${cpu}`);
+}
+
+async function resolveVersion(requestedVersion, githubToken) {
+  if (requestedVersion) {
+    return requestedVersion;
+  }
+
+  const actionRef = stripLeadingV(process.env.GITHUB_ACTION_REF || "");
+  if (releaseTagPattern.test(actionRef)) {
+    return actionRef;
+  }
+
+  const inferredActionRef = inferActionRefFromPath();
+  if (releaseTagPattern.test(inferredActionRef)) {
+    return inferredActionRef;
+  }
+
+  const release = await fetchJson(
+    `https://api.github.com/repos/${repository}/releases/latest`,
+    githubToken,
+  );
+  const tagName = stripLeadingV(String(release.tag_name || ""));
+  if (!releaseTagPattern.test(tagName)) {
+    throw new Error(`Latest release tag is not a conda-express version: ${tagName}`);
+  }
+  return tagName;
+}
+
+function inferActionRefFromPath() {
+  const actionPath = fileURLToPath(import.meta.url);
+  const segments = actionPath.split(path.sep);
+  const actionRootIndex = segments.lastIndexOf(".github");
+  if (actionRootIndex < 1) {
+    return "";
+  }
+  return stripLeadingV(segments[actionRootIndex - 1] || "");
+}
+
+async function fetchJson(url, githubToken) {
+  const response = await fetch(url, {
+    headers: requestHeaders(githubToken, { accept: "application/vnd.github+json" }),
+  });
+  if (!response.ok) {
+    throw new Error(`GET ${url} failed with HTTP ${response.status}`);
+  }
+  return response.json();
+}
+
+async function downloadFile(url, destination) {
+  const downloadedPath = await tc.downloadTool(url);
+  await copyFile(downloadedPath, destination);
+  await chmod(destination, 0o600);
+}
+
+function requestHeaders(githubToken, extra = {}) {
+  const headers = {
+    "user-agent": "setup-cx-action",
+    ...extra,
+  };
+  if (githubToken) {
+    headers.authorization = `Bearer ${githubToken}`;
+  }
+  return headers;
+}
+
+async function verifyChecksum(assetPath, checksumPath, assetName) {
+  const checksumText = await readFile(checksumPath, "utf8");
+  const checksum = checksumText
+    .split(/\r?\n/)
+    .map((line) => line.trim().split(/\s+/))
+    .find((parts) => parts.length >= 2 && parts[1] === assetName);
+
+  if (!checksum) {
+    throw new Error(`No checksum entry found for ${assetName}`);
+  }
+
+  const expected = checksum[0].toLowerCase();
+  const actual = await sha256(assetPath);
+  if (actual !== expected) {
+    throw new Error(`Checksum mismatch for ${assetName}: expected ${expected}, got ${actual}`);
+  }
+  core.info(`${assetName}: checksum verified`);
+}
+
+async function sha256(filePath) {
+  const data = await readFile(filePath);
+  return createHash("sha256").update(data).digest("hex");
+}
+
+async function verifyAttestation(assetPath, version, githubToken) {
+  if (!githubToken) {
+    throw new Error("github-token is required when verify-attestation is true");
+  }
+
+  const ghPath = await io.which("gh", true);
+  await run("gh", [
+    "attestation",
+    "verify",
+    assetPath,
+    "--repo",
+    repository,
+    "--signer-workflow",
+    releaseWorkflow,
+    "--source-ref",
+    `refs/tags/${version}`,
+    "--deny-self-hosted-runners",
+  ], {
+    env: { ...process.env, GH_TOKEN: githubToken },
+    quiet: true,
+    toolPath: ghPath,
+  });
+  core.info(`${path.basename(assetPath)}: attestation verified`);
+}
+
+async function bootstrap(cxPath) {
+  const installPath = path.join(homedir(), ".conda", "express");
+  const condaPath = path.join(installPath, "bin", "conda");
+
+  if (await exists(condaPath, constants.X_OK)) {
+    await run(cxPath, ["status"]);
+    return;
+  }
+
+  const pkgsPath = path.join(installPath, "pkgs");
+  let restoredPkgs = "";
+  if ((await exists(pkgsPath)) && !(await exists(condaPath, constants.X_OK))) {
+    restoredPkgs = path.join(runnerTemp(), "cx-restored-pkgs");
+    await rm(restoredPkgs, { recursive: true, force: true });
+    await mkdir(path.dirname(restoredPkgs), { recursive: true });
+    await rename(pkgsPath, restoredPkgs);
+    await rm(installPath, { recursive: true, force: true });
+  }
+
+  await run(cxPath, ["bootstrap"]);
+
+  if (restoredPkgs) {
+    await mkdir(pkgsPath, { recursive: true });
+    await copyDirectory(restoredPkgs, pkgsPath);
+  }
+
+  await run(cxPath, ["status"]);
+}
+
+async function copyDirectory(source, destination) {
+  await cp(source, destination, { recursive: true, force: true });
+}
+
+async function exists(filePath, mode = constants.F_OK) {
+  try {
+    await access(filePath, mode);
+    return true;
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "EACCES") {
+      return false;
+    }
+    throw error;
+  }
+}
+
+async function run(command, args, options = {}) {
+  let stdout = "";
+  let stderr = "";
+  const exitCode = await exec.exec(options.toolPath || command, args, {
+    env: options.env || process.env,
+    ignoreReturnCode: true,
+    silent: options.quiet === true,
+    listeners: {
+      stdout: (data) => {
+        stdout += data.toString();
+      },
+      stderr: (data) => {
+        stderr += data.toString();
+      },
+    },
+  });
+
+  if (exitCode !== 0) {
+    const details = [stderr, stdout].filter(Boolean).join("\n").trim();
+    throw new Error(details || `${command} failed with exit code ${exitCode}`);
+  }
+}
+
+try {
+  await main();
+} catch (error) {
+  core.setFailed(error instanceof Error ? error.message : String(error));
+}
