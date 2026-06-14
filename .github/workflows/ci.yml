@@ -53,7 +53,6 @@ jobs:
         uses: ./.github/actions/setup-cx
         with:
           version: 26.5.2.post2
-          bootstrap: false
       - name: Smoke test default action path
         shell: bash
         env:
@@ -67,6 +66,7 @@ jobs:
           fi
           "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
           cx --version | grep -Fx "cx ${EXPECTED_VERSION}"
+          cx status
 
       - name: Set up cx with attestation
         id: setup-cx-attested
