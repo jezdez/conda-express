@@ -34718,7 +34718,7 @@ async function main() {
   const assetPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(workDir, asset.name);
   const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(workDir, `${asset.name}.sha256`);
 
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
   await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
   await downloadFile(`${baseUrl}/${asset.name}.sha256`, checksumPath);
   await verifyChecksum(assetPath, checksumPath, asset.name);
@@ -34732,13 +34732,13 @@ async function main() {
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.chmod)(binaryPath, 0o755);
 
   if (options.addToPath) {
-    _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .addPath */ .fM(installDir);
+    (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .addPath */ .fM)(installDir);
   }
 
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH("asset-name", asset.name);
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH("cx-path", binaryPath);
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH("install-dir", installDir);
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH("version", resolvedVersion);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH)("asset-name", asset.name);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH)("cx-path", binaryPath);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH)("install-dir", installDir);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setOutput */ .uH)("version", resolvedVersion);
 
   if (options.bootstrap) {
     await bootstrap(binaryPath);
@@ -34746,18 +34746,18 @@ async function main() {
 }
 
 function readOptions() {
-  const githubToken = _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4("github-token");
+  const githubToken = (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4)("github-token");
   if (githubToken && process.env.GITHUB_ACTIONS === "true") {
-    _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setSecret */ .Pq(githubToken);
+    (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setSecret */ .Pq)(githubToken);
   }
 
   return {
-    addToPath: _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getBooleanInput */ .Vt("add-to-path"),
-    bootstrap: _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getBooleanInput */ .Vt("bootstrap"),
+    addToPath: (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getBooleanInput */ .Vt)("add-to-path"),
+    bootstrap: (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getBooleanInput */ .Vt)("bootstrap"),
     githubToken,
-    installDir: _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4("install-dir"),
-    verifyAttestation: _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getBooleanInput */ .Vt("verify-attestation"),
-    version: stripLeadingV(_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4("version")),
+    installDir: (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4)("install-dir"),
+    verifyAttestation: (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getBooleanInput */ .Vt)("verify-attestation"),
+    version: stripLeadingV((0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .getInput */ .V4)("version")),
   };
 }
 
@@ -34839,7 +34839,7 @@ async function fetchJson(url, githubToken) {
 }
 
 async function downloadFile(url, destination) {
-  const downloadedPath = await _actions_tool_cache__WEBPACK_IMPORTED_MODULE_3__/* .downloadTool */ .bq(url);
+  const downloadedPath = await (0,_actions_tool_cache__WEBPACK_IMPORTED_MODULE_3__/* .downloadTool */ .bq)(url);
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.copyFile)(downloadedPath, destination);
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.chmod)(destination, 0o600);
 }
@@ -34871,7 +34871,7 @@ async function verifyChecksum(assetPath, checksumPath, assetName) {
   if (actual !== expected) {
     throw new Error(`Checksum mismatch for ${assetName}: expected ${expected}, got ${actual}`);
   }
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq(`${assetName}: checksum verified`);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${assetName}: checksum verified`);
 }
 
 async function sha256(filePath) {
@@ -34884,7 +34884,7 @@ async function verifyAttestation(assetPath, version, githubToken) {
     throw new Error("github-token is required when verify-attestation is true");
   }
 
-  const ghPath = await _actions_io__WEBPACK_IMPORTED_MODULE_2__/* .which */ .K7("gh", true);
+  const ghPath = await (0,_actions_io__WEBPACK_IMPORTED_MODULE_2__/* .which */ .K7)("gh", true);
   await run("gh", [
     "attestation",
     "verify",
@@ -34901,7 +34901,7 @@ async function verifyAttestation(assetPath, version, githubToken) {
     quiet: true,
     toolPath: ghPath,
   });
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq(`${node_path__WEBPACK_IMPORTED_MODULE_8__.basename(assetPath)}: attestation verified`);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${node_path__WEBPACK_IMPORTED_MODULE_8__.basename(assetPath)}: attestation verified`);
 }
 
 async function bootstrap(cxPath) {
@@ -34952,7 +34952,7 @@ async function exists(filePath, mode = node_fs__WEBPACK_IMPORTED_MODULE_6__.cons
 async function run(command, args, options = {}) {
   let stdout = "";
   let stderr = "";
-  const exitCode = await _actions_exec__WEBPACK_IMPORTED_MODULE_1__/* .exec */ .m(options.toolPath || command, args, {
+  const exitCode = await (0,_actions_exec__WEBPACK_IMPORTED_MODULE_1__/* .exec */ .m)(options.toolPath || command, args, {
     env: options.env || process.env,
     ignoreReturnCode: true,
     silent: options.quiet === true,
@@ -34975,7 +34975,7 @@ async function run(command, args, options = {}) {
 try {
   await main();
 } catch (error) {
-  _actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setFailed */ .C1(error instanceof Error ? error.message : String(error));
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .setFailed */ .C1)(error instanceof Error ? error.message : String(error));
 }
 
 __webpack_async_result__();

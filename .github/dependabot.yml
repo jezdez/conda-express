@@ -11,6 +11,18 @@ updates:
         patterns:
           - "*"
 
+  - package-ecosystem: npm
+    directory: /.github/actions/setup-cx
+    schedule:
+      interval: weekly
+    cooldown:
+      default-days: 7
+      semver-major-days: 21
+    groups:
+      setup-cx-action:
+        patterns:
+          - "*"
+
   - package-ecosystem: pip
     directory: /
     schedule:

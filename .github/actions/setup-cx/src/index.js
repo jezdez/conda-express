@@ -1,7 +1,15 @@
-import * as core from "@actions/core";
-import * as exec from "@actions/exec";
-import * as io from "@actions/io";
-import * as tc from "@actions/tool-cache";
+import {
+  addPath,
+  getBooleanInput,
+  getInput,
+  info,
+  setFailed,
+  setOutput,
+  setSecret,
+} from "@actions/core";
+import { exec as execCommand } from "@actions/exec";
+import { which } from "@actions/io";
+import { downloadTool } from "@actions/tool-cache";
 import { createHash } from "node:crypto";
 import { access, chmod, copyFile, cp, mkdir, readFile, rename, rm } from "node:fs/promises";
 import { constants } from "node:fs";
@@ -28,7 +36,7 @@ async function main() {
   const assetPath = path.join(workDir, asset.name);
   const checksumPath = path.join(workDir, `${asset.name}.sha256`);
 
-  core.info(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
+  info(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
   await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
   await downloadFile(`${baseUrl}/${asset.name}.sha256`, checksumPath);
   await verifyChecksum(assetPath, checksumPath, asset.name);
@@ -42,13 +50,13 @@ async function main() {
   await chmod(binaryPath, 0o755);
 
   if (options.addToPath) {
-    core.addPath(installDir);
+    addPath(installDir);
   }
 
-  core.setOutput("asset-name", asset.name);
-  core.setOutput("cx-path", binaryPath);
-  core.setOutput("install-dir", installDir);
-  core.setOutput("version", resolvedVersion);
+  setOutput("asset-name", asset.name);
+  setOutput("cx-path", binaryPath);
+  setOutput("install-dir", installDir);
+  setOutput("version", resolvedVersion);
 
   if (options.bootstrap) {
     await bootstrap(binaryPath);
@@ -56,18 +64,18 @@ async function main() {
 }
 
 function readOptions() {
-  const githubToken = core.getInput("github-token");
+  const githubToken = getInput("github-token");
   if (githubToken && process.env.GITHUB_ACTIONS === "true") {
-    core.setSecret(githubToken);
+    setSecret(githubToken);
   }
 
   return {
-    addToPath: core.getBooleanInput("add-to-path"),
-    bootstrap: core.getBooleanInput("bootstrap"),
+    addToPath: getBooleanInput("add-to-path"),
+    bootstrap: getBooleanInput("bootstrap"),
     githubToken,
-    installDir: core.getInput("install-dir"),
-    verifyAttestation: core.getBooleanInput("verify-attestation"),
-    version: stripLeadingV(core.getInput("version")),
+    installDir: getInput("install-dir"),
+    verifyAttestation: getBooleanInput("verify-attestation"),
+    version: stripLeadingV(getInput("version")),
   };
 }
 
@@ -149,7 +157,7 @@ async function fetchJson(url, githubToken) {
 }
 
 async function downloadFile(url, destination) {
-  const downloadedPath = await tc.downloadTool(url);
+  const downloadedPath = await downloadTool(url);
   await copyFile(downloadedPath, destination);
   await chmod(destination, 0o600);
 }
@@ -181,7 +189,7 @@ async function verifyChecksum(assetPath, checksumPath, assetName) {
   if (actual !== expected) {
     throw new Error(`Checksum mismatch for ${assetName}: expected ${expected}, got ${actual}`);
   }
-  core.info(`${assetName}: checksum verified`);
+  info(`${assetName}: checksum verified`);
 }
 
 async function sha256(filePath) {
@@ -194,7 +202,7 @@ async function verifyAttestation(assetPath, version, githubToken) {
     throw new Error("github-token is required when verify-attestation is true");
   }
 
-  const ghPath = await io.which("gh", true);
+  const ghPath = await which("gh", true);
   await run("gh", [
     "attestation",
     "verify",
@@ -211,7 +219,7 @@ async function verifyAttestation(assetPath, version, githubToken) {
     quiet: true,
     toolPath: ghPath,
   });
-  core.info(`${path.basename(assetPath)}: attestation verified`);
+  info(`${path.basename(assetPath)}: attestation verified`);
 }
 
 async function bootstrap(cxPath) {
@@ -262,7 +270,7 @@ async function exists(filePath, mode = constants.F_OK) {
 async function run(command, args, options = {}) {
   let stdout = "";
   let stderr = "";
-  const exitCode = await exec.exec(options.toolPath || command, args, {
+  const exitCode = await execCommand(options.toolPath || command, args, {
     env: options.env || process.env,
     ignoreReturnCode: true,
     silent: options.quiet === true,
@@ -285,5 +293,5 @@ async function run(command, args, options = {}) {
 try {
   await main();
 } catch (error) {
-  core.setFailed(error instanceof Error ? error.message : String(error));
+  setFailed(error instanceof Error ? error.message : String(error));
 }
