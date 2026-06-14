@@ -121,6 +121,9 @@ The action downloads the matching `cx` release asset, verifies its checksum,
 adds `cx` to `PATH`, and runs `cx bootstrap` by default. Artifact Attestation
 verification is available with `verify-attestation: true`.
 
+See the [GitHub Actions guide](https://jezdez.github.io/conda-express/guides/use-cx-in-github-actions/)
+for bootstrap, no-bootstrap, and attestation examples.
+
 ### From GitHub Releases
 
 Download the binary for your platform from the

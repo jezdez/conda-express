@@ -64,6 +64,7 @@ metadata checks.
 
 ## GitHub Actions
 
+For task-oriented examples, see {doc}`../guides/use-cx-in-github-actions`.
 Use the setup action when a workflow needs `cx` on `PATH`:
 
 ```yaml
