@@ -67,14 +67,8 @@ metadata checks.
 Use the setup action when a workflow needs `cx` on `PATH`:
 
 ```yaml
-permissions:
-  contents: read
-  attestations: read
-
 steps:
   - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
-    with:
-      github-token: ${{ github.token }}
   - run: cx status
 ```
 
@@ -84,7 +78,7 @@ that same version. If the action ref is not a release tag, it resolves and
 installs the latest release.
 
 The action downloads the platform-specific `cx` asset, checks the published
-`.sha256` file, verifies GitHub Artifact Attestations from
+`.sha256` file, optionally verifies GitHub Artifact Attestations from
 `.github/workflows/release.yml`, optionally bootstraps the managed conda
 prefix, and adds the install directory to `PATH`.
 
@@ -97,11 +91,24 @@ Useful inputs:
 | `install-dir` | runner temp directory | Directory to place the `cx` binary |
 | `bootstrap` | `true` | Run `cx bootstrap` after installation |
 | `add-to-path` | `true` | Add the install directory to `GITHUB_PATH` |
-| `verify-attestation` | `true` | Verify the downloaded binary with GitHub Artifact Attestations |
+| `verify-attestation` | `false` | Verify the downloaded binary with GitHub Artifact Attestations |
 
 Set `bootstrap: false` for workflows that only need to inspect the binary or
-defer bootstrap to a later step. When `verify-attestation` is enabled, pass
-`github-token: ${{ github.token }}` and grant `attestations: read` to the job.
+defer bootstrap to a later step.
+
+Enable provenance verification for stricter CI:
+
+```yaml
+permissions:
+  contents: read
+  attestations: read
+
+steps:
+  - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
+    with:
+      verify-attestation: true
+      github-token: ${{ github.token }}
+```
 
 ## Options
 

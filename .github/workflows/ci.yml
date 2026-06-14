@@ -54,6 +54,7 @@ jobs:
         with:
           version: 26.5.2.post2
           github-token: ${{ github.token }}
+          verify-attestation: true
           bootstrap: false
       - name: Smoke test action output
         shell: bash

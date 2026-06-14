@@ -30,7 +30,7 @@ inputs:
   verify-attestation:
     description: "Verify the downloaded cx binary with GitHub Artifact Attestations."
     required: false
-    default: "true"
+    default: "false"
 
 outputs:
   cx-path:
