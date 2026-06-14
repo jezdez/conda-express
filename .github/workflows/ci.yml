@@ -48,19 +48,17 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
-      - name: Set up cx
-        id: setup-cx
+      - name: Set up cx without attestation
+        id: setup-cx-default
         uses: ./.github/actions/setup-cx
         with:
           version: 26.5.2.post2
-          github-token: ${{ github.token }}
-          verify-attestation: true
           bootstrap: false
-      - name: Smoke test action output
+      - name: Smoke test default action path
         shell: bash
         env:
-          CX_PATH: ${{ steps.setup-cx.outputs.cx-path }}
-          EXPECTED_VERSION: ${{ steps.setup-cx.outputs.version }}
+          CX_PATH: ${{ steps.setup-cx-default.outputs.cx-path }}
+          EXPECTED_VERSION: ${{ steps.setup-cx-default.outputs.version }}
         run: |
           set -euo pipefail
           if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
@@ -69,6 +67,28 @@ jobs:
           fi
           "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
           cx --version | grep -Fx "cx ${EXPECTED_VERSION}"
+
+      - name: Set up cx with attestation
+        id: setup-cx-attested
+        uses: ./.github/actions/setup-cx
+        with:
+          version: 26.5.2.post2
+          github-token: ${{ github.token }}
+          verify-attestation: true
+          add-to-path: false
+          bootstrap: false
+      - name: Smoke test attestation path
+        shell: bash
+        env:
+          CX_PATH: ${{ steps.setup-cx-attested.outputs.cx-path }}
+          EXPECTED_VERSION: ${{ steps.setup-cx-attested.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
+            echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
+            exit 1
+          fi
+          "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
 
   validate:
     name: Validate
