@@ -91,11 +91,12 @@ python = ">=3.12"
 conda = "==26.5.2"
 conda-rattler-solver = "*"
 conda-spawn = ">=0.1.0"
-conda-completion = ">=0.2.0"
+conda-completion = ">=0.3.0"
+conda-exec = ">=0.3.0"
 conda-pypi = "*"
 conda-self = "*"
 conda-global = "*"
-conda-workspaces = ">=0.5.0"
+conda-workspaces = ">=0.7.0"
 
 [tool.pixi.environments]
 default = { features = ["dev"], no-default-feature = true }

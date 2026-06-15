@@ -209,6 +209,7 @@ jobs:
           "$BINARY_PATH" --path "$SMOKE_PREFIX" bootstrap
           "$BINARY_PATH" --path "$SMOKE_PREFIX" status
           "$BINARY_PATH" --path "$SMOKE_PREFIX" completion --help | grep -q "Generate and install shell tab completions"
+          "$BINARY_PATH" --path "$SMOKE_PREFIX" exec --help | grep -q "Run a command from a conda package without installing it"
 
       - name: Upload canary binary
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Runtime
+
+- Add `conda-exec >=0.3.0` to the default runtime package set.
+- Raise the default runtime package floors to `conda-completion >=0.3.0` and
+  `conda-workspaces >=0.7.0`.
+
 ## 26.5.2.post2 (2026-06-11)
 
 ### Distribution

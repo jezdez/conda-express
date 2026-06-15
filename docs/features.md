@@ -45,8 +45,8 @@ uses `conda-rattler-solver` instead, these are unnecessary.
 cx removes them via a post-solve transitive dependency pruning algorithm:
 after the source environment has been solved, conda-ship identifies packages
 that are *exclusively* required by the excluded packages and removes them from
-the runtime lock. This reduces the install from roughly 125 packages to about
-95-105 packages, depending on platform.
+the runtime lock. This reduces the install from roughly 130-140 packages to
+about 103-109 packages, depending on platform.
 
 ## conda-rattler-solver
 
@@ -122,6 +122,25 @@ cx task list
 conda-workspaces reads workspace manifests from `conda.toml`, `pixi.toml`, or
 `pyproject.toml` — making it compatible with existing pixi projects. See the
 [conda-workspaces documentation](https://conda-incubator.github.io/conda-workspaces/)
+for the full feature set.
+
+## conda-exec
+
+cx includes [conda-exec](https://conda-incubator.github.io/conda-exec/),
+which runs commands from conda packages in cached, isolated environments
+without installing them permanently into the managed base prefix. It also
+supports PEP 723 script metadata workflows.
+
+```bash
+# Run a package command without installing it into base
+cx exec ruff --version
+
+# Inspect or clean cached execution environments
+cx exec --list
+cx exec --clean --dry-run
+```
+
+See the [conda-exec documentation](https://conda-incubator.github.io/conda-exec/)
 for the full feature set.
 
 ## conda-global

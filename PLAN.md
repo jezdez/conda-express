@@ -33,6 +33,8 @@ creates two companion repositories:
   `.github/workflows/build.yml` is release preparation for this repository's `cx` /
   `cxz` binaries, not a downstream builder interface.
 - Moved Pixi metadata and Python package metadata into `pyproject.toml`.
+- Added `conda-exec` to the default package set after the current plugin
+  release became available on conda-forge.
 
 ## Remaining
 
@@ -46,14 +48,11 @@ creates two companion repositories:
 
 - Keep the default package set synchronized across release workflows,
   `pyproject.toml`'s `runtime` source environment, and docs.
-- Add `conda-exec` to the default package set once the intended new release is
-  available on conda-forge.
 - Keep Homebrew, shell script, Docker, GitHub Releases, and PyPI as
   distribution channels backed by conda-ship artifacts.
 
 ## Tracking Issues
 
 - Umbrella split: <https://github.com/jezdez/conda-express/issues/81>
-- Add `conda-exec` once released: <https://github.com/jezdez/conda-express/issues/85>
 - Channel presets follow-up: <https://github.com/jezdez/conda-ship/issues/2>
 - Complete conda-wasm migration: <https://github.com/jezdez/conda-wasm/issues/1>
