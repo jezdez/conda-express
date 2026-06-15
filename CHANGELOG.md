@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 26.5.2.post3 (2026-06-15)
 
 ### Runtime
 
