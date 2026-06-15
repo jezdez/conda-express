@@ -42,11 +42,12 @@ cx installs a managed conda stack from conda-forge:
 | conda | Package manager |
 | conda-rattler-solver | Rust-based solver without libmamba's native dependency chain |
 | conda-spawn >= 0.1.0 | Subprocess-based environment activation |
-| conda-completion >= 0.2.0 | Shell completion support |
+| conda-completion >= 0.3.0 | Shell completion support |
+| [conda-exec](https://conda-incubator.github.io/conda-exec/) >= 0.3.0 | Ephemeral package execution and PEP 723 script workflows |
 | conda-pypi | PyPI interoperability |
 | conda-self | Base environment self-management |
 | conda-global | Global tool installation and PATH management |
-| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.5.0 | Multi-environment workspace and task management |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.7.0 | Multi-environment workspace and task management |
 
 See the [included plugins reference](https://jezdez.github.io/conda-express/reference/included-plugins/)
 for the commands and workflows these packages add.
@@ -60,6 +61,13 @@ cx completion install --dry-run
 
 The generated runtime tells completion hooks to register the `cx` command name
 instead of the underlying `conda` delegate.
+
+Ad hoc package commands can run through the included `conda-exec` plugin
+without adding tools to the managed base prefix:
+
+```bash
+cx exec ruff --version
+```
 
 The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default because cx configures `conda-rattler-solver`.
 

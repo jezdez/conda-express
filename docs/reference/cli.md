@@ -114,7 +114,7 @@ cx {{ conda_express_release }}
   path:      /Users/you/.conda/express
   channels:  https://conda.anaconda.org/conda-forge/
   packages:  python, conda, conda-rattler-solver, ...
-  installed: 97 packages
+  installed: 103 packages
   delegate:  conda (/Users/you/.conda/express/bin/conda)
 ```
 :::

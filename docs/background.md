@@ -42,8 +42,8 @@ project is the key enabler for cx's solver strategy:
 
 Because conda on conda-forge hard-depends on `conda-libmamba-solver`, cx
 uses a post-solve transitive dependency pruning algorithm to remove libmamba
-and its exclusive dependencies, reducing the install from roughly 125 packages
-to about 95-105 packages, depending on platform.
+and its exclusive dependencies, reducing the install from roughly 130-140
+packages to about 103-109 packages, depending on platform.
 
 ## What blocks conda itself on PyPI
 

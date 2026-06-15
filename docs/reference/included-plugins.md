@@ -11,6 +11,7 @@ behavior.
 | `conda-rattler-solver` | Rattler/resolvo-based solver backend | `solver: rattler` is written to `.condarc` |
 | `conda-spawn` | Subprocess-based activation | `cx shell ENV`, `conda spawn ENV` |
 | `conda-completion` | Shell completion support | `cx completion status`, `cx completion install --dry-run` |
+| `conda-exec` | Ephemeral package execution and PEP 723 scripts | `cx exec ruff --version`, `cx exec --list` |
 | `conda-pypi` | PyPI interoperability inside conda workflows | PyPI dependency handling through the conda plugin stack |
 | `conda-self` | Base environment self-management workflow | `cx self reset --snapshot installer-exact` |
 | `conda-global` | Isolated global tool environments | `cx global install ruff`, `cx global list` |
@@ -30,6 +31,8 @@ turning the base prefix into a project environment:
 - `conda-self` can reset the managed base prefix from the initial-state
   snapshot written at bootstrap.
 - `conda-global` covers isolated command-line tools.
+- `conda-exec` covers one-off package execution without adding tools to the
+  managed base prefix.
 - `conda-workspaces` covers project-level environments and tasks for users who
   want a conda-native workspace workflow.
 - `conda-pypi` and `conda-completion` fill common day-to-day gaps.
@@ -74,6 +77,7 @@ cx workspace init --name my-project
 cx workspace add python numpy
 cx workspace install
 cx task run test
+cx exec ruff --version
 cx global install ruff
 ```
 
