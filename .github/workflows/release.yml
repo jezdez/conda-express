@@ -311,7 +311,7 @@ jobs:
   update-homebrew:
     name: Update Homebrew formula
     runs-on: ubuntu-latest
-    needs: [validate-release, github-release]
+    needs: [validate-release, github-release, publish-pypi, docker-images]
     permissions:
       contents: write # commit the generated Homebrew formula update back to main
     steps:
