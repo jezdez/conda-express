@@ -43,12 +43,12 @@ version_scheme = "no-guess-dev"
 local_scheme = "no-local-version"
 
 [tool.conda-ship]
-runtime = "cx"
+runtime-name = "cx"
 runtime-version = { from = "project-metadata" }
-delegate = "conda"
-layout = "online"
+delegate-executable = "conda"
+artifact-layout = "online"
 source-environment = "runtime"
-exclude = ["conda-libmamba-solver"]
+exclude-packages = ["conda-libmamba-solver"]
 docs-url = "https://jezdez.github.io/conda-express/"
 install-scheme = "conda-home"
 install-name = "express"

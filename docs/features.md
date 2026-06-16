@@ -331,7 +331,7 @@ cx builds and tests on 5 platforms via GitHub Actions:
 | macos-arm64 | `macos-15` |
 | windows-x64 | `windows-latest` |
 
-conda-ship 0.3.0 publishes Windows ARM64 builder assets and maps
-`Windows`/`ARM64` action runners to `aarch64-pc-windows-msvc`. conda-express
-does not publish Windows ARM64 `cx` or `cxz` artifacts yet because full runtime
-bootstrap support still depends on the conda package ecosystem.
+conda-ship publishes Windows ARM64 builder assets and maps `Windows`/`ARM64`
+action runners to `aarch64-pc-windows-msvc`. conda-express does not publish
+Windows ARM64 `cx` or `cxz` artifacts yet because full runtime bootstrap
+support still depends on the conda package ecosystem.

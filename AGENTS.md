@@ -25,9 +25,9 @@
 - Minimize the dependency graph. Prefer existing Pixi dependencies and
   GitHub Actions over adding new tooling.
 
-- Use exact SHAs for GitHub Actions in CI workflows. The conda-ship action is
-  the exception: use its immutable release tag so the action and downloaded
-  release assets share the same version.
+- Use exact SHAs for GitHub Actions in CI workflows. For the conda-ship action,
+  pin the action source to the release commit SHA and pass the matching
+  `conda-ship-version` input so downloaded release assets stay aligned.
 
 ## Typing and linting
 
