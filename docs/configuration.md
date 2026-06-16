@@ -10,21 +10,21 @@ runtime:
 
 ```toml
 [tool.conda-ship]
-runtime = "cx"
+runtime-name = "cx"
 runtime-version = { from = "project-metadata" }
-delegate = "conda"
-layout = "online"
+delegate-executable = "conda"
+artifact-layout = "online"
 source-environment = "runtime"
-exclude = ["conda-libmamba-solver"]
+exclude-packages = ["conda-libmamba-solver"]
 docs-url = "https://jezdez.github.io/conda-express/"
 install-scheme = "conda-home"
 install-name = "express"
 ```
 
-The release workflows override only `layout`:
+The release workflows override `artifact-layout` and `artifact-name`:
 
-- `layout = "online"` builds `cx`
-- `layout = "embedded"` builds `cxz`
+- `artifact-layout = "online"` with `artifact-name = "cx"` builds `cx`
+- `artifact-layout = "embedded"` with `artifact-name = "cxz"` builds `cxz`
 
 The source environment is solved and locked by Pixi. conda-ship derives the
 runtime lock from that committed source lock rather than accepting ad hoc

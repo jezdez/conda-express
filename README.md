@@ -144,9 +144,9 @@ Download the binary for your platform from the
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
 
-Windows ARM64 is not published for conda-express yet. conda-ship 0.3.0
-publishes Windows ARM64 builder assets, but full runtime bootstrap support is
-still gated by the conda package ecosystem.
+Windows ARM64 is not published for conda-express yet. conda-ship publishes
+Windows ARM64 builder assets, but full runtime bootstrap support is still gated
+by the conda package ecosystem.
 
 Each file has matching `.sha256`, `.info.json`, `.packages.txt`, and
 `.runtime.lock` files. Release artifacts are also covered by GitHub Artifact
@@ -245,12 +245,12 @@ committed lockfile:
 
 ```toml
 [tool.conda-ship]
-runtime = "cx"
+runtime-name = "cx"
 runtime-version = { from = "project-metadata" }
-delegate = "conda"
-layout = "online"
+delegate-executable = "conda"
+artifact-layout = "online"
 source-environment = "runtime"
-exclude = ["conda-libmamba-solver"]
+exclude-packages = ["conda-libmamba-solver"]
 docs-url = "https://jezdez.github.io/conda-express/"
 install-scheme = "conda-home"
 install-name = "express"

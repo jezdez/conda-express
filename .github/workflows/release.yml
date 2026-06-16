@@ -67,43 +67,43 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             variant: cx
-            layout: online
+            artifact_layout: online
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
             variant: cx
-            layout: online
+            artifact_layout: online
           - target: x86_64-apple-darwin
             os: macos-15-intel
             variant: cx
-            layout: online
+            artifact_layout: online
           - target: aarch64-apple-darwin
             os: macos-15
             variant: cx
-            layout: online
+            artifact_layout: online
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             variant: cx
-            layout: online
+            artifact_layout: online
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             variant: cxz
-            layout: embedded
+            artifact_layout: embedded
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-24.04-arm
             variant: cxz
-            layout: embedded
+            artifact_layout: embedded
           - target: x86_64-apple-darwin
             os: macos-15-intel
             variant: cxz
-            layout: embedded
+            artifact_layout: embedded
           - target: aarch64-apple-darwin
             os: macos-15
             variant: cxz
-            layout: embedded
+            artifact_layout: embedded
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             variant: cxz
-            layout: embedded
+            artifact_layout: embedded
 
     steps:
       - name: Verify matrix target
@@ -137,9 +137,11 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: jezdez/conda-ship@0.3.0 # zizmor: ignore[unpinned-uses] conda-ship immutable releases keep the action and assets aligned.
+        uses: jezdez/conda-ship@15cf30a3fbf79731704737ea563c22de74d63b41 # 0.4.0
         with:
-          layout: ${{ matrix.layout }}
+          conda-ship-version: "0.4.0"
+          artifact-layout: ${{ matrix.artifact_layout }}
+          artifact-name: ${{ matrix.variant }}
 
       - name: Smoke test ${{ matrix.variant }} release binary
         shell: bash
