@@ -13,20 +13,10 @@ on:
       - "scripts/**"
       - "pyproject.toml"
       - "pixi.lock"
-  pull_request:
-    paths:
-      - ".github/workflows/docs.yml"
-      - "docs/**"
-      - "CHANGELOG.md"
-      - "DESIGN.md"
-      - "PLAN.md"
-      - "scripts/**"
-      - "pyproject.toml"
-      - "pixi.lock"
   workflow_dispatch:
 
 concurrency:
-  group: docs-${{ github.event.pull_request.number || github.sha }}
+  group: docs-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:

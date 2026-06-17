@@ -76,7 +76,7 @@ Homebrew/PyPI/Docker packaging, or the included plugin set belong here.
 
 ### Recording demos
 
-The checked-in GIF and MP4 demos are generated from `demos/*.tape` with
+The checked-in GIF demos are generated from `demos/*.tape` with
 [VHS](https://github.com/charmbracelet/vhs). Record them against current
 conda-express binaries, not an older `cx` installed on `PATH`:
 

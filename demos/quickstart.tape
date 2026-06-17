@@ -1,7 +1,6 @@
 Source demos/_settings.tape
 
 Output demos/quickstart.gif
-Output demos/quickstart.mp4
 
 Source demos/_cx_setup.tape
 Type `cx bootstrap --force 2>/dev/null && cx create -n demo python=3.12 numpy -y -q 2>/dev/null && cx remove -n demo --all -y -q 2>/dev/null && rm -rf "$CX_HOME"`
