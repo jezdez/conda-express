@@ -34680,15 +34680,13 @@ function _unique(values) {
 __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependencies__, __webpack_async_result__) => { try {
 /* harmony import */ var _actions_core__WEBPACK_IMPORTED_MODULE_0__ = __nccwpck_require__(6058);
 /* harmony import */ var _actions_exec__WEBPACK_IMPORTED_MODULE_1__ = __nccwpck_require__(5260);
-/* harmony import */ var _actions_io__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(8701);
-/* harmony import */ var _actions_tool_cache__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(3002);
-/* harmony import */ var node_crypto__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(7598);
-/* harmony import */ var node_fs_promises__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(1455);
-/* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(3024);
-/* harmony import */ var node_os__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(8161);
-/* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_8__ = __nccwpck_require__(6760);
-/* harmony import */ var node_url__WEBPACK_IMPORTED_MODULE_9__ = __nccwpck_require__(3136);
-
+/* harmony import */ var _actions_tool_cache__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(3002);
+/* harmony import */ var node_crypto__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7598);
+/* harmony import */ var node_fs_promises__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(1455);
+/* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(3024);
+/* harmony import */ var node_os__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(8161);
+/* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(6760);
+/* harmony import */ var node_url__WEBPACK_IMPORTED_MODULE_8__ = __nccwpck_require__(3136);
 
 
 
@@ -34710,16 +34708,16 @@ async function main() {
   const options = readOptions();
   const asset = platformAsset();
   const resolvedVersion = await resolveVersion(options.version, options.githubToken);
-  const installDir = options.installDir || node_path__WEBPACK_IMPORTED_MODULE_8__.join(runnerTemp(), "cx", "bin");
-  const workDir = node_path__WEBPACK_IMPORTED_MODULE_8__.join(runnerTemp(), `cx-download-${resolvedVersion}`);
+  const installDir = options.installDir || node_path__WEBPACK_IMPORTED_MODULE_7__.join(runnerTemp(), "cx", "bin");
+  const workDir = node_path__WEBPACK_IMPORTED_MODULE_7__.join(runnerTemp(), `cx-download-${resolvedVersion}`);
 
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.rm)(workDir, { recursive: true, force: true });
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.mkdir)(workDir, { recursive: true });
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.mkdir)(installDir, { recursive: true });
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rm)(workDir, { recursive: true, force: true });
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(workDir, { recursive: true });
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(installDir, { recursive: true });
 
   const baseUrl = `https://github.com/${repository}/releases/download/${resolvedVersion}`;
-  const assetPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(workDir, asset.name);
-  const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(workDir, `${asset.name}.sha256`);
+  const assetPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(workDir, asset.name);
+  const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(workDir, `${asset.name}.sha256`);
 
   (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
   await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
@@ -34730,9 +34728,9 @@ async function main() {
     await verifyAttestation(assetPath, resolvedVersion, options.githubToken);
   }
 
-  const binaryPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(installDir, asset.binaryName);
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.copyFile)(assetPath, binaryPath);
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.chmod)(binaryPath, 0o755);
+  const binaryPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(installDir, asset.binaryName);
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.copyFile)(assetPath, binaryPath);
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.chmod)(binaryPath, 0o755);
 
   if (options.addToPath) {
     (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .addPath */ .fM)(installDir);
@@ -34772,15 +34770,15 @@ function stripLeadingV(value) {
 }
 
 function runnerTemp() {
-  return process.env.RUNNER_TEMP || (0,node_os__WEBPACK_IMPORTED_MODULE_7__.tmpdir)();
+  return process.env.RUNNER_TEMP || (0,node_os__WEBPACK_IMPORTED_MODULE_6__.tmpdir)();
 }
 
 /**
  * Resolve the release asset name for the current runner platform.
  */
 function platformAsset() {
-  const os = (0,node_os__WEBPACK_IMPORTED_MODULE_7__.platform)();
-  const cpu = (0,node_os__WEBPACK_IMPORTED_MODULE_7__.arch)();
+  const os = (0,node_os__WEBPACK_IMPORTED_MODULE_6__.platform)();
+  const cpu = (0,node_os__WEBPACK_IMPORTED_MODULE_6__.arch)();
 
   if (os === "linux" && cpu === "x64") {
     return { name: "cx-x86_64-unknown-linux-gnu", binaryName: "cx" };
@@ -34841,8 +34839,8 @@ async function resolveVersion(requestedVersion, githubToken) {
  * release asset without requiring callers to repeat `version`.
  */
 function inferActionRefFromPath() {
-  const actionPath = (0,node_url__WEBPACK_IMPORTED_MODULE_9__.fileURLToPath)(import.meta.url);
-  const segments = actionPath.split(node_path__WEBPACK_IMPORTED_MODULE_8__.sep);
+  const actionPath = (0,node_url__WEBPACK_IMPORTED_MODULE_8__.fileURLToPath)(import.meta.url);
+  const segments = actionPath.split(node_path__WEBPACK_IMPORTED_MODULE_7__.sep);
   const actionRootIndex = segments.lastIndexOf(".github");
   if (actionRootIndex < 1) {
     return "";
@@ -34864,9 +34862,9 @@ async function fetchJson(url, githubToken) {
  * Download a release asset through the official Actions tool-cache helper.
  */
 async function downloadFile(url, destination) {
-  const downloadedPath = await (0,_actions_tool_cache__WEBPACK_IMPORTED_MODULE_3__/* .downloadTool */ .bq)(url);
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.copyFile)(downloadedPath, destination);
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.chmod)(destination, 0o600);
+  const downloadedPath = await (0,_actions_tool_cache__WEBPACK_IMPORTED_MODULE_2__/* .downloadTool */ .bq)(url);
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.copyFile)(downloadedPath, destination);
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.chmod)(destination, 0o600);
 }
 
 function requestHeaders(githubToken, extra = {}) {
@@ -34884,7 +34882,7 @@ function requestHeaders(githubToken, extra = {}) {
  * Verify the downloaded binary against the release checksum file.
  */
 async function verifyChecksum(assetPath, checksumPath, assetName) {
-  const checksumText = await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.readFile)(checksumPath, "utf8");
+  const checksumText = await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.readFile)(checksumPath, "utf8");
   const checksum = checksumText
     .split(/\r?\n/)
     .map((line) => line.trim().split(/\s+/))
@@ -34903,8 +34901,8 @@ async function verifyChecksum(assetPath, checksumPath, assetName) {
 }
 
 async function sha256(filePath) {
-  const data = await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.readFile)(filePath);
-  return (0,node_crypto__WEBPACK_IMPORTED_MODULE_4__.createHash)("sha256").update(data).digest("hex");
+  const data = await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.readFile)(filePath);
+  return (0,node_crypto__WEBPACK_IMPORTED_MODULE_3__.createHash)("sha256").update(data).digest("hex");
 }
 
 /**
@@ -34918,7 +34916,6 @@ async function verifyAttestation(assetPath, version, githubToken) {
     throw new Error("github-token is required when verify-attestation is true");
   }
 
-  const ghPath = await (0,_actions_io__WEBPACK_IMPORTED_MODULE_2__/* .which */ .K7)("gh", true);
   await run("gh", [
     "attestation",
     "verify",
@@ -34933,37 +34930,36 @@ async function verifyAttestation(assetPath, version, githubToken) {
   ], {
     env: { ...process.env, GH_TOKEN: githubToken },
     quiet: true,
-    toolPath: ghPath,
   });
-  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${node_path__WEBPACK_IMPORTED_MODULE_8__.basename(assetPath)}: attestation verified`);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${node_path__WEBPACK_IMPORTED_MODULE_7__.basename(assetPath)}: attestation verified`);
 }
 
 /**
  * Run `cx bootstrap`, preserving a partial package cache from a failed prefix.
  */
 async function bootstrap(cxPath) {
-  const installPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join((0,node_os__WEBPACK_IMPORTED_MODULE_7__.homedir)(), ".conda", "express");
-  const condaPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(installPath, "bin", "conda");
+  const installPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join((0,node_os__WEBPACK_IMPORTED_MODULE_6__.homedir)(), ".conda", "express");
+  const condaPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(installPath, "bin", "conda");
 
-  if (await exists(condaPath, node_fs__WEBPACK_IMPORTED_MODULE_6__.constants.X_OK)) {
+  if (await exists(condaPath, node_fs__WEBPACK_IMPORTED_MODULE_5__.constants.X_OK)) {
     await run(cxPath, ["status"]);
     return;
   }
 
-  const pkgsPath = node_path__WEBPACK_IMPORTED_MODULE_8__.join(installPath, "pkgs");
+  const pkgsPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(installPath, "pkgs");
   let restoredPkgs = "";
-  if ((await exists(pkgsPath)) && !(await exists(condaPath, node_fs__WEBPACK_IMPORTED_MODULE_6__.constants.X_OK))) {
-    restoredPkgs = node_path__WEBPACK_IMPORTED_MODULE_8__.join(runnerTemp(), "cx-restored-pkgs");
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.rm)(restoredPkgs, { recursive: true, force: true });
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.mkdir)(node_path__WEBPACK_IMPORTED_MODULE_8__.dirname(restoredPkgs), { recursive: true });
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.rename)(pkgsPath, restoredPkgs);
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.rm)(installPath, { recursive: true, force: true });
+  if ((await exists(pkgsPath)) && !(await exists(condaPath, node_fs__WEBPACK_IMPORTED_MODULE_5__.constants.X_OK))) {
+    restoredPkgs = node_path__WEBPACK_IMPORTED_MODULE_7__.join(runnerTemp(), "cx-restored-pkgs");
+    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rm)(restoredPkgs, { recursive: true, force: true });
+    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(node_path__WEBPACK_IMPORTED_MODULE_7__.dirname(restoredPkgs), { recursive: true });
+    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rename)(pkgsPath, restoredPkgs);
+    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rm)(installPath, { recursive: true, force: true });
   }
 
   await run(cxPath, ["bootstrap"]);
 
   if (restoredPkgs) {
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.mkdir)(pkgsPath, { recursive: true });
+    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(pkgsPath, { recursive: true });
     await copyDirectory(restoredPkgs, pkgsPath);
   }
 
@@ -34971,12 +34967,12 @@ async function bootstrap(cxPath) {
 }
 
 async function copyDirectory(source, destination) {
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.cp)(source, destination, { recursive: true, force: true });
+  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.cp)(source, destination, { recursive: true, force: true });
 }
 
-async function exists(filePath, mode = node_fs__WEBPACK_IMPORTED_MODULE_6__.constants.F_OK) {
+async function exists(filePath, mode = node_fs__WEBPACK_IMPORTED_MODULE_5__.constants.F_OK) {
   try {
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_5__.access)(filePath, mode);
+    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.access)(filePath, mode);
     return true;
   } catch (error) {
     if (error.code === "ENOENT" || error.code === "EACCES") {
@@ -34992,7 +34988,7 @@ async function exists(filePath, mode = node_fs__WEBPACK_IMPORTED_MODULE_6__.cons
 async function run(command, args, options = {}) {
   let stdout = "";
   let stderr = "";
-  const exitCode = await (0,_actions_exec__WEBPACK_IMPORTED_MODULE_1__/* .exec */ .m)(options.toolPath || command, args, {
+  const exitCode = await (0,_actions_exec__WEBPACK_IMPORTED_MODULE_1__/* .exec */ .m)(command, args, {
     env: options.env || process.env,
     ignoreReturnCode: true,
     silent: options.quiet === true,
