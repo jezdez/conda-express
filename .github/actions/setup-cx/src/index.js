@@ -8,7 +8,6 @@ import {
   setSecret,
 } from "@actions/core";
 import { exec as execCommand } from "@actions/exec";
-import { which } from "@actions/io";
 import { downloadTool } from "@actions/tool-cache";
 import { createHash } from "node:crypto";
 import { access, chmod, copyFile, cp, mkdir, readFile, rename, rm } from "node:fs/promises";
@@ -236,7 +235,6 @@ async function verifyAttestation(assetPath, version, githubToken) {
     throw new Error("github-token is required when verify-attestation is true");
   }
 
-  const ghPath = await which("gh", true);
   await run("gh", [
     "attestation",
     "verify",
@@ -251,7 +249,6 @@ async function verifyAttestation(assetPath, version, githubToken) {
   ], {
     env: { ...process.env, GH_TOKEN: githubToken },
     quiet: true,
-    toolPath: ghPath,
   });
   info(`${path.basename(assetPath)}: attestation verified`);
 }
@@ -310,7 +307,7 @@ async function exists(filePath, mode = constants.F_OK) {
 async function run(command, args, options = {}) {
   let stdout = "";
   let stderr = "";
-  const exitCode = await execCommand(options.toolPath || command, args, {
+  const exitCode = await execCommand(command, args, {
     env: options.env || process.env,
     ignoreReturnCode: true,
     silent: options.quiet === true,
