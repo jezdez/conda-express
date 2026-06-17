@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import stat
 import sys
 import sysconfig
@@ -12,19 +13,20 @@ class CxNotFound(FileNotFoundError): ...
 def find_cx_bin() -> str:
     """Return the path to the cx binary installed by the wheel."""
     cx_exe = "cx" + (sysconfig.get_config_var("EXE") or "")
-    module_bin = join_path(module_path(), "bin")
+    module_dir = Path(__file__).parent
+    module_bin = module_dir / "bin"
 
-    if module_bin and os.path.isdir(module_bin):
-        path = os.path.join(module_bin, cx_exe)
-        if os.path.isfile(path):
-            ensure_executable(path)
-            return path
+    if module_bin.is_dir():
+        path = module_bin / cx_exe
+        if path.is_file():
+            ensure_executable(str(path))
+            return str(path)
         raise CxNotFound(f"Package-owned cx binary is missing: {path}")
 
     targets = [
         sysconfig.get_path("scripts"),
         sysconfig.get_path("scripts", vars={"base": sys.base_prefix}),
-        join_path(matching_parents(module_path(), "conda_express"), "bin"),
+        str(module_dir.parent / "bin"),
         sysconfig.get_path("scripts", scheme=user_scheme()),
     ]
 
@@ -33,40 +35,15 @@ def find_cx_bin() -> str:
         if not target or target in seen:
             continue
         seen.append(target)
-        path = os.path.join(target, cx_exe)
-        if os.path.isfile(path):
-            require_executable(path)
-            return path
+        path = Path(target) / cx_exe
+        if path.is_file():
+            require_executable(str(path))
+            return str(path)
 
     locations = "\n".join(f"  - {target}" for target in seen)
     raise CxNotFound(
         f"Could not find the cx binary in any of the following locations:\n{locations}\n"
     )
-
-
-def module_path() -> str:
-    return os.path.dirname(__file__)
-
-
-def matching_parents(path: str | None, match: str) -> str | None:
-    """Walk backwards through path segments matching a glob pattern."""
-    from fnmatch import fnmatch
-
-    if not path:
-        return None
-    parts = path.split(os.sep)
-    match_parts = match.split("/")
-    if len(parts) < len(match_parts):
-        return None
-    if not all(fnmatch(p, m) for p, m in zip(reversed(parts), reversed(match_parts))):
-        return None
-    return os.sep.join(parts[: -len(match_parts)])
-
-
-def join_path(path: str | None, *parts: str) -> str | None:
-    if not path:
-        return None
-    return os.path.join(path, *parts)
 
 
 def ensure_executable(path: str) -> None:

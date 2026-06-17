@@ -1,7 +1,6 @@
 Source demos/_settings.tape
 
 Output demos/workspaces.gif
-Output demos/workspaces.mp4
 
 Source demos/_cx_setup.tape
 Type `cx bootstrap --force 2>/dev/null`
