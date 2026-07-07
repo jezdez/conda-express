@@ -2,7 +2,7 @@
 # Stage 1: bootstrap in a minimal container with shell support.
 # Set HOME to match the nonroot user in the final stage so the install path
 # lands at the same stamped default used by the final image.
-FROM debian:bookworm-slim@sha256:96e378d7e6531ac9a15ad505478fcc2e69f371b10f5cdf87857c4b8188404716 AS bootstrap
+FROM debian:bookworm-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df AS bootstrap
 ARG TARGETARCH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
