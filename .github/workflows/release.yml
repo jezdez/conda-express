@@ -162,7 +162,7 @@ jobs:
           "$BINARY_PATH" --path "$SMOKE_PREFIX" exec --help | grep -q "Run a command from a conda package without installing it"
 
       - name: Attest ${{ matrix.variant }} release binary
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: ${{ steps.build.outputs.dist-path }}/*
 
@@ -240,7 +240,7 @@ jobs:
           unzip -p "${wheels[0]}" "*/METADATA" | grep -Fx "Version: ${RELEASE_VERSION}"
 
       - name: Attest wheel
-        uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-path: dist/*.whl
 
@@ -479,7 +479,7 @@ jobs:
           cp "docker/binaries/${VARIANT}-aarch64-unknown-linux-gnu" "docker/${VARIANT}-linux-arm64"
           chmod +x "docker/${VARIANT}-linux-amd64" "docker/${VARIANT}-linux-arm64"
 
-      - uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4.1.0
+      - uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4.2.0
 
       - uses: docker/setup-buildx-action@d7f5e7f509e45cec5c76c4d5afdd7de93d0b3df5 # v4.1.0
 
@@ -517,7 +517,7 @@ jobs:
             type=raw,value=${{ needs.validate-release.outputs.major-minor }}${{ matrix.tag-suffix }}
             type=raw,value=${{ matrix.latest-tag }}
 
-      - uses: docker/build-push-action@f9f3042f7e2789586610d6e8b85c8f03e5195baf # v7.2.0
+      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         id: build
         with:
           context: docker
@@ -530,7 +530,7 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
+      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}
