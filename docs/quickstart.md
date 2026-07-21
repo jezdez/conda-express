@@ -17,7 +17,8 @@ Update later with `brew upgrade cx`.
 
 ::::{tab-item} Shell script
 The shell script downloads the right binary for your platform, verifies its
-checksum, updates your shell profile / PATH, and runs `cx bootstrap`.
+checksum, updates your shell profile / PATH, and runs `cx info`. That first
+conda command automatically bootstraps the managed prefix.
 
 **macOS / Linux:**
 
@@ -41,9 +42,10 @@ All options work as environment variables on both platforms:
 | `CX_INSTALL_DIR` | `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) | Where to place the `cx` binary |
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to skip shell profile / PATH modification |
-| `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip running `cx bootstrap` |
+| `CX_NO_BOOTSTRAP` | *(unset)* | Set to skip the installer's eager bootstrap command |
 | `CX_SKIP_VERIFY` | *(unset)* | Set to skip checksum verification |
-| `CX_BUNDLE` | *(unset)* | Bundle directory used by `cx bootstrap` |
+| `CX_PREFIX` | `~/.conda/express` | Managed prefix used by automatic bootstrap |
+| `CX_BUNDLE` | *(unset)* | Bundle directory used during automatic bootstrap |
 | `CX_OFFLINE` | *(unset)* | Set to force offline bootstrap |
 
 `CX_VERSION` uses conda-express release versions, which follow the conda
@@ -109,7 +111,7 @@ sudo mv cx-x86_64-unknown-linux-gnu /usr/local/bin/cx
 A multi-arch image is published to GHCR:
 
 ```bash
-docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express bootstrap
+docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express info
 ```
 
 Works on Linux, macOS, and Windows via Docker Desktop. The image runs as
@@ -120,7 +122,7 @@ writable volume.
 ```bash
 docker run --rm --read-only --tmpfs /tmp \
   -v cx-data:/home/nonroot/.conda/express \
-  ghcr.io/jezdez/conda-express status
+  ghcr.io/jezdez/conda-express info
 ```
 
 ```bash
@@ -146,24 +148,24 @@ your platform.
 
 :::::
 
-## Bootstrap
+## Run the first conda command
 
 ![Bootstrap conda, create an environment, and activate it](../demos/quickstart.gif)
 
-If you used the installer script, bootstrap has already been run for you.
-Otherwise, run it manually:
+If you used the installer script, it already ran `cx info`. Otherwise, run any
+conda command to create the prefix and continue into conda:
 
 ```bash
-cx bootstrap
+cx info
 ```
 
-Bootstrap uses the built-in runtime lock, so it does not solve an environment
-at runtime. The prefix is protected with a
+The automatic bootstrap uses the built-in runtime lock, so it does not solve
+an environment at runtime. The prefix is protected with a
 [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker to prevent
 accidental modification. Bootstrap also writes `conda-meta/history` and
 `conda-meta/initial-state.explicit.txt`, so conda recognizes the managed
-prefix as an environment and `conda-self` can reset it to the shipped package
-set.
+prefix as an environment and `conda-self` can reset it to the package set that
+created that prefix.
 
 ## Set up your PATH
 
@@ -187,7 +189,7 @@ instead of traditional `conda activate`. This spawns a new subshell with the
 environment activated — no `conda init` or shell profile modifications needed:
 
 ```bash
-cx shell myenv
+cx spawn myenv
 ```
 
 To leave the environment, exit the subshell:
@@ -211,8 +213,7 @@ cx env list
 
 ## Auto-bootstrap
 
-If you skip `cx bootstrap` and run a conda command directly, cx bootstraps on
-first use:
+Every conda command can be the first command. cx bootstraps on first use:
 
 ```bash
 # This bootstraps ~/.conda/express automatically, then runs `conda create`
@@ -225,28 +226,28 @@ If you used an early `cx` release that bootstrapped into `~/.cx`, read
 {doc}`guides/upgrade-from-early-cx` before removing old files. Current releases
 bootstrap into `~/.conda/express`.
 
-To update the base conda installation, re-bootstrap:
+Update the `cx` binary through the same method that installed it, such as
+`brew upgrade cx` or `python -m pip install --upgrade conda-express`.
 
-```bash
-cx bootstrap --force
-```
-
-To reset the existing managed base prefix to the package set shipped by the
-runtime, use the `conda-self` snapshot written during bootstrap:
+To reset the existing managed base prefix, use the `conda-self` snapshot that
+was written when that prefix was first bootstrapped:
 
 ```bash
 cx self reset --snapshot installer-exact
 ```
 
+Reset restores the snapshot already stored in the prefix. It does not apply
+the stamped runtime lock from a newer `cx` binary. To use a newly stamped lock,
+export any named environments you need, remove the managed prefix, and run any
+`cx` command to bootstrap it again.
+
 ## Uninstalling
 
-To remove the conda prefix and all environments managed by cx:
+Remove the binary through the same method that installed it. Use
+`brew uninstall cx` for Homebrew or
+`python -m pip uninstall conda-express` for PyPI. For a standalone script
+installation, delete the binary and remove the PATH entry added by the script.
 
-```bash
-cx uninstall
-```
-
-This shows the paths it plans to remove and asks for confirmation. It also cleans up
-PATH entries from shell profiles and prints a hint for removing the `cx` binary
-through your original install method. See the
-{ref}`CLI reference <cli-cx-uninstall>` for all options.
+These methods leave `~/.conda/express` and its named environments in place.
+Export anything you need before deleting that directory manually. There is no
+`cx uninstall` command until conda-self gains a conda-express adapter.

@@ -12,7 +12,7 @@ software distribution process already manages package files separately.
 
 conda-express publishes the `online` `cx` runtime and the `embedded` `cxz`
 runtime. It does not currently publish conda-ship `external` layout release
-assets such as `cx.bundle.tar.zst`. The `--bundle` option below is for
+assets such as `cx.bundle.tar.zst`. The `CX_BUNDLE` control below is for
 deployment systems that provide a bundle directory next to `cx`. For custom
 external-bundle artifacts, use
 {external+conda-ship:doc}`conda-ship's external artifact layout <explanation/artifact-layout-tradeoffs>`.
@@ -20,16 +20,17 @@ external-bundle artifacts, use
 ## Use cxz
 
 Download the `cxz` file for the target platform from the release page, make it
-executable on Unix, then bootstrap:
+executable on Unix, then run a conda command with offline mode enabled:
 
 ```bash
 chmod +x cxz-x86_64-unknown-linux-gnu
-./cxz-x86_64-unknown-linux-gnu --path /opt/cx bootstrap --offline
+CX_PREFIX=/opt/cx CX_OFFLINE=1 ./cxz-x86_64-unknown-linux-gnu info
 ```
 
-The embedded bundle is detected automatically, so you do not need `--bundle`.
-Use `--offline` in disconnected environments so the runtime refuses network
-access if anything is missing.
+The first command bootstraps the prefix from the embedded bundle, then runs
+`conda info`. The embedded bundle is detected automatically, so you do not
+need `CX_BUNDLE`. `CX_OFFLINE=1` makes the runtime refuse network access if
+anything is missing.
 
 ## Use a Bundle Directory
 
@@ -38,22 +39,23 @@ software distribution process, point `cx` at the bundle directory and use
 offline mode:
 
 ```bash
-cx --path /opt/cx bootstrap \
-  --bundle /path/to/packages \
-  --offline
+CX_PREFIX=/opt/cx \
+CX_BUNDLE=/path/to/packages \
+CX_OFFLINE=1 \
+cx info
 ```
 
 The same settings are available as environment variables for installer scripts
 and CI jobs:
 
 ```bash
-CX_BUNDLE=/path/to/packages CX_OFFLINE=1 cx --path /opt/cx bootstrap
+CX_PREFIX=/opt/cx CX_BUNDLE=/path/to/packages CX_OFFLINE=1 cx info
 ```
 
 ## Use the installer script
 
-The shell and PowerShell installers pass `CX_BUNDLE` and `CX_OFFLINE` through
-as `cx bootstrap` options:
+The shell and PowerShell installers pass `CX_BUNDLE` and `CX_OFFLINE` to the
+first conda command that triggers automatic bootstrap:
 
 ```bash
 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh \

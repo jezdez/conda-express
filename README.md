@@ -17,15 +17,15 @@ cx offers an alternative to the Anaconda Distribution, Miniconda, and Miniforge 
 ![Bootstrap conda, create an environment, and activate it](demos/quickstart.gif)
 
 ```bash
-# Bootstrap a conda installation (first run only)
-cx bootstrap
+# The first conda command bootstraps the managed prefix
+cx info
 
 # Run conda commands through cx
-cx install -n myenv numpy pandas
+cx create -n myenv python=3.12 numpy pandas
 cx create -n science python=3.12 scipy
 
 # Activate environments using conda-spawn, without conda init
-cx shell myenv
+cx spawn myenv
 ```
 
 On first use, cx automatically installs conda and its plugins into `~/.conda/express` from
@@ -56,11 +56,11 @@ Shell completion is available through the included `conda-completion` plugin:
 
 ```bash
 cx completion status
-cx completion install --dry-run
+cx completion install --dry-run --command-name cx
 ```
 
-The generated runtime tells completion hooks to register the `cx` command name
-instead of the underlying `conda` delegate.
+Pass `--command-name cx` when installing or generating a completion hook so it
+registers `cx` instead of the underlying `conda` executable.
 
 Ad hoc package commands can run through the included `conda-exec` plugin
 without adding tools to the managed base prefix:
@@ -104,14 +104,15 @@ curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | sh
 powershell -ExecutionPolicy ByPass -c "irm https://jezdez.github.io/conda-express/get-cx.ps1 | iex"
 ```
 
-The script detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx bootstrap`. Customize with environment variables:
+The script detects your platform, downloads the right binary, verifies the checksum, updates your shell profile / PATH, and runs `cx info` to bootstrap the managed prefix. Customize with environment variables:
 
 - `CX_INSTALL_DIR` — where to place the binary (default: `~/.local/bin` or `%USERPROFILE%\.local\bin`)
 - `CX_VERSION` — specific version to install without a `v` prefix (default: `latest`)
 - `CX_NO_PATH_UPDATE` — set to skip shell profile / PATH modification
-- `CX_NO_BOOTSTRAP` — set to skip running `cx bootstrap`
+- `CX_NO_BOOTSTRAP` — set to skip the installer's eager bootstrap command
 - `CX_SKIP_VERIFY` — set to skip checksum verification
-- `CX_BUNDLE` — bundle directory used by `cx bootstrap`
+- `CX_PREFIX` — managed prefix used by automatic bootstrap (default: `~/.conda/express`)
+- `CX_BUNDLE` — bundle directory used during automatic bootstrap
 - `CX_OFFLINE` — set to a truthy value to force offline bootstrap
 
 ### GitHub Actions
@@ -121,15 +122,16 @@ Use the setup action from a pinned conda-express release tag:
 ```yaml
 steps:
   - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
-  - run: cx status
+  - run: cx info
 ```
 
 The action downloads the matching `cx` release asset, verifies its checksum,
-adds `cx` to `PATH`, and runs `cx bootstrap` by default. Artifact Attestation
+adds `cx` to `PATH`, and runs `cx info` by default. That first conda command
+automatically bootstraps the managed prefix. Artifact Attestation
 verification is available with `verify-attestation: true`.
 
 See the [GitHub Actions guide](https://jezdez.github.io/conda-express/guides/use-cx-in-github-actions/)
-for bootstrap, no-bootstrap, and attestation examples.
+for automatic bootstrap, deferred bootstrap, and attestation examples.
 
 ### From GitHub Releases
 
@@ -166,7 +168,7 @@ for checksum, metadata, runtime lock, and air-gapped transfer checks.
 A multi-arch image is published to GHCR on every release:
 
 ```bash
-docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express bootstrap
+docker run --rm -v cx-data:/home/nonroot/.conda/express ghcr.io/jezdez/conda-express info
 ```
 
 The image runs as non-root (uid 65532), can run with a read-only root
@@ -178,7 +180,7 @@ linux/arm64).
 ```bash
 docker run --rm --read-only --tmpfs /tmp \
   -v cx-data:/home/nonroot/.conda/express \
-  ghcr.io/jezdez/conda-express status
+  ghcr.io/jezdez/conda-express info
 ```
 
 ```bash
@@ -193,14 +195,14 @@ jobs:
   test:
     container: ghcr.io/jezdez/conda-express:latest
     steps:
-      - run: cx bootstrap && cx create -n test python numpy
+      - run: cx create -n test python numpy
 ```
 
 Use as a base for multi-stage application builds:
 
 ```dockerfile
 FROM ghcr.io/jezdez/conda-express:latest AS conda-builder
-RUN cx bootstrap && cx create -n app python numpy pandas
+RUN cx create -n app python numpy pandas
 FROM gcr.io/distroless/cc-debian12:nonroot
 COPY --from=conda-builder /home/nonroot/.conda/express/envs/app /opt/conda
 ```
@@ -261,20 +263,18 @@ install-name = "express"
 ## CLI reference
 
 ```
-cx bootstrap [OPTIONS]           Bootstrap a fresh conda installation
-  --force                        Re-bootstrap the managed install path
-  --bundle DIR                   Use a bundle directory
-  --offline                      Disable network access during bootstrap
+cx <conda-args>                  Bootstrap if needed, then run conda
+cx info                          Show conda and prefix information
+cx spawn [ENV]                   Open a subshell through conda-spawn
+cx self <command>                Run conda-self commands
 
-cx --path DIR <command>           Use a custom install path
-cx status                         Show cx installation status
-cx shell [ENV]                   Alias for conda spawn (activate via subshell)
-cx uninstall [OPTIONS]           Remove the managed install path and environments
-  -y, --yes                      Skip confirmation prompt
-
-cx help                          Getting-started guide
-cx <conda-args>                  Passed through to conda
+CX_PREFIX=DIR cx <conda-args>    Use a different managed prefix
+CX_BUNDLE=DIR cx <conda-args>    Seed automatic bootstrap from a bundle
+CX_OFFLINE=1 cx <conda-args>     Disable network access during bootstrap
 ```
+
+`cx --help`, `cx --version`, and every subcommand belong to the installed
+conda CLI. The bootstrapper does not reserve its own commands.
 
 ### Frozen base prefix
 
@@ -282,7 +282,7 @@ The `~/.conda/express` prefix is protected with a [CEP 22](https://conda.org/lea
 
 ```bash
 cx create -n myenv numpy pandas
-cx shell myenv
+cx spawn myenv
 ```
 
 Bootstrap also writes constructor-compatible prefix metadata:
@@ -294,8 +294,9 @@ plugin can use the initial-state snapshot:
 cx self reset --snapshot installer-exact
 ```
 
-Use `cx bootstrap --force` when you want to discard and rebuild the managed
-base prefix from the stamped runtime lock.
+The snapshot belongs to the prefix that was created during its first
+bootstrap. Installing a newer `cx` binary does not replace that snapshot, and
+`conda self reset` does not apply the newer binary's stamped runtime lock.
 
 ## Building custom binaries
 
@@ -306,16 +307,14 @@ binaries, not a generic downstream builder interface.
 
 ## Uninstalling
 
-To remove the conda prefix and all environments managed by cx:
+Remove `cx` with the same method that installed it. For example, use
+`brew uninstall cx` for Homebrew or `python -m pip uninstall conda-express`
+for PyPI. A standalone script installation can be removed by deleting the
+installed binary and its PATH entry.
 
-```bash
-cx uninstall
-```
-
-This shows the paths it plans to remove and asks for confirmation. Use `--yes` to
-skip the prompt. The command also cleans up PATH entries from shell profiles
-that were added by the installer and prints a hint for removing the `cx` binary
-through your original install method.
+Those operations do not delete `~/.conda/express` or its named environments.
+Export anything you need before removing that directory manually. Until
+conda-self gains a conda-express adapter, there is no `cx uninstall` command.
 
 ## How it works
 
@@ -341,7 +340,7 @@ cx ships with conda-spawn instead of traditional `conda activate`. There is no n
 export PATH="$HOME/.conda/express/condabin:$PATH"
 
 # Activate an environment (spawns a subshell)
-cx shell myenv
+cx spawn myenv
 
 # Deactivate by exiting the subshell
 exit

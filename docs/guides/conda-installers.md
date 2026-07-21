@@ -29,7 +29,7 @@ Miniconda, or Miniforge base:
 - `cx` bootstraps into `~/.conda/express` by default.
 - The base prefix is frozen after bootstrap, so day-to-day work should happen
   in named environments.
-- Activation can use `cx shell ENV`, powered by conda-spawn, without requiring
+- Activation can use `cx spawn ENV`, powered by conda-spawn, without requiring
   `conda init`.
 
 ## Try cx side by side
@@ -38,9 +38,9 @@ You can try `cx` without changing an existing Anaconda Distribution,
 Miniconda, or Miniforge installation:
 
 ```bash
-cx bootstrap
+cx info
 cx create -n cx-test python=3.12
-cx shell cx-test
+cx spawn cx-test
 python --version
 exit
 ```
@@ -54,14 +54,14 @@ If you have an `environment.yml`, pass the command through `cx`:
 
 ```bash
 cx env create -f environment.yml
-cx shell my-environment
+cx spawn my-environment
 ```
 
 If the file does not name the environment, choose one explicitly:
 
 ```bash
 cx env create -n analysis -f environment.yml
-cx shell analysis
+cx spawn analysis
 ```
 
 ## When to keep using an installer distribution

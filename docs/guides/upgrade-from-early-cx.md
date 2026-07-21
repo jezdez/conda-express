@@ -19,8 +19,8 @@ you remove it.
 
 :::{important}
 Keep `~/.cx` until you have recreated or archived any environments you still
-need. `cx uninstall` removes the current managed prefix, not old early-release
-state.
+need. Current runtimes do not provide an uninstall command, and upgrading the
+binary does not remove old early-release state.
 :::
 
 ## Upgrade The Binary
@@ -72,13 +72,7 @@ This removes the Cargo-installed `cx` executable. It does not remove the old
 
 ::::
 
-Check the binary version:
-
-```bash
-cx --version
-```
-
-On macOS and Linux, also check which binary your shell finds:
+On macOS and Linux, check which binary your shell finds:
 
 ```bash
 command -v cx
@@ -94,17 +88,20 @@ If that still points at an old Cargo install, for example under
 `~/.cargo/bin` or `%USERPROFILE%\.cargo\bin`, remove the old binary or adjust
 your `PATH` before continuing.
 
-## Bootstrap The New Prefix
+## Run The First Conda Command
 
 Run:
 
 ```bash
-cx bootstrap
-cx status
+cx info
 ```
 
-The status output should show `~/.conda/express` unless you intentionally used
-the runtime `--path` option.
+The command automatically bootstraps the new prefix, then prints conda's
+environment information. The root prefix should be `~/.conda/express` unless
+you set `CX_PREFIX`.
+
+`cx --version` and `cx --help` also delegate to conda. They report conda's
+version and help after automatic bootstrap, not a separate bootstrapper CLI.
 
 ## Move Environments You Still Need
 
@@ -160,5 +157,5 @@ Then use the current runtime:
 
 ```bash
 cx create -n myenv python=3.12
-cx shell myenv
+cx spawn myenv
 ```
