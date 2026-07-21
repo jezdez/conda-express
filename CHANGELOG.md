@@ -1,5 +1,16 @@
 # Changelog
 
+## 26.5.2.post6 (2026-07-21)
+
+### Distribution
+
+- Select the downloaded binary from multi-file checksum manifests in the
+  shell and PowerShell installers.
+- Use the published Windows checksum asset in the PowerShell installer and
+  setup action.
+- Exercise the current release through shell, PowerShell, and Windows setup
+  action smoke tests.
+
 ## 26.5.2.post5 (2026-07-21)
 
 ### Runtime
