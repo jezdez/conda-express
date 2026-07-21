@@ -1,5 +1,39 @@
 # Changelog
 
+## 26.5.2.post5 (2026-07-21)
+
+### Runtime
+
+- Build `cx` and `cxz` with conda-ship `0.5.0`.
+- Bootstrap a new managed prefix automatically on the first conda command,
+  then pass the original arguments through to conda.
+- Stamp the conda-express `.condarc` and CEP 22 frozen marker into new managed
+  prefixes.
+
+### Interface
+
+- Use `cx info` for runtime information, `cx spawn` for an activated subshell,
+  and the installation method to update or remove the binary.
+- Use `CX_PREFIX`, `CX_BUNDLE`, and `CX_OFFLINE` for managed-prefix and
+  bootstrap controls.
+- Pass `--command-name cx` when conda-completion generates or installs shell
+  hooks. `cx --help` and `cx --version` now show conda's help and version.
+
+### Distribution
+
+- Update the installer scripts, setup action, containers, and release builds
+  for automatic bootstrap and conda-ship `0.5.0`.
+- Wait for PyPI and container publication before updating the Homebrew formula.
+- Refresh the pinned CI and release actions and the Debian and distroless base
+  images used for published containers.
+
+## 26.5.2.post4 (2026-06-16)
+
+### Distribution
+
+- Build CI and release artifacts with conda-ship `0.4.0`.
+- Keep the published `cx` and `cxz` names through explicit artifact naming.
+
 ## 26.5.2.post3 (2026-06-15)
 
 ### Runtime
