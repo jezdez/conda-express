@@ -64,7 +64,7 @@ jobs:
           HOME: ${{ runner.temp }}/setup-cx-default-home
           CX_PREFIX: ${{ runner.temp }}/setup-cx-default-home/.conda/express
         with:
-          version: 26.5.2.post2
+          version: 26.5.2.post5
       - name: Smoke test default action path
         shell: bash
         env:
@@ -74,8 +74,8 @@ jobs:
           HOME: ${{ runner.temp }}/setup-cx-default-home
         run: |
           set -euo pipefail
-          if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
-            echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
+          if [ "$EXPECTED_VERSION" != "26.5.2.post5" ]; then
+            echo "expected resolved version 26.5.2.post5, got ${EXPECTED_VERSION}" >&2
             exit 1
           fi
           "$CX_PATH" info --json > "$RUNNER_TEMP/setup-cx-info.json"
@@ -92,7 +92,7 @@ jobs:
           HOME: ${{ runner.temp }}/setup-cx-no-bootstrap-home
           CX_PREFIX: ${{ runner.temp }}/setup-cx-no-bootstrap-home/.conda/express
         with:
-          version: 26.5.2.post2
+          version: 26.5.2.post5
           github-token: ${{ github.token }}
           verify-attestation: true
           add-to-path: false
@@ -105,12 +105,59 @@ jobs:
           EXPECTED_VERSION: ${{ steps.setup-cx-attested.outputs.version }}
         run: |
           set -euo pipefail
-          if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
-            echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
+          if [ "$EXPECTED_VERSION" != "26.5.2.post5" ]; then
+            echo "expected resolved version 26.5.2.post5, got ${EXPECTED_VERSION}" >&2
             exit 1
           fi
           test -x "$CX_PATH"
           test ! -e "$CX_PREFIX"
+
+      - name: Smoke test shell installer
+        shell: bash
+        env:
+          CX_INSTALL_DIR: ${{ runner.temp }}/get-cx
+          CX_NO_BOOTSTRAP: "1"
+          CX_NO_PATH_UPDATE: "1"
+          CX_VERSION: 26.5.2.post5
+        run: |
+          set -euo pipefail
+          sh scripts/get-cx.sh
+          test -x "$CX_INSTALL_DIR/cx"
+
+  windows-installers:
+    name: Windows installers
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+      - name: Set up cx action
+        id: setup-cx
+        uses: ./.github/actions/setup-cx
+        with:
+          add-to-path: false
+          bootstrap: false
+          version: 26.5.2.post5
+      - name: Check action install
+        shell: pwsh
+        env:
+          CX_PATH: ${{ steps.setup-cx.outputs.cx-path }}
+        run: |
+          if (-not (Test-Path -LiteralPath $Env:CX_PATH)) {
+              throw "cx was not installed at $Env:CX_PATH"
+          }
+      - name: Smoke test PowerShell installer
+        shell: pwsh
+        env:
+          CX_INSTALL_DIR: ${{ runner.temp }}/get-cx
+          CX_NO_BOOTSTRAP: "1"
+          CX_NO_PATH_UPDATE: "1"
+          CX_VERSION: 26.5.2.post5
+        run: |
+          ./scripts/get-cx.ps1
+          if (-not (Test-Path -LiteralPath "$Env:CX_INSTALL_DIR/cx.exe")) {
+              throw "cx.exe was not installed"
+          }
 
   validate:
     name: Validate

@@ -35,11 +35,12 @@ async function main() {
 
   const baseUrl = `https://github.com/${repository}/releases/download/${resolvedVersion}`;
   const assetPath = path.join(workDir, asset.name);
-  const checksumPath = path.join(workDir, `${asset.name}.sha256`);
+  const checksumName = `${asset.name.replace(/[.]exe$/, "")}.sha256`;
+  const checksumPath = path.join(workDir, checksumName);
 
   info(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
   await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
-  await downloadFile(`${baseUrl}/${asset.name}.sha256`, checksumPath);
+  await downloadFile(`${baseUrl}/${checksumName}`, checksumPath);
   await verifyChecksum(assetPath, checksumPath, asset.name);
 
   if (options.verifyAttestation) {

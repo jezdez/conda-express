@@ -34708,11 +34708,12 @@ async function main() {
 
   const baseUrl = `https://github.com/${repository}/releases/download/${resolvedVersion}`;
   const assetPath = node_path__WEBPACK_IMPORTED_MODULE_6__.join(workDir, asset.name);
-  const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_6__.join(workDir, `${asset.name}.sha256`);
+  const checksumName = `${asset.name.replace(/[.]exe$/, "")}.sha256`;
+  const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_6__.join(workDir, checksumName);
 
   (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
   await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
-  await downloadFile(`${baseUrl}/${asset.name}.sha256`, checksumPath);
+  await downloadFile(`${baseUrl}/${checksumName}`, checksumPath);
   await verifyChecksum(assetPath, checksumPath, asset.name);
 
   if (options.verifyAttestation) {

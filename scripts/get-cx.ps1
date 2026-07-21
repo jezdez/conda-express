@@ -187,11 +187,21 @@ try {
 if ($SkipVerify) {
     Write-Warning "Skipping checksum verification because CX_SKIP_VERIFY is set"
 } else {
-    $ChecksumUrl = "${DownloadUrl}.sha256"
+    $ChecksumUrl = ($DownloadUrl -replace '\.exe$', '') + '.sha256'
     $TempSha = [System.IO.Path]::GetTempFileName()
     try {
         Invoke-WebRequest -Uri $ChecksumUrl -OutFile $TempSha -UseBasicParsing
-        $Expected = (Get-Content $TempSha -Raw).Trim().Split()[0]
+        $Expected = Get-Content $TempSha |
+            ForEach-Object {
+                $Parts = $_.Trim() -split '\s+'
+                if ($Parts.Length -ge 2 -and $Parts[1] -eq $AssetName) {
+                    $Parts[0]
+                }
+            } |
+            Select-Object -First 1
+        if (-not $Expected) {
+            throw "Checksum entry not found for $AssetName"
+        }
         $Actual = (Get-FileHash -Path $TempFile -Algorithm SHA256).Hash.ToLower()
 
         if ($Expected -ne $Actual) {
