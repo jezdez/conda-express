@@ -2,7 +2,7 @@
 # Stage 1: bootstrap in a minimal container with shell support.
 # Set HOME to match the nonroot user in the final stage so the install path
 # lands at the same stamped default used by the final image.
-FROM debian:bookworm-slim@sha256:60eac759739651111db372c07be67863818726f754804b8707c90979bda511df AS bootstrap
+FROM debian:bookworm-slim@sha256:7b140f374b289a7c2befc338f42ebe6441b7ea838a042bbd5acbfca6ec875818 AS bootstrap
 ARG TARGETARCH
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
@@ -11,7 +11,7 @@ COPY cxz-linux-${TARGETARCH} /usr/local/bin/cxz
 RUN HOME=/home/nonroot CX_OFFLINE=1 /usr/local/bin/cxz info --json >/dev/null
 
 # Stage 2: copy the bootstrapped prefix into distroless
-FROM gcr.io/distroless/cc-debian12:nonroot@sha256:b0ae8e989418b458e0f25489bc3be523718938a2b70864cc0f6a00af1ddbd985
+FROM gcr.io/distroless/cc-debian12:nonroot@sha256:fccdbb0a547c14e23fcf4ce8ad62ca5d43b4faae8d22cd292f490fef9946c96e
 COPY --from=bootstrap --chown=nonroot:nonroot /home/nonroot/.conda/express /home/nonroot/.conda/express
 COPY --from=bootstrap /usr/local/bin/cxz /usr/local/bin/cxz
 ENV HOME=/home/nonroot
