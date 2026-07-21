@@ -89,14 +89,19 @@ verify_checksum() {
         return 0
     fi
 
+    _asset_name="${_url##*/}"
     _tmp_sha="$(mktemp "${TMPDIR:-/tmp}/.cx_sha.XXXXXXXX")"
     if ! download "${_url}.sha256" "$_tmp_sha" 2>/dev/null; then
         rm -f "$_tmp_sha"
         err "Checksum file not available: %s.sha256" "$_url"
     fi
 
-    _expected="$(awk '{print $1}' "$_tmp_sha")"
+    _expected="$(awk -v name="$_asset_name" '$2 == name { print $1; exit }' "$_tmp_sha")"
     rm -f "$_tmp_sha"
+
+    if [ -z "$_expected" ]; then
+        err "Checksum entry not found for %s" "$_asset_name"
+    fi
 
     if check_cmd sha256sum; then
         _actual="$(sha256sum "$_file" | awk '{print $1}')"
