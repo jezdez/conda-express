@@ -209,7 +209,7 @@ jobs:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           repository: jezdez/conda-ship
-          ref: 8bc1b9b11a8e8407fbd3d1655ef8ed964368b6a1 # PR #70
+          ref: 77d447492dad62c21938fb37930e12b1c66edc88 # main after PR #72
           path: .ci/conda-ship
           persist-credentials: false
 
@@ -218,7 +218,7 @@ jobs:
           manifest-path: .ci/conda-ship/pixi.toml
           cache: true
 
-      - name: Build conda-ship #70 tools
+      - name: Build conda-ship tools
         working-directory: .ci/conda-ship
         run: |
           pixi run -- cargo rustc --locked --release --bin cs -- -D warnings
