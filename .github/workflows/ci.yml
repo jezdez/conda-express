@@ -71,6 +71,7 @@ jobs:
           CX_PATH: ${{ steps.setup-cx-default.outputs.cx-path }}
           CX_PREFIX: ${{ runner.temp }}/setup-cx-default-home/.conda/express
           EXPECTED_VERSION: ${{ steps.setup-cx-default.outputs.version }}
+          HOME: ${{ runner.temp }}/setup-cx-default-home
         run: |
           set -euo pipefail
           if [ "$EXPECTED_VERSION" != "26.5.2.post2" ]; then
