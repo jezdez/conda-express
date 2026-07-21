@@ -29,6 +29,15 @@ Enter
 Wait /\$/
 Sleep 2s
 
+Type "# Inspect packages in the environment"
+Enter
+Sleep 500ms
+
+Type@80ms `cx list -n demo numpy`
+Enter
+Wait /\$/
+Sleep 2s
+
 Type "# Activate with a subshell (no conda init needed)"
 Enter
 Sleep 500ms
@@ -38,7 +47,7 @@ Enter
 Wait /\$/
 Sleep 1s
 
-Type@80ms `python -c "import numpy; print(numpy.__version__)"`
+Type@80ms `echo "$CONDA_DEFAULT_ENV"`
 Enter
 Wait /\$/
 Sleep 2s
