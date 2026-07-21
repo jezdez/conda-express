@@ -23,8 +23,7 @@ install-scheme = "conda-home"
 install-name = "express"
 ```
 
-The referenced `runtime.condarc` keeps the cx runtime policy in native conda
-configuration:
+conda-ship installs `runtime.condarc` as `<root-prefix>/.condarc`:
 
 ```yaml
 solver: rattler
@@ -35,8 +34,8 @@ channels:
   - "https://conda.anaconda.org/conda-forge/"
 ```
 
-The explicit `freeze-base = true` setting keeps the managed base prefix
-protected after bootstrap. Both settings are conda-express distribution policy.
+`freeze-base = true` writes the CEP 22 marker after bootstrap. These are cx
+defaults, not conda-ship defaults.
 
 The release workflows override `artifact-layout` and `artifact-name`:
 
