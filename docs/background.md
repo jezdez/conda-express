@@ -20,8 +20,9 @@ local Python installation or installer framework is required before bootstrap.
 
 For air-gapped or restricted-network environments, `cxz` embeds the locked
 package archives directly into the binary (50-95 MB depending on platform).
-One file, no separate package directory; `cxz bootstrap --offline` installs
-conda from the embedded bundle. See {doc}`features` for details.
+One file and no separate package directory. `CX_OFFLINE=1 cxz info` installs
+conda from the embedded bundle, then runs `conda info`. See {doc}`features`
+for details.
 
 ## conda-rattler-solver
 

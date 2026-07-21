@@ -10,9 +10,8 @@ import {
 import { exec as execCommand } from "@actions/exec";
 import { downloadTool } from "@actions/tool-cache";
 import { createHash } from "node:crypto";
-import { access, chmod, copyFile, cp, mkdir, readFile, rename, rm } from "node:fs/promises";
-import { constants } from "node:fs";
-import { tmpdir, homedir, arch, platform } from "node:os";
+import { chmod, copyFile, mkdir, readFile, rm } from "node:fs/promises";
+import { tmpdir, arch, platform } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -254,51 +253,10 @@ async function verifyAttestation(assetPath, version, githubToken) {
 }
 
 /**
- * Run `cx bootstrap`, preserving a partial package cache from a failed prefix.
+ * Trigger automatic bootstrap through a regular conda command.
  */
 async function bootstrap(cxPath) {
-  const installPath = path.join(homedir(), ".conda", "express");
-  const condaPath = path.join(installPath, "bin", "conda");
-
-  if (await exists(condaPath, constants.X_OK)) {
-    await run(cxPath, ["status"]);
-    return;
-  }
-
-  const pkgsPath = path.join(installPath, "pkgs");
-  let restoredPkgs = "";
-  if ((await exists(pkgsPath)) && !(await exists(condaPath, constants.X_OK))) {
-    restoredPkgs = path.join(runnerTemp(), "cx-restored-pkgs");
-    await rm(restoredPkgs, { recursive: true, force: true });
-    await mkdir(path.dirname(restoredPkgs), { recursive: true });
-    await rename(pkgsPath, restoredPkgs);
-    await rm(installPath, { recursive: true, force: true });
-  }
-
-  await run(cxPath, ["bootstrap"]);
-
-  if (restoredPkgs) {
-    await mkdir(pkgsPath, { recursive: true });
-    await copyDirectory(restoredPkgs, pkgsPath);
-  }
-
-  await run(cxPath, ["status"]);
-}
-
-async function copyDirectory(source, destination) {
-  await cp(source, destination, { recursive: true, force: true });
-}
-
-async function exists(filePath, mode = constants.F_OK) {
-  try {
-    await access(filePath, mode);
-    return true;
-  } catch (error) {
-    if (error.code === "ENOENT" || error.code === "EACCES") {
-      return false;
-    }
-    throw error;
-  }
+  await run(cxPath, ["info", "--json"]);
 }
 
 /**

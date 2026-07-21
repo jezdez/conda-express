@@ -61,10 +61,10 @@ rattler and pixi, and ships through the Python package stack with
 ![cx delegates conda commands after bootstrap](../demos/passthrough.gif)
 
 cx ships with [conda-spawn](https://github.com/conda-incubator/conda-spawn)
-and exposes it as a runtime shortcut:
+as an included conda plugin:
 
 ```bash
-cx shell myenv          # spawns a subshell with myenv activated
+cx spawn myenv          # spawns a subshell with myenv activated
 exit                    # leaves the environment
 ```
 
@@ -72,13 +72,17 @@ No `conda init` setup is required for this activation path. Add
 `~/.conda/express/condabin` to your `PATH` only if you want to run the managed
 `conda` executable directly.
 
-## `cx shell` alias
+## `cx spawn`
 
-`cx shell` is a convenience alias for `conda spawn`:
+`cx spawn` delegates to the released `conda spawn` command:
 
 ```bash
-cx shell myenv          # same as: conda spawn myenv
+cx spawn myenv
 ```
+
+The `shell` alias in
+[conda-spawn PR #59](https://github.com/conda/conda-spawn/pull/59) is not part
+of a released conda-spawn version yet.
 
 ## conda-completion
 
@@ -87,12 +91,12 @@ shell completion support for conda commands and plugin subcommands.
 
 ```bash
 cx completion status
-cx completion install --dry-run
+cx completion install --dry-run --command-name cx
 ```
 
-conda-ship stamps the runtime command name into delegate environments, so the
-completion integration can register `cx` rather than the underlying `conda`
-executable.
+Pass `--command-name cx` when installing or generating a completion hook so it
+registers `cx` rather than the underlying `conda` executable. The runtime does
+not inject a command name into the conda process.
 
 The command is optional: cx does not require shell completion, and the dry run
 lets you inspect the shell profile hook before enabling it.
@@ -166,7 +170,7 @@ for the full feature set.
 
 ## Frozen base prefix (CEP 22)
 
-![cx status, cx info, and cx env list](../demos/status.gif)
+![cx info and cx env list](../demos/status.gif)
 
 After bootstrap, cx writes a `conda-meta/frozen` marker file per
 [CEP 22](https://conda.org/learn/ceps/cep-0022/). This protects the base
@@ -175,7 +179,7 @@ for their work:
 
 ```bash
 cx create -n myenv numpy pandas
-cx shell myenv
+cx spawn myenv
 ```
 
 ## Base prefix reset metadata
@@ -187,15 +191,16 @@ initial-state file records the exact package URLs and checksums from the
 stamped runtime lock.
 
 Because conda-express includes `conda-self`, that initial-state snapshot can be
-used to reset the managed base prefix to the package set shipped by the
-runtime:
+used to reset the managed base prefix to the package set that created the
+existing prefix:
 
 ```bash
 cx self reset --snapshot installer-exact
 ```
 
-Use `cx bootstrap --force` when you want to discard and rebuild the whole
-managed prefix from the stamped runtime lock.
+The snapshot remains part of the existing prefix. Installing a newer `cx`
+binary does not replace it, and reset does not apply the newer binary's
+stamped runtime lock.
 
 ## Auto-bootstrap
 
@@ -210,30 +215,30 @@ cx create -n myenv python=3.12
 ## Offline bootstrap
 
 cx supports bootstrap from a local directory of package archives, an embedded
-`cxz` bundle, or a previously populated package cache. With `--offline`, this
-can be used in restricted-network environments and native installers that bundle
+`cxz` bundle, or a previously populated package cache. `CX_OFFLINE` makes this
+usable in restricted-network environments and native installers that bundle
 cx alongside a package directory.
 
-Two flags control this behavior:
+Two environment variables control this behavior:
 
-- `--bundle DIR` points to a bundle directory of `.conda` / `.tar.bz2`
+- `CX_BUNDLE` points to a bundle directory of `.conda` / `.tar.bz2`
   archives.
   cx pre-populates the rattler package cache from this directory, then
-  installs from cache. Without `--offline`, missing packages fall back to
+  installs from cache. Without `CX_OFFLINE`, missing packages fall back to
   network download.
-- `--offline` disables all network access. All packages must be available
+- `CX_OFFLINE` disables all network access. All packages must be available
   locally (in the cache or bundle).
 
 ```bash
 # Re-use packages from a previous bootstrap (no network)
-cx --path /opt/conda bootstrap --offline
+CX_PREFIX=/opt/conda CX_OFFLINE=1 cx info
 
 # Install from a bundle directory without network access
-cx bootstrap --bundle ./packages/ --offline
+CX_BUNDLE=./packages CX_OFFLINE=1 cx info
 ```
 
-Both flags can also be set via the `CX_BUNDLE` and `CX_OFFLINE` environment
-variables for native installer post-install scripts.
+`CX_PREFIX` selects a non-default managed prefix. Keep it set for later
+commands that should use that prefix.
 
 This maps to conda-ship's online, external, and embedded artifact layouts.
 conda-express publishes online `cx` and embedded `cxz`; external artifact
@@ -261,9 +266,9 @@ cx (7-11 MB)              cxz (50-95 MB)
 ```
 
 `cxz` is this repository's conda-express embedded-bundle variant built by
-conda-ship. It detects its embedded bundle automatically, so no `--bundle`
-directory is needed. Use `--offline` in disconnected environments to make the
-no-network requirement explicit. Other runtime commands follow the same
+conda-ship. It detects its embedded bundle automatically, so no `CX_BUNDLE`
+directory is needed. Use `CX_OFFLINE=1` in disconnected environments to make
+the no-network requirement explicit. Other runtime commands follow the same
 interface as `cx`.
 
 It is distributed via GitHub Releases (alongside `cx`) and as a pre-bootstrapped
@@ -271,21 +276,16 @@ Docker image. See {doc}`guides/offline-and-airgapped` for deployment choices.
 Non-conda-express embedded variants belong in
 {external+conda-ship:doc}`conda-ship <index>`.
 
-## Uninstall (`cx uninstall`)
+## Installation-owned removal
 
-cx provides a clean uninstall command that reverses the bootstrap:
+The runtime does not reserve an uninstall command. Remove the `cx` binary
+through the method that installed it, such as Homebrew or PyPI. A standalone
+script installation is removed by deleting its binary and PATH entry.
 
-```bash
-cx uninstall
-```
-
-The command:
-
-1. Lists the paths it plans to remove (prefix and named environments)
-2. Asks for confirmation (`--yes` to skip)
-3. Removes the conda prefix and all environments
-4. Cleans up PATH entries from shell profiles
-5. Prints a hint for removing the `cx` binary through the install method you used
+Removing the binary leaves `~/.conda/express` and its named environments in
+place. Export anything you need before deleting that prefix manually. This
+remains installation-method-specific until conda-self provides a
+conda-express adapter.
 
 ## Release artifacts
 

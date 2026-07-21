@@ -16,10 +16,26 @@ delegate-executable = "conda"
 artifact-layout = "online"
 source-environment = "runtime"
 exclude-packages = ["conda-libmamba-solver"]
+condarc-file = "runtime.condarc"
+freeze-base = true
 docs-url = "https://jezdez.github.io/conda-express/"
 install-scheme = "conda-home"
 install-name = "express"
 ```
+
+conda-ship installs `runtime.condarc` as `<root-prefix>/.condarc`:
+
+```yaml
+solver: rattler
+auto_activate_base: false
+notify_outdated_conda: false
+show_channel_urls: true
+channels:
+  - "https://conda.anaconda.org/conda-forge/"
+```
+
+`freeze-base = true` writes the CEP 22 marker after bootstrap. These are cx
+defaults, not conda-ship defaults.
 
 The release workflows override `artifact-layout` and `artifact-name`:
 
@@ -80,17 +96,16 @@ That makes the default install path:
 ~/.conda/express
 ```
 
-Users can override the install path for a command with the runtime-level
-`--path` option:
+Users can override the install path with `CX_PREFIX`:
 
 ```bash
-cx --path /opt/cx bootstrap
-cx --path /opt/cx status
+CX_PREFIX=/opt/cx cx info
+CX_PREFIX=/opt/cx cx create -n analysis python=3.12
 ```
 
-`--path` is intentionally a runtime option, not build configuration. The
-published `cx` binary stays cross-platform while advanced users, CI jobs, and
-installer smoke tests can choose a local path at runtime.
+The published `cx` binary stays cross-platform while advanced users, CI jobs,
+and installer smoke tests can choose a local path at runtime. Keep
+`CX_PREFIX` set for every command that should use the non-default prefix.
 
 conda-ship owns the generic install scheme behavior and runtime ownership
 metadata. See
@@ -101,8 +116,8 @@ and prefix ownership checks.
 ## Runtime Metadata
 
 Generated conda-ship runtimes write ownership metadata into each managed
-install path. `cx status`, `cx bootstrap --force`, and `cx uninstall` use that
-metadata to avoid taking over or deleting unrelated conda installations.
+install path. Automatic bootstrap and interrupted-bootstrap recovery use that
+metadata to avoid taking over unrelated conda installations.
 
 Bootstrap also writes standard conda prefix metadata:
 
@@ -112,12 +127,15 @@ Bootstrap also writes standard conda prefix metadata:
 `history` lets conda recognize `~/.conda/express` as an environment. The
 initial-state file records the exact packages installed from the stamped
 runtime lock, including package URLs and checksums. The included `conda-self`
-plugin can use that snapshot to reset the managed base prefix to the shipped
-package set:
+plugin can use that snapshot to reset the existing managed base prefix:
 
 ```bash
 cx self reset --snapshot installer-exact
 ```
+
+That snapshot belongs to the existing prefix. Installing a newer `cx` binary
+does not replace it, and reset does not apply the newer binary's stamped
+runtime lock.
 
 The managed base environment is also protected with a
 [CEP 22](https://conda.org/learn/ceps/cep-0022/) frozen marker after bootstrap.
@@ -125,7 +143,7 @@ Day-to-day work should happen in named environments:
 
 ```bash
 cx create -n analysis python=3.12 numpy pandas
-cx shell analysis
+cx spawn analysis
 ```
 
 ## Runtime Environment Variables
@@ -136,11 +154,12 @@ pipelines.
 
 | Variable | Effect |
 |---|---|
-| `CX_BUNDLE` | Bundle directory containing `.conda` / `.tar.bz2` archives to pre-populate the package cache from, equivalent to `--bundle` |
-| `CX_OFFLINE` | Disable network access during bootstrap when set to any truthy value, equivalent to `--offline`. Values `0` and `false` are treated as unset |
+| `CX_PREFIX` | Override the managed prefix path. The default is `~/.conda/express` |
+| `CX_BUNDLE` | Bundle directory containing `.conda` / `.tar.bz2` archives used to pre-populate the package cache |
+| `CX_OFFLINE` | Disable network access during bootstrap when set to any truthy value. Values `0` and `false` are treated as unset |
 
 ```bash
-CX_BUNDLE=/Library/Application\ Support/cx/packages CX_OFFLINE=1 cx bootstrap
+CX_BUNDLE=/Library/Application\ Support/cx/packages CX_OFFLINE=1 cx info
 ```
 
 For custom package sets or new binary distributions, use

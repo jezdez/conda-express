@@ -4,7 +4,8 @@ Use the `setup-cx` action when a workflow needs a small conda bootstrapper
 without installing Miniconda, Miniforge, or a larger distribution first.
 
 The default action path downloads the `cx` release asset, verifies the
-published SHA256 checksum, adds `cx` to `PATH`, and runs `cx bootstrap`.
+published SHA256 checksum, adds `cx` to `PATH`, and runs `cx info`. That first
+conda command automatically bootstraps the managed prefix.
 
 ## Add cx to a workflow
 
@@ -16,14 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: {{ setup_cx_action }}
-      - run: cx status
+      - run: cx info
 ```
 
 When the action ref is a conda-express release tag and `version` is omitted,
 the action installs that same `cx` release. This keeps the action code and the
 downloaded binary aligned.
 
-After bootstrap, use `cx` the same way you would use conda:
+After automatic bootstrap, use `cx` the same way you would use conda:
 
 ```yaml
 jobs:
@@ -35,10 +36,10 @@ jobs:
       - run: cx run -n test pytest
 ```
 
-## Install without bootstrapping
+## Install without eager bootstrap
 
 Set `bootstrap: false` when a job only needs to inspect the binary or wants to
-bootstrap later with custom options:
+defer automatic bootstrap:
 
 ```yaml
 jobs:
@@ -49,8 +50,12 @@ jobs:
         uses: {{ setup_cx_action }}
         with:
           bootstrap: false
-      - run: "${{ steps.setup-cx.outputs.cx-path }}" --version
+      - run: test -x "${{ steps.setup-cx.outputs.cx-path }}"
 ```
+
+Any later `cx` command bootstraps the prefix before conda handles its
+arguments. Set `CX_PREFIX`, `CX_BUNDLE`, or `CX_OFFLINE` on that command when
+the job needs non-default bootstrap controls.
 
 ## Install a different cx version
 
@@ -85,7 +90,7 @@ jobs:
         with:
           verify-attestation: true
           github-token: ${{ github.token }}
-      - run: cx status
+      - run: cx info
 ```
 
 `verify-attestation: true` fails closed when `github-token` is missing. The

@@ -8,7 +8,8 @@ environments without Homebrew (CI, containers, Windows).
 
 cx provides standalone installer scripts for macOS, Linux, and Windows. These
 scripts automate downloading the correct binary, verifying its checksum,
-setting up your PATH, and optionally running `cx bootstrap`.
+setting up your PATH, and optionally running `cx info` to trigger automatic
+bootstrap.
 
 ## Usage
 
@@ -51,7 +52,7 @@ irm https://jezdez.github.io/conda-express/get-cx.ps1 | more
 5. **Updates your shell profile / PATH** so the installed `cx` binary is found
    in new shells
 6. **Warns about early-release state** if `~/.cx` still exists
-7. **Runs `cx bootstrap`** to set up the conda environment
+7. **Runs `cx info`** to bootstrap the conda environment and print conda information
 
 If the installer finds `~/.cx`, it leaves that directory alone. Current
 releases bootstrap into `~/.conda/express`; see
@@ -70,7 +71,7 @@ Use the setup action when a workflow needs `cx` on `PATH`:
 ```yaml
 steps:
   - uses: jezdez/conda-express/.github/actions/setup-cx@<release-tag>
-  - run: cx status
+  - run: cx info
 ```
 
 Pin the action to a conda-express release tag for reproducible CI. When
@@ -81,7 +82,7 @@ installs the latest release.
 The action downloads the platform-specific `cx` asset, checks the published
 `.sha256` file, optionally verifies GitHub Artifact Attestations from
 `.github/workflows/release.yml`, optionally bootstraps the managed conda
-prefix, and adds the install directory to `PATH`.
+prefix by running a conda command, and adds the install directory to `PATH`.
 
 Useful inputs:
 
@@ -90,12 +91,12 @@ Useful inputs:
 | `version` | action ref when it is a release tag, otherwise `latest` | conda-express release version to install |
 | `github-token` | empty | GitHub token used for latest-release lookup and Artifact Attestation verification |
 | `install-dir` | runner temp directory | Directory to place the `cx` binary |
-| `bootstrap` | `true` | Run `cx bootstrap` after installation |
+| `bootstrap` | `true` | Run `cx info` after installation to trigger automatic bootstrap |
 | `add-to-path` | `true` | Add the install directory to `GITHUB_PATH` |
 | `verify-attestation` | `false` | Verify the downloaded binary with GitHub Artifact Attestations |
 
-Set `bootstrap: false` for workflows that only need to inspect the binary or
-defer bootstrap to a later step.
+Set `bootstrap: false` for workflows that only need the downloaded binary or
+want to defer prefix creation until a later `cx` command.
 
 Enable provenance verification for stricter CI:
 
@@ -120,10 +121,16 @@ All options are set via environment variables and work on both platforms.
 | `CX_INSTALL_DIR` | `~/.local/bin` (Unix) or `%USERPROFILE%\.local\bin` (Windows) | Directory to place the `cx` binary |
 | `CX_VERSION` | `latest` | Version to install (without `v` prefix, e.g. `{{ conda_express_release }}`) |
 | `CX_NO_PATH_UPDATE` | *(unset)* | Set to any value to skip shell profile / PATH modification |
-| `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip running `cx bootstrap` after install |
+| `CX_NO_BOOTSTRAP` | *(unset)* | Set to any value to skip the installer's eager bootstrap command |
 | `CX_SKIP_VERIFY` | *(unset)* | Set to any value to skip checksum verification |
-| `CX_BUNDLE` | *(unset)* | Bundle directory containing `.conda`/`.tar.bz2` archives used by `cx bootstrap` |
+| `CX_PREFIX` | `~/.conda/express` | Managed prefix used by runtime invocations while the variable is set |
+| `CX_BUNDLE` | *(unset)* | Bundle directory containing `.conda`/`.tar.bz2` archives used during automatic bootstrap |
 | `CX_OFFLINE` | *(unset)* | Set to any truthy value to disable network during bootstrap |
+
+`CX_PREFIX`, `CX_BUNDLE`, and `CX_OFFLINE` are runtime bootstrap controls that
+the installer passes to `cx info`. The installer does not persist
+`CX_PREFIX`. Set it again for later commands that should use a non-default
+prefix.
 
 `CX_VERSION` selects a conda-express release. Release versions follow the conda
 runtime version in the lock; `{{ conda_express_release }}` bootstraps conda
@@ -146,7 +153,7 @@ Install a specific version:
 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_VERSION={{ conda_express_release }} sh
 ```
 
-Install to a custom directory without bootstrap:
+Install to a custom directory without eagerly bootstrapping the prefix:
 
 ```bash
 curl -fsSL https://jezdez.github.io/conda-express/get-cx.sh | env CX_INSTALL_DIR=/opt/bin CX_NO_BOOTSTRAP=1 sh
@@ -164,7 +171,7 @@ The PowerShell script also accepts named parameters when invoked directly:
 .\get-cx.ps1 -Version {{ conda_express_release }} -InstallDir C:\tools -NoBootstrap
 ```
 
-For an offline `cx` bootstrap with a bundle directory:
+For an offline automatic bootstrap with a bundle directory:
 
 ```powershell
 .\get-cx.ps1 -Bundle C:\mirror\cx-packages -Offline
@@ -207,20 +214,26 @@ PATH manually.
 
 ## Uninstalling
 
-Use the built-in command to remove the managed prefix:
+Remove the binary through the method that installed it:
 
 ```bash
-cx uninstall
+brew uninstall cx
 ```
 
-This removes the conda prefix (including all named environments) and any
-PATH entries added by the installer. It shows the paths it plans to remove and
-asks for confirmation (use `--yes` to skip).
+For a PyPI installation:
 
-After completion, cx prints a hint for removing the binary itself through the
-install method it detects, such as Homebrew or PyPI.
+```bash
+python -m pip uninstall conda-express
+```
 
-See {ref}`cx uninstall <cli-cx-uninstall>` for full details.
+For a standalone script installation, delete the installed `cx` binary and
+remove the PATH line that the script added to your shell profile. On Windows,
+remove the install directory from the user PATH.
+
+These methods do not remove `~/.conda/express` or its named environments.
+Export anything you need before removing that prefix manually. There is no
+runtime-owned uninstall command until conda-self provides a conda-express
+adapter.
 
 ### Manual uninstall
 

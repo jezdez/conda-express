@@ -15,11 +15,11 @@ plugins with a locked bootstrap path:
 
 ```bash
 cx create -n data python=3.12 numpy pandas
-cx shell data
+cx spawn data
 ```
 
 The main differences from a traditional base installation are the frozen
-`~/.conda/express` base prefix and the `cx shell` activation model.
+`~/.conda/express` base prefix and the `cx spawn` activation model.
 
 ## For Pixi users
 

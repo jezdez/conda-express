@@ -120,8 +120,9 @@ boundary:
 1. Download the runtime, metadata, and checksum files on a connected machine.
 2. Verify the checksum and GitHub attestation.
 3. Transfer the verified files into the disconnected environment.
-4. Use `cxz bootstrap --offline`, or use `cx bootstrap --bundle ... --offline`
-   when a bundle directory is provided by your deployment process.
+4. Run `CX_OFFLINE=1 cxz info`, or run
+   `CX_BUNDLE=/path/to/packages CX_OFFLINE=1 cx info` when a bundle directory
+   is provided by your deployment process.
 
 See {doc}`offline-and-airgapped` for offline install patterns.
 

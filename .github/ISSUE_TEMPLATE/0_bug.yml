@@ -28,7 +28,7 @@ body:
         Provide minimal steps to reproduce the behavior.
 
         ```bash
-        cx bootstrap
+        cx info
         # ...
         ```
       render: shell
@@ -40,7 +40,7 @@ body:
         Please run the following and paste the output below.
 
         ```bash
-        cx --version && cx status
+        cx info
         ```
       render: shell
   - type: textarea

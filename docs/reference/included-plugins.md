@@ -9,8 +9,8 @@ behavior.
 | Package | What it adds | Typical commands or behavior |
 |---|---|---|
 | `conda-rattler-solver` | Rattler/resolvo-based solver backend | `solver: rattler` is written to `.condarc` |
-| `conda-spawn` | Subprocess-based activation | `cx shell ENV`, `conda spawn ENV` |
-| `conda-completion` | Shell completion support | `cx completion status`, `cx completion install --dry-run` |
+| `conda-spawn` | Subprocess-based activation | `cx spawn ENV`, `conda spawn ENV` |
+| `conda-completion` | Shell completion support | `cx completion status`, `cx completion install --dry-run --command-name cx` |
 | `conda-exec` | Ephemeral package execution and PEP 723 scripts | `cx exec ruff --version`, `cx exec --list` |
 | `conda-pypi` | PyPI interoperability inside conda workflows | PyPI dependency handling through the conda plugin stack |
 | `conda-self` | Base environment self-management workflow | `cx self reset --snapshot installer-exact` |
@@ -43,8 +43,8 @@ The completion command is available after bootstrap:
 
 ```bash
 cx completion status
-cx completion init bash
-cx completion install --dry-run
+cx completion init bash --command-name cx
+cx completion install --dry-run --command-name cx
 ```
 
 `init` prints the shell integration script. `install` writes the shell hook
@@ -52,21 +52,23 @@ that enables command completion for conda commands and installed conda plugin
 subcommands. Use `--dry-run` first to inspect the profile changes before
 writing them.
 
-conda-ship sets the runtime command name for delegate environments, so the
-completion hook can register `cx` rather than the underlying `conda`
-executable.
+Pass `--command-name cx` to `init`, `install`, and `uninstall` so the hook
+registers `cx` rather than the underlying `conda` executable. The runtime does
+not inject a command name into the conda process.
 
 ## Activation Workflow
 
 Because `cx` includes `conda-spawn`, the conda-express activation model is:
 
 ```bash
-cx shell myenv
+cx spawn myenv
 exit
 ```
 
-`cx shell` is a runtime shortcut for `conda spawn`. Other conda commands are
-passed through to the installed conda executable after bootstrap.
+`cx spawn` is the currently released conda-spawn command. The `shell` alias in
+[conda-spawn PR #59](https://github.com/conda/conda-spawn/pull/59) is not part
+of a released conda-spawn version yet. All commands are passed through to the
+installed conda executable after automatic bootstrap.
 
 ## Workspace and tool commands
 

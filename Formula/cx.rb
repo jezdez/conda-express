@@ -1,8 +1,8 @@
 class Cx < Formula
   desc "Lightweight single-binary conda bootstrapper powered by rattler"
   homepage "https://github.com/jezdez/conda-express"
-  license "BSD-3-Clause"
   version "26.5.2.post4"
+  license "BSD-3-Clause"
 
   on_macos do
     on_arm do
@@ -32,6 +32,6 @@ class Cx < Formula
   end
 
   test do
-    assert_match version.to_s, shell_output("#{bin}/cx --version")
+    assert_predicate bin/"cx", :executable?
   end
 end

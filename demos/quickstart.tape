@@ -3,7 +3,7 @@ Source demos/_settings.tape
 Output demos/quickstart.gif
 
 Source demos/_cx_setup.tape
-Type `cx bootstrap --force 2>/dev/null && cx create -n demo python=3.12 numpy -y -q 2>/dev/null && cx remove -n demo --all -y -q 2>/dev/null && rm -rf "$CX_HOME"`
+Type `rm -rf "$CX_PREFIX"`
 Enter
 Wait /\$/
 Type "clear"
@@ -11,11 +11,11 @@ Enter
 Wait /\$/
 Show
 
-Type "# cx: bootstrap conda in seconds"
+Type "# The first conda command bootstraps automatically"
 Enter
 Sleep 500ms
 
-Type@80ms "cx bootstrap"
+Type@80ms "cx info"
 Enter
 Wait /\$/
 Sleep 2s
@@ -29,16 +29,25 @@ Enter
 Wait /\$/
 Sleep 2s
 
+Type "# Inspect packages in the environment"
+Enter
+Sleep 500ms
+
+Type@80ms `cx list -n demo numpy`
+Enter
+Wait /\$/
+Sleep 2s
+
 Type "# Activate with a subshell (no conda init needed)"
 Enter
 Sleep 500ms
 
-Type@80ms "cx shell demo"
+Type@80ms "cx spawn demo"
 Enter
 Wait /\$/
 Sleep 1s
 
-Type@80ms `python -c "import numpy; print(numpy.__version__)"`
+Type@80ms `echo "$CONDA_DEFAULT_ENV"`
 Enter
 Wait /\$/
 Sleep 2s

@@ -23,7 +23,7 @@ Homebrew is the recommended install path on macOS and Linux:
 ```bash
 brew tap jezdez/conda-express https://github.com/jezdez/conda-express
 brew install jezdez/conda-express/cx
-cx bootstrap
+cx info
 ```
 
 See {doc}`quickstart` for the first environment workflow. See
@@ -40,7 +40,8 @@ plugins; and how `cx` fits next to Pixi, uv, and Python package managers.
 :link: quickstart
 :link-type: doc
 
-Install `cx`, bootstrap the prefix, create an environment, and activate it.
+Install `cx`, run the first conda command, create an environment, and activate
+it.
 :::
 
 :::{grid-item-card} Guides
@@ -63,8 +64,8 @@ See what conda-express owns and when to use conda-ship instead.
 :link: reference/cli
 :link-type: doc
 
-Look up `cx bootstrap`, `status`, `shell`, `uninstall`, and pass-through
-behavior.
+Look up automatic bootstrap, bootstrap environment variables, transparent
+conda delegation, and included plugin commands.
 :::
 
 :::{grid-item-card} Explanation
