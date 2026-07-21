@@ -133,6 +133,9 @@ jobs:
   build:
     name: Build ${{ matrix.variant }} (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+      attestations: read # Required for conda-ship to verify release binary attestations.
     strategy:
       fail-fast: false
       matrix:
@@ -207,60 +210,13 @@ jobs:
         with:
           persist-credentials: false
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          repository: jezdez/conda-ship
-          ref: 77d447492dad62c21938fb37930e12b1c66edc88 # main after PR #72
-          path: .ci/conda-ship
-          persist-credentials: false
-
-      - uses: prefix-dev/setup-pixi@5185adfbffb4bd703da3010310260805d89ebb11 # v0.9.6
-        with:
-          manifest-path: .ci/conda-ship/pixi.toml
-          cache: true
-
-      - name: Build conda-ship tools
-        working-directory: .ci/conda-ship
-        run: |
-          pixi run -- cargo rustc --locked --release --bin cs -- -D warnings
-          pixi run -- cargo rustc --locked --release --bin cs-template --features runtime-template -- -D warnings
-
       - name: Build ${{ matrix.variant }}
         id: build
-        shell: bash
-        env:
-          ARTIFACT_LAYOUT: ${{ matrix.artifact_layout }}
-          TARGET: ${{ matrix.target }}
-          VARIANT: ${{ matrix.variant }}
-        run: |
-          set -euo pipefail
-
-          ext=""
-          if [[ "$TARGET" == *windows* ]]; then
-            ext=".exe"
-          fi
-
-          tool_dir="$GITHUB_WORKSPACE/.ci/conda-ship/target/release"
-          dist_dir="${RUNNER_TEMP}/conda-ship-${TARGET}-dist"
-          rm -rf "$dist_dir"
-
-          "$tool_dir/cs${ext}" build \
-            --root "$GITHUB_WORKSPACE" \
-            --target "$TARGET" \
-            --target-label "$TARGET" \
-            --template "$tool_dir/cs-template${ext}" \
-            --out-dir "$dist_dir" \
-            --artifact-layout "$ARTIFACT_LAYOUT" \
-            --artifact-name "$VARIANT" \
-            --runtime-version 0.0.0
-
-          binary_path="${dist_dir}/${VARIANT}-${TARGET}${ext}"
-          test -f "$binary_path"
-          {
-            echo "binary-path=${binary_path}"
-            echo "dist-path=${dist_dir}"
-            echo "asset-name=$(basename "$binary_path")"
-          } >> "$GITHUB_OUTPUT"
+        uses: jezdez/conda-ship@aed7e6a73ecd52edea066ba2e5fc625dea246396 # 0.5.0
+        with:
+          conda-ship-version: "0.5.0"
+          artifact-layout: ${{ matrix.artifact_layout }}
+          artifact-name: ${{ matrix.variant }}
 
       - name: Smoke test ${{ matrix.variant }}
         shell: bash
