@@ -60,12 +60,16 @@ jobs:
       - name: Set up cx without attestation
         id: setup-cx-default
         uses: ./.github/actions/setup-cx
+        env:
+          HOME: ${{ runner.temp }}/setup-cx-default-home
+          CX_PREFIX: ${{ runner.temp }}/setup-cx-default-home/.conda/express
         with:
           version: 26.5.2.post2
       - name: Smoke test default action path
         shell: bash
         env:
           CX_PATH: ${{ steps.setup-cx-default.outputs.cx-path }}
+          CX_PREFIX: ${{ runner.temp }}/setup-cx-default-home/.conda/express
           EXPECTED_VERSION: ${{ steps.setup-cx-default.outputs.version }}
         run: |
           set -euo pipefail
@@ -73,13 +77,19 @@ jobs:
             echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
             exit 1
           fi
-          "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
-          cx --version | grep -Fx "cx ${EXPECTED_VERSION}"
-          cx status
+          "$CX_PATH" info --json > "$RUNNER_TEMP/setup-cx-info.json"
+          jq -e \
+            --arg prefix "$CX_PREFIX" \
+            '.root_prefix == $prefix and .conda_version == "26.5.2"' \
+            "$RUNNER_TEMP/setup-cx-info.json"
+          cx info --json > /dev/null
 
       - name: Set up cx with attestation
         id: setup-cx-attested
         uses: ./.github/actions/setup-cx
+        env:
+          HOME: ${{ runner.temp }}/setup-cx-no-bootstrap-home
+          CX_PREFIX: ${{ runner.temp }}/setup-cx-no-bootstrap-home/.conda/express
         with:
           version: 26.5.2.post2
           github-token: ${{ github.token }}
@@ -90,6 +100,7 @@ jobs:
         shell: bash
         env:
           CX_PATH: ${{ steps.setup-cx-attested.outputs.cx-path }}
+          CX_PREFIX: ${{ runner.temp }}/setup-cx-no-bootstrap-home/.conda/express
           EXPECTED_VERSION: ${{ steps.setup-cx-attested.outputs.version }}
         run: |
           set -euo pipefail
@@ -97,7 +108,8 @@ jobs:
             echo "expected resolved version 26.5.2.post2, got ${EXPECTED_VERSION}" >&2
             exit 1
           fi
-          "$CX_PATH" --version | grep -Fx "cx ${EXPECTED_VERSION}"
+          test -x "$CX_PATH"
+          test ! -e "$CX_PREFIX"
 
   validate:
     name: Validate
@@ -254,6 +266,7 @@ jobs:
         env:
           BINARY_PATH: ${{ steps.build.outputs.binary-path }}
           CX_PREFIX: ${{ runner.temp }}/${{ matrix.variant }}-smoke
+          VARIANT: ${{ matrix.variant }}
         run: |
           set -euo pipefail
 
@@ -262,6 +275,15 @@ jobs:
           cmp runtime.condarc "$CX_PREFIX/.condarc"
           test -f "$CX_PREFIX/conda-meta/frozen"
           "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
+          completion_cache="${RUNNER_TEMP}/${VARIANT}-completion-cache"
+          "$BINARY_PATH" completion \
+            --cache-dir "$completion_cache" \
+            generate \
+            --no-repodata
+          "$BINARY_PATH" completion \
+            --cache-dir "$completion_cache" \
+            init bash \
+            --command-name cx | grep -F "_conda_completion_command='cx'"
           "$BINARY_PATH" exec --help | grep -q "Run a command from a conda package without installing it"
 
       - name: Upload canary binary

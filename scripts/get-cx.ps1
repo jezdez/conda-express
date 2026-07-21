@@ -3,7 +3,7 @@
     Installer script for cx (conda-express) on Windows.
 .DESCRIPTION
     Downloads and installs the cx binary for Windows, verifies the checksum,
-    updates the user PATH, and optionally runs cx bootstrap.
+    updates the user PATH, and optionally bootstraps the managed prefix.
 .PARAMETER Version
     Version to install (without "v" prefix). Default: "latest".
     Can also be set via the CX_VERSION environment variable.
@@ -14,7 +14,7 @@
     If specified, skip adding the install directory to the user PATH.
     Can also be set via the CX_NO_PATH_UPDATE environment variable.
 .PARAMETER NoBootstrap
-    If specified, skip running "cx bootstrap" after installation.
+    If specified, skip installer-triggered bootstrap.
     Can also be set via the CX_NO_BOOTSTRAP environment variable.
 .PARAMETER SkipVerify
     If specified, skip checksum verification.
@@ -233,15 +233,38 @@ if (Test-Path $LegacyPrefix) {
 # Bootstrap
 if (-not $NoBootstrap) {
     Write-Host ""
-    Write-Host "  Running cx bootstrap..."
-    $BootstrapArgs = @("bootstrap")
-    if ($Bundle) {
-        $BootstrapArgs += @("--bundle", $Bundle)
+    Write-Host "  Bootstrapping cx..."
+
+    $HadBundleEnv = Test-Path Env:CX_BUNDLE
+    $PreviousBundleEnv = [System.Environment]::GetEnvironmentVariable("CX_BUNDLE", "Process")
+    $HadOfflineEnv = Test-Path Env:CX_OFFLINE
+    $PreviousOfflineEnv = [System.Environment]::GetEnvironmentVariable("CX_OFFLINE", "Process")
+
+    try {
+        if ($Bundle) {
+            $Env:CX_BUNDLE = $Bundle
+        }
+        if ($Offline) {
+            $Env:CX_OFFLINE = "1"
+        }
+
+        & $DestPath "info" "--json" | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "cx info failed with exit code $LASTEXITCODE"
+        }
+    } finally {
+        if ($HadBundleEnv) {
+            $Env:CX_BUNDLE = $PreviousBundleEnv
+        } else {
+            Remove-Item Env:CX_BUNDLE -ErrorAction SilentlyContinue
+        }
+
+        if ($HadOfflineEnv) {
+            $Env:CX_OFFLINE = $PreviousOfflineEnv
+        } else {
+            Remove-Item Env:CX_OFFLINE -ErrorAction SilentlyContinue
+        }
     }
-    if ($Offline) {
-        $BootstrapArgs += "--offline"
-    }
-    & $DestPath @BootstrapArgs
 }
 
 Write-Host ""

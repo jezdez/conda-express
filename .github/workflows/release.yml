@@ -147,19 +147,26 @@ jobs:
         shell: bash
         env:
           BINARY_PATH: ${{ steps.build.outputs.binary-path }}
-          EXPECTED_RUNTIME: ${{ matrix.variant }}
-          EXPECTED_VERSION: ${{ needs.validate-release.outputs.version }}
-          SMOKE_PREFIX: ${{ runner.temp }}/${{ matrix.variant }}-smoke
+          CX_PREFIX: ${{ runner.temp }}/${{ matrix.variant }}-smoke
+          VARIANT: ${{ matrix.variant }}
         run: |
-          ACTUAL_VERSION="$("$BINARY_PATH" --version)"
-          if [ "$ACTUAL_VERSION" != "$EXPECTED_RUNTIME $EXPECTED_VERSION" ]; then
-            echo "expected $EXPECTED_RUNTIME $EXPECTED_VERSION, got $ACTUAL_VERSION" >&2
-            exit 1
-          fi
-          "$BINARY_PATH" --path "$SMOKE_PREFIX" bootstrap
-          "$BINARY_PATH" --path "$SMOKE_PREFIX" status
-          "$BINARY_PATH" --path "$SMOKE_PREFIX" completion --help | grep -q "Generate and install shell tab completions"
-          "$BINARY_PATH" --path "$SMOKE_PREFIX" exec --help | grep -q "Run a command from a conda package without installing it"
+          set -euo pipefail
+
+          "$BINARY_PATH" info --json > /dev/null
+          "$BINARY_PATH" --version | grep -Fx "conda 26.5.2"
+          cmp runtime.condarc "$CX_PREFIX/.condarc"
+          test -f "$CX_PREFIX/conda-meta/frozen"
+          "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
+          completion_cache="${RUNNER_TEMP}/${VARIANT}-completion-cache"
+          "$BINARY_PATH" completion \
+            --cache-dir "$completion_cache" \
+            generate \
+            --no-repodata
+          "$BINARY_PATH" completion \
+            --cache-dir "$completion_cache" \
+            init bash \
+            --command-name cx | grep -F "_conda_completion_command='cx'"
+          "$BINARY_PATH" exec --help | grep -q "Run a command from a conda package without installing it"
 
       - name: Attest ${{ matrix.variant }} release binary
         uses: actions/attest@59d89421af93a897026c735860bf21b6eb4f7b26 # v4.1.0
@@ -487,7 +494,6 @@ jobs:
         env:
           DOCKERFILE: ${{ matrix.dockerfile }}
           SMOKE_TAG: ${{ matrix.variant }}-smoke-test
-          VARIANT: ${{ matrix.variant }}
         run: |
           docker buildx build \
             --platform linux/amd64 \
@@ -495,12 +501,7 @@ jobs:
             -f "$DOCKERFILE" \
             -t "$SMOKE_TAG" \
             docker/
-          if [ "$VARIANT" = "cxz" ]; then
-            docker run --rm "$SMOKE_TAG" status
-          else
-            docker run --rm "$SMOKE_TAG" --help
-            docker run --rm "$SMOKE_TAG" --version
-          fi
+          docker run --rm "$SMOKE_TAG" info --json > /dev/null
 
       - uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
         with:

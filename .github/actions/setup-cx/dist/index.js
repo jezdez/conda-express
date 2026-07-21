@@ -30657,13 +30657,6 @@ module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:events"
 
 /***/ }),
 
-/***/ 3024:
-/***/ ((module) => {
-
-module.exports = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:fs");
-
-/***/ }),
-
 /***/ 1455:
 /***/ ((module) => {
 
@@ -34683,11 +34676,9 @@ __nccwpck_require__.a(__webpack_module__, async (__webpack_handle_async_dependen
 /* harmony import */ var _actions_tool_cache__WEBPACK_IMPORTED_MODULE_2__ = __nccwpck_require__(3002);
 /* harmony import */ var node_crypto__WEBPACK_IMPORTED_MODULE_3__ = __nccwpck_require__(7598);
 /* harmony import */ var node_fs_promises__WEBPACK_IMPORTED_MODULE_4__ = __nccwpck_require__(1455);
-/* harmony import */ var node_fs__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(3024);
-/* harmony import */ var node_os__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(8161);
-/* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(6760);
-/* harmony import */ var node_url__WEBPACK_IMPORTED_MODULE_8__ = __nccwpck_require__(3136);
-
+/* harmony import */ var node_os__WEBPACK_IMPORTED_MODULE_5__ = __nccwpck_require__(8161);
+/* harmony import */ var node_path__WEBPACK_IMPORTED_MODULE_6__ = __nccwpck_require__(6760);
+/* harmony import */ var node_url__WEBPACK_IMPORTED_MODULE_7__ = __nccwpck_require__(3136);
 
 
 
@@ -34708,16 +34699,16 @@ async function main() {
   const options = readOptions();
   const asset = platformAsset();
   const resolvedVersion = await resolveVersion(options.version, options.githubToken);
-  const installDir = options.installDir || node_path__WEBPACK_IMPORTED_MODULE_7__.join(runnerTemp(), "cx", "bin");
-  const workDir = node_path__WEBPACK_IMPORTED_MODULE_7__.join(runnerTemp(), `cx-download-${resolvedVersion}`);
+  const installDir = options.installDir || node_path__WEBPACK_IMPORTED_MODULE_6__.join(runnerTemp(), "cx", "bin");
+  const workDir = node_path__WEBPACK_IMPORTED_MODULE_6__.join(runnerTemp(), `cx-download-${resolvedVersion}`);
 
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rm)(workDir, { recursive: true, force: true });
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(workDir, { recursive: true });
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(installDir, { recursive: true });
 
   const baseUrl = `https://github.com/${repository}/releases/download/${resolvedVersion}`;
-  const assetPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(workDir, asset.name);
-  const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(workDir, `${asset.name}.sha256`);
+  const assetPath = node_path__WEBPACK_IMPORTED_MODULE_6__.join(workDir, asset.name);
+  const checksumPath = node_path__WEBPACK_IMPORTED_MODULE_6__.join(workDir, `${asset.name}.sha256`);
 
   (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`Downloading ${asset.name} from conda-express ${resolvedVersion}`);
   await downloadFile(`${baseUrl}/${asset.name}`, assetPath);
@@ -34728,7 +34719,7 @@ async function main() {
     await verifyAttestation(assetPath, resolvedVersion, options.githubToken);
   }
 
-  const binaryPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(installDir, asset.binaryName);
+  const binaryPath = node_path__WEBPACK_IMPORTED_MODULE_6__.join(installDir, asset.binaryName);
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.copyFile)(assetPath, binaryPath);
   await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.chmod)(binaryPath, 0o755);
 
@@ -34770,15 +34761,15 @@ function stripLeadingV(value) {
 }
 
 function runnerTemp() {
-  return process.env.RUNNER_TEMP || (0,node_os__WEBPACK_IMPORTED_MODULE_6__.tmpdir)();
+  return process.env.RUNNER_TEMP || (0,node_os__WEBPACK_IMPORTED_MODULE_5__.tmpdir)();
 }
 
 /**
  * Resolve the release asset name for the current runner platform.
  */
 function platformAsset() {
-  const os = (0,node_os__WEBPACK_IMPORTED_MODULE_6__.platform)();
-  const cpu = (0,node_os__WEBPACK_IMPORTED_MODULE_6__.arch)();
+  const os = (0,node_os__WEBPACK_IMPORTED_MODULE_5__.platform)();
+  const cpu = (0,node_os__WEBPACK_IMPORTED_MODULE_5__.arch)();
 
   if (os === "linux" && cpu === "x64") {
     return { name: "cx-x86_64-unknown-linux-gnu", binaryName: "cx" };
@@ -34839,8 +34830,8 @@ async function resolveVersion(requestedVersion, githubToken) {
  * release asset without requiring callers to repeat `version`.
  */
 function inferActionRefFromPath() {
-  const actionPath = (0,node_url__WEBPACK_IMPORTED_MODULE_8__.fileURLToPath)(import.meta.url);
-  const segments = actionPath.split(node_path__WEBPACK_IMPORTED_MODULE_7__.sep);
+  const actionPath = (0,node_url__WEBPACK_IMPORTED_MODULE_7__.fileURLToPath)(import.meta.url);
+  const segments = actionPath.split(node_path__WEBPACK_IMPORTED_MODULE_6__.sep);
   const actionRootIndex = segments.lastIndexOf(".github");
   if (actionRootIndex < 1) {
     return "";
@@ -34931,55 +34922,14 @@ async function verifyAttestation(assetPath, version, githubToken) {
     env: { ...process.env, GH_TOKEN: githubToken },
     quiet: true,
   });
-  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${node_path__WEBPACK_IMPORTED_MODULE_7__.basename(assetPath)}: attestation verified`);
+  (0,_actions_core__WEBPACK_IMPORTED_MODULE_0__/* .info */ .pq)(`${node_path__WEBPACK_IMPORTED_MODULE_6__.basename(assetPath)}: attestation verified`);
 }
 
 /**
- * Run `cx bootstrap`, preserving a partial package cache from a failed prefix.
+ * Trigger automatic bootstrap through a regular conda command.
  */
 async function bootstrap(cxPath) {
-  const installPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join((0,node_os__WEBPACK_IMPORTED_MODULE_6__.homedir)(), ".conda", "express");
-  const condaPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(installPath, "bin", "conda");
-
-  if (await exists(condaPath, node_fs__WEBPACK_IMPORTED_MODULE_5__.constants.X_OK)) {
-    await run(cxPath, ["status"]);
-    return;
-  }
-
-  const pkgsPath = node_path__WEBPACK_IMPORTED_MODULE_7__.join(installPath, "pkgs");
-  let restoredPkgs = "";
-  if ((await exists(pkgsPath)) && !(await exists(condaPath, node_fs__WEBPACK_IMPORTED_MODULE_5__.constants.X_OK))) {
-    restoredPkgs = node_path__WEBPACK_IMPORTED_MODULE_7__.join(runnerTemp(), "cx-restored-pkgs");
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rm)(restoredPkgs, { recursive: true, force: true });
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(node_path__WEBPACK_IMPORTED_MODULE_7__.dirname(restoredPkgs), { recursive: true });
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rename)(pkgsPath, restoredPkgs);
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.rm)(installPath, { recursive: true, force: true });
-  }
-
-  await run(cxPath, ["bootstrap"]);
-
-  if (restoredPkgs) {
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.mkdir)(pkgsPath, { recursive: true });
-    await copyDirectory(restoredPkgs, pkgsPath);
-  }
-
-  await run(cxPath, ["status"]);
-}
-
-async function copyDirectory(source, destination) {
-  await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.cp)(source, destination, { recursive: true, force: true });
-}
-
-async function exists(filePath, mode = node_fs__WEBPACK_IMPORTED_MODULE_5__.constants.F_OK) {
-  try {
-    await (0,node_fs_promises__WEBPACK_IMPORTED_MODULE_4__.access)(filePath, mode);
-    return true;
-  } catch (error) {
-    if (error.code === "ENOENT" || error.code === "EACCES") {
-      return false;
-    }
-    throw error;
-  }
+  await run(cxPath, ["info", "--json"]);
 }
 
 /**

@@ -1,5 +1,5 @@
 name: "Set up cx"
-description: "Install a verified conda-express cx release and optionally bootstrap it."
+description: "Install a verified conda-express cx release and optionally bootstrap its prefix."
 author: "Jannis Leidel"
 
 branding:
@@ -20,7 +20,7 @@ inputs:
     required: false
     default: ""
   bootstrap:
-    description: "Run cx bootstrap after installation."
+    description: "Run cx info --json after installation to trigger automatic bootstrap."
     required: false
     default: "true"
   add-to-path:
