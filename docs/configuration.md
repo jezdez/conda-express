@@ -16,10 +16,27 @@ delegate-executable = "conda"
 artifact-layout = "online"
 source-environment = "runtime"
 exclude-packages = ["conda-libmamba-solver"]
+condarc-file = "runtime.condarc"
+freeze-base = true
 docs-url = "https://jezdez.github.io/conda-express/"
 install-scheme = "conda-home"
 install-name = "express"
 ```
+
+The referenced `runtime.condarc` keeps the cx runtime policy in native conda
+configuration:
+
+```yaml
+solver: rattler
+auto_activate_base: false
+notify_outdated_conda: false
+show_channel_urls: true
+channels:
+  - "https://conda.anaconda.org/conda-forge/"
+```
+
+The explicit `freeze-base = true` setting keeps the managed base prefix
+protected after bootstrap. Both settings are conda-express distribution policy.
 
 The release workflows override `artifact-layout` and `artifact-name`:
 
