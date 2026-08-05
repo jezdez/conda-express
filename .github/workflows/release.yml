@@ -46,7 +46,7 @@ jobs:
             echo "major-minor=${major_minor}"
           } >> "$GITHUB_OUTPUT"
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ steps.release.outputs.tag }}
           persist-credentials: false
@@ -130,14 +130,14 @@ jobs:
             exit 1
           fi
 
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: jezdez/conda-ship@aed7e6a73ecd52edea066ba2e5fc625dea246396 # 0.5.0
+        uses: jezdez/conda-ship@b1eac5dfcc9e0403f29f416bc2084d00fca5974f # 0.7.0
         with:
           conda-ship-version: "0.5.0"
           artifact-layout: ${{ matrix.artifact_layout }}
@@ -169,7 +169,7 @@ jobs:
           "$BINARY_PATH" exec --help | grep -q "Run a command from a conda package without installing it"
 
       - name: Attest ${{ matrix.variant }} release binary
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: ${{ steps.build.outputs.dist-path }}/*
 
@@ -210,7 +210,7 @@ jobs:
             platform-tag: win_amd64
 
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           fetch-depth: 0
@@ -247,7 +247,7 @@ jobs:
           unzip -p "${wheels[0]}" "*/METADATA" | grep -Fx "Version: ${RELEASE_VERSION}"
 
       - name: Attest wheel
-        uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+        uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-path: dist/*.whl
 
@@ -264,7 +264,7 @@ jobs:
     permissions:
       contents: write # create the immutable GitHub release for this tag
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
@@ -339,7 +339,7 @@ jobs:
     permissions:
       contents: write # commit the generated Homebrew formula update back to main
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
           persist-credentials: false
@@ -457,7 +457,7 @@ jobs:
           pattern: "wheel-*"
           merge-multiple: true
 
-      - uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # v1.14.2
         with:
           packages-dir: dist/
 
@@ -484,7 +484,7 @@ jobs:
             tag-suffix: "-cxz"
             latest-tag: latest-cxz
     steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: refs/tags/${{ needs.validate-release.outputs.tag }}
           persist-credentials: false
@@ -520,7 +520,7 @@ jobs:
             docker/
           docker run --rm "$SMOKE_TAG" info --json > /dev/null
 
-      - uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4.4.0
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -548,7 +548,7 @@ jobs:
           provenance: mode=max
           sbom: true
 
-      - uses: actions/attest@a1948c3f048ba23858d222213b7c278aabede763 # v4.1.1
+      - uses: actions/attest@508db95dd578ae2727ebd6217d5ba78e4fbda05d # v4.2.1
         with:
           subject-name: ghcr.io/${{ github.repository }}
           subject-digest: ${{ steps.build.outputs.digest }}
