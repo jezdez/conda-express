@@ -137,9 +137,9 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: jezdez/conda-ship@aed7e6a73ecd52edea066ba2e5fc625dea246396 # 0.5.0
+        uses: jezdez/conda-ship@c5a6b59d900bfeeb0dfe744d960ea1fd3d95a981 # 0.9.0
         with:
-          conda-ship-version: "0.5.0"
+          conda-ship-version: "0.9.0"
           artifact-layout: ${{ matrix.artifact_layout }}
           artifact-name: ${{ matrix.variant }}
 
@@ -148,10 +148,14 @@ jobs:
         env:
           BINARY_PATH: ${{ steps.build.outputs.binary-path }}
           CX_PREFIX: ${{ runner.temp }}/${{ matrix.variant }}-smoke
+          RUNNER_OS_NAME: ${{ runner.os }}
           VARIANT: ${{ matrix.variant }}
         run: |
           set -euo pipefail
 
+          if [ "$RUNNER_OS_NAME" = "macOS" ]; then
+            codesign --verify --strict --verbose=2 "$BINARY_PATH"
+          fi
           "$BINARY_PATH" info --json > /dev/null
           "$BINARY_PATH" --version | grep -Fx "conda 26.5.2"
           cmp runtime.condarc "$CX_PREFIX/.condarc"

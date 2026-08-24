@@ -21,6 +21,7 @@ Linux x86_64 `cx` binary, the files are:
 
 ```text
 cx-x86_64-unknown-linux-gnu
+cx-x86_64-unknown-linux-gnu.cdx.json
 cx-x86_64-unknown-linux-gnu.info.json
 cx-x86_64-unknown-linux-gnu.packages.txt
 cx-x86_64-unknown-linux-gnu.runtime.lock
@@ -31,6 +32,7 @@ For `cxz`, use the same target with the `cxz-` prefix:
 
 ```text
 cxz-x86_64-unknown-linux-gnu
+cxz-x86_64-unknown-linux-gnu.cdx.json
 cxz-x86_64-unknown-linux-gnu.info.json
 cxz-x86_64-unknown-linux-gnu.packages.txt
 cxz-x86_64-unknown-linux-gnu.runtime.lock
@@ -89,7 +91,7 @@ organization's signing policy.
 
 Repeat the attestation check for any metadata file that a downstream process
 trusts as release input, such as `.runtime.lock`, `.info.json`, `.packages.txt`,
-or `.sha256`.
+`.cdx.json`, or `.sha256`.
 
 ## Inspect Metadata
 
@@ -111,6 +113,16 @@ less cx-x86_64-unknown-linux-gnu.packages.txt
 The `.runtime.lock` file is the lock that `cx` or `cxz` uses during bootstrap.
 It should match the package set you expect for the release. Do not edit it by
 hand; update the source environment and rebuild instead.
+
+The `.cdx.json` file is a CycloneDX 1.7 SBOM for the resolved conda packages:
+
+```bash
+python -m json.tool cx-x86_64-unknown-linux-gnu.cdx.json
+```
+
+Confirm that its root component names the expected runtime and version, its
+target property names the expected platform, and its components match the
+reviewed runtime lock.
 
 ## Verify Before Air-Gapped Transfer
 

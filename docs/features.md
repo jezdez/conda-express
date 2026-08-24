@@ -243,7 +243,7 @@ commands that should use that prefix.
 This maps to conda-ship's online, external, and embedded artifact layouts.
 conda-express publishes online `cx` and embedded `cxz`; external artifact
 packaging is an integration pattern for downstream installers. See
-{external+conda-ship:doc}`conda-ship's artifact layout tradeoffs <explanation/artifact-layout-tradeoffs>`
+{external+conda-ship:doc}`conda-ship's artifact layout guide <how-to/choose-artifact-layout>`
 for the generic layout model.
 
 ## Self-contained binary (cxz)
@@ -300,11 +300,12 @@ For each target, the GitHub Release includes the runtime binary plus:
 - `.info.json` artifact metadata
 - `.runtime.lock`, the lock used during bootstrap
 - `.packages.txt`, a plain package list for review
+- `.cdx.json`, a CycloneDX 1.7 SBOM for the resolved conda packages
 
 The release workflow attests the complete conda-ship `dist-path` output before
 publishing. See {doc}`guides/verify-release-artifacts` for conda-express
 verification steps and
-{external+conda-ship:doc}`conda-ship's release asset reference <reference/release-assets>`
+{external+conda-ship:doc}`conda-ship's artifact reference <reference/artifacts>`
 for the generic artifact names and action outputs.
 
 ## PyPI distribution

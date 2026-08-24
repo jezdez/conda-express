@@ -83,9 +83,10 @@ Windows ARM64 is not published for conda-express yet. conda-ship has Windows
 ARM64 builder assets, but full runtime bootstrap support still depends on the
 conda package ecosystem.
 
-Each runtime has matching `.sha256`, `.info.json`, `.packages.txt`, and
-`.runtime.lock` metadata. Direct downloads are also covered by GitHub Artifact
-Attestations from the release workflow. For a quick attestation check:
+Each runtime has matching `.sha256`, `.info.json`, `.packages.txt`,
+`.runtime.lock`, and CycloneDX `.cdx.json` metadata. Direct downloads are also
+covered by GitHub Artifact Attestations from the release workflow. For a quick
+attestation check:
 
 ```bash
 gh attestation verify ./cx-x86_64-unknown-linux-gnu \

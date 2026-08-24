@@ -15,7 +15,7 @@ runtime. It does not currently publish conda-ship `external` layout release
 assets such as `cx.bundle.tar.zst`. The `CX_BUNDLE` control below is for
 deployment systems that provide a bundle directory next to `cx`. For custom
 external-bundle artifacts, use
-{external+conda-ship:doc}`conda-ship's external artifact layout <explanation/artifact-layout-tradeoffs>`.
+{external+conda-ship:doc}`conda-ship's artifact layout guide <how-to/choose-artifact-layout>`.
 
 ## Use cxz
 
