@@ -1,5 +1,27 @@
 # Changelog
 
+## 26.5.2.post7 (2026-08-24)
+
+> **Important:** Native macOS and Windows artifacts from earlier releases must
+> be rebuilt with conda-ship 0.9.0 rather than re-signed in place. This release
+> supplies those rebuilt `cx` and `cxz` binaries. Existing managed prefixes and
+> the conda 26.5.2 runtime lock are unchanged.
+
+### Distribution
+
+- Build `cx` and `cxz` with conda-ship `0.9.0`, using the matching immutable
+  release commit for the GitHub Action and release assets.
+- Use the new native runtime-data layout. macOS metadata now precedes
+  `LC_CODE_SIGNATURE`, and the Windows footer anchor is in the read-only
+  `.cship` section. CI and release builds require strict macOS code-signature
+  validation. GitHub attestations continue to cover every release file.
+- Publish a CycloneDX 1.7 `.cdx.json` SBOM for each `cx` and `cxz` runtime.
+- Keep executable replacement external to conda-ship. The shell and PowerShell
+  installers, setup action, Homebrew, and PyPI replace the executable through
+  their own installation paths. conda-express does not configure conda-ship's
+  native executable updater, so its Windows 0.8-to-0.9 self-update restriction
+  does not apply.
+
 ## 26.5.2.post6 (2026-07-21)
 
 ### Distribution
