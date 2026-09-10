@@ -3,6 +3,10 @@ name: CI
 on:
   workflow_dispatch:
     inputs:
+      runtime-version:
+        description: "Runtime version to stamp for a release rehearsal."
+        required: false
+        type: string
       retention-days:
         description: "Number of days to retain build artifacts."
         required: false
@@ -262,6 +266,7 @@ jobs:
         uses: conda-incubator/conda-ship@71788f3451524a4859ddc6435067cb176919832c # 0.9.1
         with:
           conda-ship-version: "0.9.1"
+          runtime-version: ${{ inputs.runtime-version }}
           artifact-layout: ${{ matrix.artifact_layout }}
           artifact-name: ${{ matrix.variant }}
 
@@ -279,7 +284,7 @@ jobs:
             codesign --verify --strict --verbose=2 "$BINARY_PATH"
           fi
           "$BINARY_PATH" info --json > /dev/null
-          "$BINARY_PATH" --version | grep -Fx "conda 26.5.2"
+          "$BINARY_PATH" --version | grep -Fx "conda 26.7.2"
           cmp runtime.condarc "$CX_PREFIX/.condarc"
           test -f "$CX_PREFIX/conda-meta/frozen"
           "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"

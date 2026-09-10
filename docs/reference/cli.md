@@ -101,9 +101,8 @@ cx spawn myenv
 exit
 ```
 
-The currently released conda-spawn command is `spawn`. The `shell` alias in
-[conda-spawn PR #59](https://github.com/conda/conda-spawn/pull/59) is not part
-of a released conda-spawn version yet.
+`cx shell myenv` is an alias for `cx spawn myenv`, provided by the included
+conda-spawn 0.2.0.
 
 ### `cx self`
 
