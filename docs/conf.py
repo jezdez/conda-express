@@ -109,7 +109,7 @@ html_css_files = ["css/custom.css"]
 html_baseurl = "https://jezdez.github.io/conda-express/"
 
 intersphinx_mapping = {
-    "conda-ship": ("https://jezdez.github.io/conda-ship/", None),
+    "conda-ship": ("https://conda-incubator.github.io/conda-ship/", None),
 }
 
 exclude_patterns = ["_build"]

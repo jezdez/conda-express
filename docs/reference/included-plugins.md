@@ -9,7 +9,7 @@ behavior.
 | Package | What it adds | Typical commands or behavior |
 |---|---|---|
 | `conda-rattler-solver` | Rattler/resolvo-based solver backend | `solver: rattler` is written to `.condarc` |
-| `conda-spawn` | Subprocess-based activation | `cx spawn ENV`, `conda spawn ENV` |
+| `conda-spawn` | Subprocess-based activation | `cx spawn ENV`, `cx shell ENV` |
 | `conda-completion` | Shell completion support | `cx completion status`, `cx completion install --dry-run --command-name cx` |
 | `conda-exec` | Ephemeral package execution and PEP 723 scripts | `cx exec ruff --version`, `cx exec --list` |
 | `conda-pypi` | PyPI interoperability inside conda workflows | PyPI dependency handling through the conda plugin stack |
@@ -65,9 +65,8 @@ cx spawn myenv
 exit
 ```
 
-`cx spawn` is the currently released conda-spawn command. The `shell` alias in
-[conda-spawn PR #59](https://github.com/conda/conda-spawn/pull/59) is not part
-of a released conda-spawn version yet. All commands are passed through to the
+The included conda-spawn 0.2.0 also provides `cx shell` as an alias for
+`cx spawn`. All commands are passed through to the
 installed conda executable after automatic bootstrap.
 
 ## Workspace and tool commands

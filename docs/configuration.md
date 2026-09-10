@@ -63,14 +63,14 @@ The `runtime` source environment installs:
 |---|---|
 | `python >=3.12` | Python runtime for conda |
 | `conda =={{ conda_runtime_version }}` | Package manager |
-| `conda-rattler-solver` | Default solver |
-| `conda-spawn >=0.1.0` | Subshell activation |
+| `conda-rattler-solver >=0.1.1` | Default solver |
+| `conda-spawn >=0.2.0` | Subshell activation |
 | `conda-completion >=0.3.0` | Shell completion for `cx` and conda plugin commands |
-| `conda-exec >=0.3.0` | Ephemeral package execution and PEP 723 script workflows |
-| `conda-pypi` | PyPI interoperability |
-| `conda-self` | Base environment self-management and reset |
-| `conda-global` | Global tool environments |
-| `conda-workspaces >=0.7.0` | Workspace manifests and tasks |
+| `conda-exec >=0.4.0` | Ephemeral package execution and PEP 723 script workflows |
+| `conda-pypi >=0.12.0` | PyPI interoperability |
+| `conda-self >=0.2.1` | Base environment self-management and reset |
+| `conda-global >=0.2.0` | Global tool environments |
+| `conda-workspaces >=0.9.0` | Workspace manifests and tasks |
 
 `conda-libmamba-solver` is excluded from the derived runtime lock because
 conda-express uses `conda-rattler-solver`.

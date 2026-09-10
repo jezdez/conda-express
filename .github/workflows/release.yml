@@ -29,7 +29,7 @@ jobs:
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^[0-9]+[.][0-9]+[.][0-9]+([.]post[0-9]+)?$ ]]; then
             echo "Invalid release tag: ${RELEASE_TAG}" >&2
-            echo "Use a version tag such as 26.5.2 or 26.5.2.post1." >&2
+            echo "Use a version tag such as 26.7.2 or 26.7.2.post1." >&2
             exit 1
           fi
 
@@ -157,7 +157,7 @@ jobs:
             codesign --verify --strict --verbose=2 "$BINARY_PATH"
           fi
           "$BINARY_PATH" info --json > /dev/null
-          "$BINARY_PATH" --version | grep -Fx "conda 26.5.2"
+          "$BINARY_PATH" --version | grep -Fx "conda 26.7.2"
           cmp runtime.condarc "$CX_PREFIX/.condarc"
           test -f "$CX_PREFIX/conda-meta/frozen"
           "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"

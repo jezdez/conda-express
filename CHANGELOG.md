@@ -1,5 +1,17 @@
 # Changelog
 
+## 26.7.2 (2026-09-10)
+
+### Runtime
+
+- Bootstrap new managed prefixes with conda 26.7.2 and refresh the runtime lock for all five supported platforms. Existing prefixes retain their installed packages.
+- Update conda-rattler-solver to 0.1.1, conda-spawn to 0.2.0, conda-exec to 0.4.0, conda-pypi to 0.12.0, conda-self to 0.2.1, conda-global to 0.2.0, and conda-workspaces to 0.9.0. Keep conda-completion at its latest release, 0.3.0.
+- Provide `cx shell` as an alias for `cx spawn` through conda-spawn 0.2.0.
+
+### Distribution
+
+- Build `cx` and `cxz` with conda-ship 0.9.1 using the matching release commit and verified release assets from `conda-incubator/conda-ship`.
+
 ## 26.5.2.post7 (2026-08-24)
 
 > **Important:** Native macOS and Windows artifacts from earlier releases must

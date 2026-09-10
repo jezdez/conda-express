@@ -80,9 +80,8 @@ No `conda init` setup is required for this activation path. Add
 cx spawn myenv
 ```
 
-The `shell` alias in
-[conda-spawn PR #59](https://github.com/conda/conda-spawn/pull/59) is not part
-of a released conda-spawn version yet.
+The included conda-spawn 0.2.0 also provides `cx shell myenv` as an alias for
+`cx spawn myenv`.
 
 ## conda-completion
 
