@@ -137,9 +137,9 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: conda-incubator/conda-ship@71788f3451524a4859ddc6435067cb176919832c # 0.9.1
+        uses: conda-incubator/conda-ship@b556f2f36b17b0c629ab4a3806b05bb1915ec1bf # 0.9.2
         with:
-          conda-ship-version: "0.9.1"
+          conda-ship-version: "0.9.2"
           artifact-layout: ${{ matrix.artifact_layout }}
           artifact-name: ${{ matrix.variant }}
 
