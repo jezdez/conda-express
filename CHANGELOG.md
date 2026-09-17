@@ -1,5 +1,11 @@
 # Changelog
 
+## 26.7.2.post1 (2026-09-17)
+
+### Distribution
+
+- Build `cx` and `cxz` with conda-ship 0.9.2 using the matching release commit and verified release assets from `conda-incubator/conda-ship`.
+
 ## 26.7.2 (2026-09-10)
 
 ### Runtime
