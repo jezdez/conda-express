@@ -321,7 +321,7 @@ instead of building runtime source in this repository.
 
 ## Multi-platform support
 
-cx builds and tests on 5 platforms via GitHub Actions:
+cx builds and tests on six platforms via GitHub Actions:
 
 | Platform | Runner |
 |---|---|
@@ -330,8 +330,7 @@ cx builds and tests on 5 platforms via GitHub Actions:
 | macos-x64 | `macos-15-intel` |
 | macos-arm64 | `macos-15` |
 | windows-x64 | `windows-latest` |
+| windows-arm64 | `windows-11-arm` |
 
-conda-ship publishes Windows ARM64 builder assets and maps `Windows`/`ARM64`
-action runners to `aarch64-pc-windows-msvc`. conda-express does not publish
-Windows ARM64 `cx` or `cxz` artifacts yet because full runtime bootstrap
-support still depends on the conda package ecosystem.
+Windows ARM64 support starts with conda-express 26.9.1. Both `cx` and `cxz`
+bootstrap native Python and conda on Windows ARM64 runners.

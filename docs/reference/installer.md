@@ -180,7 +180,9 @@ For an offline automatic bootstrap with a bundle directory:
 ## Platform detection
 
 The shell script uses `uname -s` and `uname -m` to detect the platform.
-The PowerShell script uses .NET's `RuntimeInformation.OSArchitecture`.
+The PowerShell script uses .NET's `RuntimeInformation.OSArchitecture`, with
+a fallback to Windows architecture environment variables on older PowerShell
+versions.
 
 | Detected | Target | Binary |
 |---|---|---|
@@ -189,11 +191,9 @@ The PowerShell script uses .NET's `RuntimeInformation.OSArchitecture`.
 | macOS x86_64 | `x86_64-apple-darwin` | `cx-x86_64-apple-darwin` |
 | macOS ARM64 | `aarch64-apple-darwin` | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `x86_64-pc-windows-msvc` | `cx-x86_64-pc-windows-msvc.exe` |
+| Windows ARM64 | `aarch64-pc-windows-msvc` | `cx-aarch64-pc-windows-msvc.exe` |
 
-Windows ARM64 is not published for conda-express yet. conda-ship has Windows
-ARM64 builder assets, but full runtime bootstrap support still depends on the
-conda package ecosystem. The PowerShell installer reports that architecture as
-unsupported instead of downloading an incompatible binary.
+Windows ARM64 support starts with conda-express 26.9.1.
 
 ## Shell profile updates
 

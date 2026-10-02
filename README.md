@@ -47,7 +47,7 @@ cx installs a managed conda stack from conda-forge:
 | [conda-pypi](https://conda.github.io/conda-pypi/) | PyPI interoperability |
 | [conda-self](https://conda.github.io/conda-self/) | Base environment self-management |
 | [conda-global](https://conda-incubator.github.io/conda-global/) | Global tool installation and PATH management |
-| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.11.0 | Multi-environment workspace and task management |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.11.1 | Multi-environment workspace and task management |
 
 See the [included plugins reference](https://jezdez.github.io/conda-express/reference/included-plugins/)
 for the commands and workflows these packages add.
@@ -145,10 +145,9 @@ Download the binary for your platform from the
 | macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` |
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
+| Windows ARM64 | `cx-aarch64-pc-windows-msvc.exe` |
 
-Windows ARM64 is not published for conda-express yet. conda-ship publishes
-Windows ARM64 builder assets, but full runtime bootstrap support is still gated
-by the conda package ecosystem.
+Windows ARM64 support starts with conda-express 26.9.1.
 
 Each file has matching `.sha256`, `.info.json`, `.packages.txt`,
 `.runtime.lock`, and CycloneDX `.cdx.json` files. Release artifacts are also

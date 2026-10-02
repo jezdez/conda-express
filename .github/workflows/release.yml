@@ -29,7 +29,7 @@ jobs:
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^[0-9]+[.][0-9]+[.][0-9]+([.]post[0-9]+)?$ ]]; then
             echo "Invalid release tag: ${RELEASE_TAG}" >&2
-            echo "Use a version tag such as 26.9.0 or 26.9.0.post1." >&2
+            echo "Use a version tag such as 26.9.1 or 26.9.1.post1." >&2
             exit 1
           fi
 
@@ -84,6 +84,10 @@ jobs:
             os: windows-latest
             variant: cx
             artifact_layout: online
+          - target: aarch64-pc-windows-msvc
+            os: windows-11-arm
+            variant: cx
+            artifact_layout: online
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             variant: cxz
@@ -104,6 +108,10 @@ jobs:
             os: windows-latest
             variant: cxz
             artifact_layout: embedded
+          - target: aarch64-pc-windows-msvc
+            os: windows-11-arm
+            variant: cxz
+            artifact_layout: embedded
 
     steps:
       - name: Verify matrix target
@@ -120,6 +128,7 @@ jobs:
             macOS/X64) host="x86_64-apple-darwin" ;;
             macOS/ARM64) host="aarch64-apple-darwin" ;;
             Windows/X64) host="x86_64-pc-windows-msvc" ;;
+            Windows/ARM64) host="aarch64-pc-windows-msvc" ;;
             *)
               echo "Unsupported runner platform: ${RUNNER_OS_NAME}/${RUNNER_ARCH_NAME}" >&2
               exit 1
@@ -137,9 +146,9 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: conda-incubator/conda-ship@b556f2f36b17b0c629ab4a3806b05bb1915ec1bf # 0.9.2
+        uses: conda-incubator/conda-ship@f0d2e4c10629c28d5886f48d750e59df59915bf6 # 0.10.0
         with:
-          conda-ship-version: "0.9.2"
+          conda-ship-version: "0.10.0"
           artifact-layout: ${{ matrix.artifact_layout }}
           artifact-name: ${{ matrix.variant }}
 
@@ -150,6 +159,7 @@ jobs:
           CX_PREFIX: ${{ runner.temp }}/${{ matrix.variant }}-smoke
           RUNNER_OS_NAME: ${{ runner.os }}
           VARIANT: ${{ matrix.variant }}
+          RUNNER_ARCH_NAME: ${{ runner.arch }}
         run: |
           set -euo pipefail
 
@@ -157,7 +167,19 @@ jobs:
             codesign --verify --strict --verbose=2 "$BINARY_PATH"
           fi
           "$BINARY_PATH" info --json > /dev/null
-          "$BINARY_PATH" --version | grep -Fx "conda 26.9.0"
+          "$BINARY_PATH" --version | grep -Fx "conda 26.9.1"
+          "$BINARY_PATH" list --json > /dev/null
+          if [ "$RUNNER_OS_NAME/$RUNNER_ARCH_NAME" = "Windows/ARM64" ]; then
+            "$CX_PREFIX/python.exe" -I - <<'PYTHON'
+          import struct, sys, sysconfig
+          from pathlib import Path
+          assert sysconfig.get_platform() == "win-arm64"
+          launcher = (Path(sys.executable).parent / "Scripts" / "conda.exe").read_bytes()
+          offset = struct.unpack_from("<I", launcher, 0x3C)[0]
+          assert launcher[offset:offset + 4] == b"PE\0\0" and struct.unpack_from("<H", launcher, offset + 4)[0] == 0xAA64
+          print("Native Windows ARM64 Python and conda launcher verified")
+          PYTHON
+          fi
           cmp runtime.condarc "$CX_PREFIX/.condarc"
           test -f "$CX_PREFIX/conda-meta/frozen"
           "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
@@ -212,6 +234,9 @@ jobs:
           - target: x86_64-pc-windows-msvc
             asset: cx-x86_64-pc-windows-msvc.exe
             platform-tag: win_amd64
+          - target: aarch64-pc-windows-msvc
+            asset: cx-aarch64-pc-windows-msvc.exe
+            platform-tag: win_arm64
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

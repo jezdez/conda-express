@@ -70,7 +70,7 @@ The `runtime` source environment installs:
 | `conda-pypi >=0.13.0` | PyPI interoperability |
 | `conda-self >=0.3.0` | Base environment self-management and reset |
 | `conda-global >=0.2.0` | Global tool environments |
-| `conda-workspaces >=0.11.0` | Workspace manifests and tasks |
+| `conda-workspaces >=0.11.1` | Workspace manifests and tasks |
 
 Conda also requires `conda-lockfiles >=0.2.2` for lockfile support.
 
