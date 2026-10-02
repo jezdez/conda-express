@@ -29,7 +29,7 @@ jobs:
         run: |
           if [[ ! "$RELEASE_TAG" =~ ^[0-9]+[.][0-9]+[.][0-9]+([.]post[0-9]+)?$ ]]; then
             echo "Invalid release tag: ${RELEASE_TAG}" >&2
-            echo "Use a version tag such as 26.7.2 or 26.7.2.post1." >&2
+            echo "Use a version tag such as 26.9.0 or 26.9.0.post1." >&2
             exit 1
           fi
 
@@ -157,7 +157,7 @@ jobs:
             codesign --verify --strict --verbose=2 "$BINARY_PATH"
           fi
           "$BINARY_PATH" info --json > /dev/null
-          "$BINARY_PATH" --version | grep -Fx "conda 26.7.2"
+          "$BINARY_PATH" --version | grep -Fx "conda 26.9.0"
           cmp runtime.condarc "$CX_PREFIX/.condarc"
           test -f "$CX_PREFIX/conda-meta/frozen"
           "$BINARY_PATH" completion --help | grep -q "Generate and install shell tab completions"
@@ -507,9 +507,9 @@ jobs:
           cp "docker/binaries/${VARIANT}-aarch64-unknown-linux-gnu" "docker/${VARIANT}-linux-arm64"
           chmod +x "docker/${VARIANT}-linux-amd64" "docker/${VARIANT}-linux-arm64"
 
-      - uses: docker/setup-qemu-action@1f40c72289eff860ee54a304f1438e3cff362e0a # v4.3.0
+      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
 
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Smoke test
         env:
@@ -539,7 +539,7 @@ jobs:
             type=raw,value=${{ needs.validate-release.outputs.major-minor }}${{ matrix.tag-suffix }}
             type=raw,value=${{ matrix.latest-tag }}
 
-      - uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: build
         with:
           context: docker

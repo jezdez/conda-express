@@ -1,5 +1,17 @@
 # Changelog
 
+## 26.9.0 (2026-10-02)
+
+### Runtime
+
+- Bootstrap new managed prefixes with conda 26.9.0 and refresh the runtime lock for all five supported platforms. Existing prefixes retain their installed packages.
+- Update conda-rattler-solver to 0.2.0, conda-completion to 0.3.2, conda-pypi to 0.13.0, conda-self to 0.3.0, and conda-workspaces to 0.11.0.
+- Include conda-lockfiles 0.2.2 and packaging 26.3 to meet conda 26.9.0's dependency requirements. Keep conda-libmamba-solver excluded from the managed base.
+
+### Distribution
+
+- Refresh the Docker build actions, security audit action, and Debian bootstrap image.
+
 ## 26.7.2.post1 (2026-09-17)
 
 ### Distribution

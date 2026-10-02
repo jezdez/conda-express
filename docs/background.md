@@ -10,7 +10,7 @@ conda is traditionally installed via Anaconda Distribution, Miniconda, or
 Miniforge: widely used installer distributions. That path is well-established,
 but it also makes installation depend on a platform-specific installer and can
 leave users with a heavier base environment. `cx` also excludes
-`conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv,
+`conda-libmamba-solver` and its exclusive native dependencies (libsolv,
 libarchive, libcurl, spdlog, etc.) because it configures
 `conda-rattler-solver` instead.
 
@@ -26,10 +26,10 @@ for details.
 
 ## conda-rattler-solver
 
-The [conda-rattler-solver](https://github.com/jaimergp/conda-rattler-solver)
+The [conda-rattler-solver](https://github.com/conda/conda-rattler-solver)
 project is the key enabler for cx's solver strategy:
 
-- Dependencies: only `conda >=25.5.0` + `py-rattler >=0.21.0`
+- Dependencies: `conda >=26.7.0` and `py-rattler >=0.26.0,<0.27.0a0`
 - [py-rattler](https://pypi.org/project/py-rattler/) is on PyPI with platform
   wheels (13-33 MB depending on platform, statically-compiled Rust bindings)
 - Uses [resolvo](https://github.com/mamba-org/resolvo), the Rust solver also
@@ -43,8 +43,8 @@ project is the key enabler for cx's solver strategy:
 
 Because conda on conda-forge hard-depends on `conda-libmamba-solver`, cx
 uses a post-solve transitive dependency pruning algorithm to remove libmamba
-and its exclusive dependencies, reducing the install from roughly 130-140
-packages to about 103-109 packages, depending on platform.
+and its exclusive dependencies. The number of removed packages depends on
+the platform and the locked package versions.
 
 ## What blocks conda itself on PyPI
 

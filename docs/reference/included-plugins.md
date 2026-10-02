@@ -16,6 +16,7 @@ behavior.
 | `conda-self` | Base environment self-management workflow | `cx self reset --snapshot installer-exact` |
 | `conda-global` | Isolated global tool environments | `cx global install ruff`, `cx global list` |
 | `conda-workspaces` | Project workspaces, tasks, and lockfiles | `cx workspace ...`, `cx task ...` |
+| `conda-lockfiles` | Lockfile support required by conda | Install environments from supported lockfile formats |
 
 `cx` also installs Python and conda itself. The full package set is listed in
 {doc}`../configuration`.

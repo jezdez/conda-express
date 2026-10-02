@@ -39,18 +39,18 @@ conda package, it uses a post-release version such as
 ## Package exclusion
 
 conda on conda-forge hard-depends on `conda-libmamba-solver`, which pulls in
-27 native dependencies (libsolv, libarchive, libcurl, spdlog, etc.). Since cx
+native dependencies such as libsolv, libarchive, libcurl, and spdlog. Since cx
 uses `conda-rattler-solver` instead, these are unnecessary.
 
 cx removes them via a post-solve transitive dependency pruning algorithm:
 after the source environment has been solved, conda-ship identifies packages
 that are *exclusively* required by the excluded packages and removes them from
-the runtime lock. This reduces the install from roughly 130-140 packages to
-about 103-109 packages, depending on platform.
+the runtime lock. The number of removed packages depends on the platform and
+the locked package versions.
 
 ## conda-rattler-solver
 
-cx configures [conda-rattler-solver](https://github.com/jaimergp/conda-rattler-solver)
+cx configures [conda-rattler-solver](https://github.com/conda/conda-rattler-solver)
 as the default solver via `.condarc`. This solver is based on
 [resolvo](https://github.com/mamba-org/resolvo), the Rust solver used by
 rattler and pixi, and ships through the Python package stack with
