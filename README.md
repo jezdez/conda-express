@@ -41,13 +41,13 @@ cx installs a managed conda stack from conda-forge:
 | [python](https://docs.python.org/3/) >= 3.12 | Runtime |
 | [conda](https://docs.conda.io/projects/conda/en/stable/) | Package manager |
 | [conda-rattler-solver](https://github.com/conda/conda-rattler-solver) | Rust-based solver without libmamba's native dependency chain |
-| [conda-spawn](https://conda.github.io/conda-spawn/) >= 0.1.0 | Subprocess-based environment activation |
-| [conda-completion](https://conda-incubator.github.io/conda-completion/) >= 0.3.0 | Shell completion support |
-| [conda-exec](https://conda-incubator.github.io/conda-exec/) >= 0.3.0 | Ephemeral package execution and PEP 723 script workflows |
+| [conda-spawn](https://conda.github.io/conda-spawn/) >= 0.2.0 | Subprocess-based environment activation |
+| [conda-completion](https://conda-incubator.github.io/conda-completion/) >= 0.3.2 | Shell completion support |
+| [conda-exec](https://conda-incubator.github.io/conda-exec/) >= 0.4.0 | Ephemeral package execution and PEP 723 script workflows |
 | [conda-pypi](https://conda.github.io/conda-pypi/) | PyPI interoperability |
 | [conda-self](https://conda.github.io/conda-self/) | Base environment self-management |
 | [conda-global](https://conda-incubator.github.io/conda-global/) | Global tool installation and PATH management |
-| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.7.0 | Multi-environment workspace and task management |
+| [conda-workspaces](https://conda-incubator.github.io/conda-workspaces/) >= 0.11.1 | Multi-environment workspace and task management |
 
 See the [included plugins reference](https://jezdez.github.io/conda-express/reference/included-plugins/)
 for the commands and workflows these packages add.
@@ -69,7 +69,7 @@ without adding tools to the managed base prefix:
 cx exec ruff --version
 ```
 
-The `conda-libmamba-solver` and its 27 exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default because cx configures `conda-rattler-solver`.
+The `conda-libmamba-solver` and its exclusive native dependencies (libsolv, libarchive, libcurl, spdlog, etc.) are excluded by default because cx configures `conda-rattler-solver`.
 
 ## Versioning
 
@@ -145,10 +145,9 @@ Download the binary for your platform from the
 | macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` |
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` |
+| Windows ARM64 | `cx-aarch64-pc-windows-msvc.exe` |
 
-Windows ARM64 is not published for conda-express yet. conda-ship publishes
-Windows ARM64 builder assets, but full runtime bootstrap support is still gated
-by the conda package ecosystem.
+Windows ARM64 support starts with conda-express 26.9.1.
 
 Each file has matching `.sha256`, `.info.json`, `.packages.txt`,
 `.runtime.lock`, and CycloneDX `.cdx.json` files. Release artifacts are also

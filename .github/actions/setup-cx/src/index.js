@@ -114,6 +114,9 @@ function platformAsset() {
   if (os === "win32" && cpu === "x64") {
     return { name: "cx-x86_64-pc-windows-msvc.exe", binaryName: "cx.exe" };
   }
+  if (os === "win32" && cpu === "arm64") {
+    return { name: "cx-aarch64-pc-windows-msvc.exe", binaryName: "cx.exe" };
+  }
 
   throw new Error(`Unsupported runner platform: ${os}/${cpu}`);
 }

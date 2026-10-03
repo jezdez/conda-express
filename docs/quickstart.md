@@ -78,10 +78,9 @@ Download the binary for your platform from the
 | macOS x86_64 (Intel) | `cx-x86_64-apple-darwin` | `cxz-x86_64-apple-darwin` |
 | macOS ARM64 (Apple Silicon) | `cx-aarch64-apple-darwin` | `cxz-aarch64-apple-darwin` |
 | Windows x86_64 | `cx-x86_64-pc-windows-msvc.exe` | `cxz-x86_64-pc-windows-msvc.exe` |
+| Windows ARM64 | `cx-aarch64-pc-windows-msvc.exe` | `cxz-aarch64-pc-windows-msvc.exe` |
 
-Windows ARM64 is not published for conda-express yet. conda-ship has Windows
-ARM64 builder assets, but full runtime bootstrap support still depends on the
-conda package ecosystem.
+Windows ARM64 support starts with conda-express 26.9.1.
 
 Each runtime has matching `.sha256`, `.info.json`, `.packages.txt`,
 `.runtime.lock`, and CycloneDX `.cdx.json` metadata. Direct downloads are also

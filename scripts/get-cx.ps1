@@ -69,10 +69,14 @@ function Get-TargetTriple {
         $p = $t.GetProperty("OSArchitecture")
         switch ($p.GetValue($null).ToString()) {
             "X64"   { return "x86_64-pc-windows-msvc" }
-            "Arm64" { throw "cx does not publish a Windows ARM64 binary yet." }
+            "Arm64" { return "aarch64-pc-windows-msvc" }
         }
     } catch {
-        Write-Verbose "Falling back to Is64BitOperatingSystem"
+        Write-Verbose "Falling back to Windows architecture environment variables"
+    }
+
+    if ($env:PROCESSOR_ARCHITEW6432 -eq "ARM64" -or $env:PROCESSOR_ARCHITECTURE -eq "ARM64") {
+        return "aarch64-pc-windows-msvc"
     }
 
     if ([System.Environment]::Is64BitOperatingSystem) {

@@ -39,18 +39,18 @@ conda package, it uses a post-release version such as
 ## Package exclusion
 
 conda on conda-forge hard-depends on `conda-libmamba-solver`, which pulls in
-27 native dependencies (libsolv, libarchive, libcurl, spdlog, etc.). Since cx
+native dependencies such as libsolv, libarchive, libcurl, and spdlog. Since cx
 uses `conda-rattler-solver` instead, these are unnecessary.
 
 cx removes them via a post-solve transitive dependency pruning algorithm:
 after the source environment has been solved, conda-ship identifies packages
 that are *exclusively* required by the excluded packages and removes them from
-the runtime lock. This reduces the install from roughly 130-140 packages to
-about 103-109 packages, depending on platform.
+the runtime lock. The number of removed packages depends on the platform and
+the locked package versions.
 
 ## conda-rattler-solver
 
-cx configures [conda-rattler-solver](https://github.com/jaimergp/conda-rattler-solver)
+cx configures [conda-rattler-solver](https://github.com/conda/conda-rattler-solver)
 as the default solver via `.condarc`. This solver is based on
 [resolvo](https://github.com/mamba-org/resolvo), the Rust solver used by
 rattler and pixi, and ships through the Python package stack with
@@ -321,7 +321,7 @@ instead of building runtime source in this repository.
 
 ## Multi-platform support
 
-cx builds and tests on 5 platforms via GitHub Actions:
+cx builds and tests on six platforms via GitHub Actions:
 
 | Platform | Runner |
 |---|---|
@@ -330,8 +330,7 @@ cx builds and tests on 5 platforms via GitHub Actions:
 | macos-x64 | `macos-15-intel` |
 | macos-arm64 | `macos-15` |
 | windows-x64 | `windows-latest` |
+| windows-arm64 | `windows-11-arm` |
 
-conda-ship publishes Windows ARM64 builder assets and maps `Windows`/`ARM64`
-action runners to `aarch64-pc-windows-msvc`. conda-express does not publish
-Windows ARM64 `cx` or `cxz` artifacts yet because full runtime bootstrap
-support still depends on the conda package ecosystem.
+Windows ARM64 support starts with conda-express 26.9.1. Both `cx` and `cxz`
+bootstrap native Python and conda on Windows ARM64 runners.
