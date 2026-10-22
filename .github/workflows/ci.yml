@@ -171,7 +171,7 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
-      - uses: prefix-dev/setup-pixi@d3f436a425481402e6a95a1d1fc10331c708cd9e # v0.10.2
+      - uses: prefix-dev/setup-pixi@ad1da6449d9e506fd127fd67ab2d054a769f6a94 # v0.11.2
         with:
           environments: docs
           cache: true
@@ -272,9 +272,9 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: conda-incubator/conda-ship@f0d2e4c10629c28d5886f48d750e59df59915bf6 # 0.10.0
+        uses: conda-incubator/conda-ship@cd2426f7226eccd5535b188f4dbb571f989185ab # 0.11.1
         with:
-          conda-ship-version: "0.10.0"
+          conda-ship-version: "0.11.1"
           runtime-version: ${{ inputs.runtime-version }}
           artifact-layout: ${{ matrix.artifact_layout }}
           artifact-name: ${{ matrix.variant }}
@@ -294,7 +294,7 @@ jobs:
             codesign --verify --strict --verbose=2 "$BINARY_PATH"
           fi
           "$BINARY_PATH" info --json > /dev/null
-          "$BINARY_PATH" --version | grep -Fx "conda 26.9.1"
+          "$BINARY_PATH" --version | grep -Fx "conda 26.9.4"
           "$BINARY_PATH" list --json > /dev/null
           if [ "$RUNNER_OS_NAME/$RUNNER_ARCH_NAME" = "Windows/ARM64" ]; then
             "$CX_PREFIX/python.exe" -I - <<'PYTHON'
@@ -322,7 +322,7 @@ jobs:
           "$BINARY_PATH" exec --help | grep -q "Run a command from a conda package without installing it"
 
       - name: Upload canary binary
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ steps.build.outputs.asset-name }}
           path: ${{ steps.build.outputs.dist-path }}/*
