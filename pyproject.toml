@@ -93,7 +93,7 @@ docs-clean = { cmd = "rm -rf _build", cwd = "docs" }
 
 [tool.pixi.feature.runtime.dependencies]
 python = ">=3.12"
-conda = "==26.9.1"
+conda = "==26.9.4"
 conda-rattler-solver = ">=0.2.0"
 conda-spawn = ">=0.2.0"
 conda-completion = ">=0.3.2"

@@ -1,5 +1,16 @@
 # Changelog
 
+## 26.9.4 (2026-10-22)
+
+### Runtime
+
+- Bootstrap new managed prefixes with conda 26.9.4 and refresh the runtime lock for all six supported platforms. Existing prefixes retain their installed packages.
+- Include refreshed certifi and ca-certificates bundles, version 2026.10.19 or newer, following the eMudhra intermediate CA compromise.
+
+### Distribution
+
+- Build `cx` and `cxz` with conda-ship 0.11.1.
+
 ## 26.9.1 (2026-10-03)
 
 ### Runtime

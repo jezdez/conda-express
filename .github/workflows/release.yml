@@ -146,9 +146,9 @@ jobs:
 
       - name: Build ${{ matrix.variant }}
         id: build
-        uses: conda-incubator/conda-ship@f0d2e4c10629c28d5886f48d750e59df59915bf6 # 0.10.0
+        uses: conda-incubator/conda-ship@cd2426f7226eccd5535b188f4dbb571f989185ab # 0.11.1
         with:
-          conda-ship-version: "0.10.0"
+          conda-ship-version: "0.11.1"
           artifact-layout: ${{ matrix.artifact_layout }}
           artifact-name: ${{ matrix.variant }}
 
@@ -167,7 +167,7 @@ jobs:
             codesign --verify --strict --verbose=2 "$BINARY_PATH"
           fi
           "$BINARY_PATH" info --json > /dev/null
-          "$BINARY_PATH" --version | grep -Fx "conda 26.9.1"
+          "$BINARY_PATH" --version | grep -Fx "conda 26.9.4"
           "$BINARY_PATH" list --json > /dev/null
           if [ "$RUNNER_OS_NAME/$RUNNER_ARCH_NAME" = "Windows/ARM64" ]; then
             "$CX_PREFIX/python.exe" -I - <<'PYTHON'
