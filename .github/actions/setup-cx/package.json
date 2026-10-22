@@ -9,12 +9,12 @@
     "check": "node --check src/index.js && node --check dist/index.js"
   },
   "dependencies": {
-    "@actions/core": "^3.0.0",
+    "@actions/core": "^3.0.1",
     "@actions/exec": "^3.0.0",
     "@actions/tool-cache": "^4.0.0"
   },
   "devDependencies": {
-    "@vercel/ncc": "^0.38.4"
+    "@vercel/ncc": "^0.45.0"
   },
   "engines": {
     "node": ">=20"
